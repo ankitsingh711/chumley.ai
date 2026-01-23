@@ -4,13 +4,19 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import router from './routes';
 import Logger from './utils/logger';
+import { configurePassport } from './config/passport';
+import passport from 'passport';
 
 const app = express();
+
+// Configure Passport
+configurePassport();
 
 // Middleware
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+app.use(passport.initialize());
 
 // Logger
 const morganFormat = ':method :url :status :response-time ms';

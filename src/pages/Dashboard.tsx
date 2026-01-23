@@ -1,48 +1,79 @@
-import { Wallet, FileClock, ShoppingBag } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Wallet, FileClock, ShoppingBag, TrendingUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/dashboard/StatCard';
 import { BudgetTracker } from '../components/dashboard/BudgetTracker';
 import { RequestBreakdown } from '../components/dashboard/RequestBreakdown';
 import { StrategicSourcing } from '../components/dashboard/StrategicSourcing';
 import { Button } from '../components/ui/Button';
+import { reportsApi } from '../services/reports.service';
+import { requestsApi } from '../services/requests.service';
+import type { KPIMetrics, PurchaseRequest } from '../types/api';
 
 export default function Dashboard() {
+    const navigate = useNavigate();
+    const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
+    const [recentRequests, setRecentRequests] = useState<PurchaseRequest[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const [kpiData, requestsData] = await Promise.all([
+                    reportsApi.getKPIs(),
+                    requestsApi.getAll(),
+                ]);
+                setMetrics(kpiData);
+                setRecentRequests(requestsData.slice(0, 5)); // Show only 5 most recent
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, []);
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-96">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    {/* Placeholder for potential breadcrumb or greeting if needed */}
-                </div>
-                <div className="flex gap-3">
-                    {/* Buttons could go here if header doesn't have them */}
-                </div>
-            </div>
-
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard
-                    title="Total Spend (MTD)"
-                    value="$428,500"
-                    trend={{ value: '12.4%', isPositive: true, label: 'vs last year' }}
+                    title="Total Spend"
+                    value={`$${metrics?.totalSpend.toLocaleString() || '0'}`}
+                    trend={{ value: '12.4%', isPositive: true, label: 'vs last month' }}
                     icon={Wallet}
                     color="blue"
                 />
                 <StatCard
                     title="Pending Approvals"
-                    value="12"
-                    trend={{ value: 'Active', isPositive: true, label: '8 require immediate action' }}
+                    value={metrics?.pendingRequests.toString() || '0'}
+                    trend={{ value: 'Active', isPositive: true, label: `${metrics?.totalRequests || 0} total requests` }}
                     icon={FileClock}
                     color="yellow"
                 />
                 <StatCard
                     title="Active POs"
-                    value="24"
-                    trend={{ value: '2.1%', isPositive: false, label: 'vs last month' }}
+                    value={metrics?.totalOrders.toString() || '0'}
+                    trend={{ value: '2.1%', isPositive: true, label: 'vs last month' }}
                     icon={ShoppingBag}
                     color="green"
-
                 />
-                {/* Placeholder for 4th card if needed, or layout adjustment */}
+                <StatCard
+                    title="Approved Requests"
+                    value={metrics?.approvedRequests.toString() || '0'}
+                    trend={{ value: `${metrics?.rejectedRequests || 0} rejected`, isPositive: false, label: 'this month' }}
+                    icon={TrendingUp}
+                    color="purple"
+                />
             </div>
 
             {/* Main Content Grid */}
@@ -64,18 +95,59 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                     <h3 className="font-semibold text-gray-900">Recent Purchase Requests</h3>
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm">Filter</Button>
-                        <Button variant="outline" size="sm">Export</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate('/requests')}>View All</Button>
                     </div>
                 </div>
-                <div className="p-6">
-                    {/* Table Placeholder - Will implement full table component later */}
-                    <div className="text-sm text-gray-500 text-center py-8">
-                        Request List Table Placeholder
-                    </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Request ID</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Requester</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {recentRequests.length === 0 ? (
+                                <tr>
+                                    <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                                        No recent requests found
+                                    </td>
+                                </tr>
+                            ) : (
+                                recentRequests.map((request) => (
+                                    <tr key={request.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/requests`)}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            #{request.id.slice(0, 8)}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {request.requester?.name || 'Unknown'}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            ${Number(request.totalAmount).toLocaleString()}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                    request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                        request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                {request.status}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            {new Date(request.createdAt).toLocaleDateString()}
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
                 <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                    <Button variant="primary" className="w-full sm:w-auto">
+                    <Button variant="primary" className="w-full sm:w-auto" onClick={() => navigate('/requests/new')}>
                         + New Request
                     </Button>
                 </div>

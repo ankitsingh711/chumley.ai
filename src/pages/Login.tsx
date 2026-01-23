@@ -1,15 +1,33 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, LayoutTemplate } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
     const navigate = useNavigate();
+    const location = useLocation();
+    const { login } = useAuth();
     const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        navigate('/');
+        setError('');
+        setLoading(true);
+
+        try {
+            await login(email, password);
+            const from = (location.state as any)?.from?.pathname || '/';
+            navigate(from, { replace: true });
+        } catch (err: any) {
+            setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -70,12 +88,23 @@ export default function Login() {
                         <p className="text-sm text-teal-800">Access is by invitation only. Please contact your organization's administrator for an invite.</p>
                     </div>
 
+                    {error && (
+                        <div className="rounded-lg bg-red-50 border border-red-200 p-4 flex gap-3 items-start">
+                            <div className="flex-shrink-0 h-5 w-5 rounded-full bg-red-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">!</div>
+                            <p className="text-sm text-red-800">{error}</p>
+                        </div>
+                    )}
+
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-900">Work Email</label>
                             <input
                                 type="email"
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                disabled={loading}
+                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400 disabled:opacity-50"
                                 placeholder="name@company.com"
                             />
                         </div>
@@ -88,7 +117,11 @@ export default function Login() {
                             <div className="relative">
                                 <input
                                     type={showPassword ? "text" : "password"}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 pr-12 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    disabled={loading}
+                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 pr-12 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400 disabled:opacity-50"
                                     placeholder="Enter your password"
                                 />
                                 <button
@@ -106,8 +139,12 @@ export default function Login() {
                             <label htmlFor="remember" className="text-sm text-gray-700">Remember this device for 30 days</label>
                         </div>
 
-                        <Button type="submit" className="w-full bg-[#117a8b] hover:bg-[#0e6675] text-white py-6 text-base font-semibold rounded-lg shadow-sm">
-                            Sign In
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-[#117a8b] hover:bg-[#0e6675] text-white py-6 text-base font-semibold rounded-lg shadow-sm disabled:opacity-50"
+                        >
+                            {loading ? 'Signing in...' : 'Sign In'}
                         </Button>
                     </form>
 
@@ -116,7 +153,10 @@ export default function Login() {
                         <div className="relative flex justify-center text-xs uppercase tracking-wider"><span className="bg-gray-50/30 px-4 text-gray-500 font-medium">OR CONTINUE WITH SSO</span></div>
                     </div>
 
-                    <button className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+                    <button
+                        onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3003/api'}/auth/google`}
+                        className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                    >
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
                         Continue with Google
                     </button>

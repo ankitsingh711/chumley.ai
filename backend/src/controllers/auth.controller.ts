@@ -101,3 +101,30 @@ export const login = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+// Google OAuth callback handler
+export const googleAuthCallback = async (req: Request, res: Response) => {
+    try {
+        // User is attached to req by Passport
+        const user = req.user as any;
+
+        if (!user) {
+            return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { id: user.id, role: user.role, email: user.email },
+            process.env.JWT_SECRET || 'fallback_secret',
+            { expiresIn: '24h' }
+        );
+
+        Logger.info(`User logged in via Google: ${user.email}`);
+
+        // Redirect to frontend with token
+        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`);
+    } catch (error) {
+        Logger.error(error);
+        res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+    }
+};
