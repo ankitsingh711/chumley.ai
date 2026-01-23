@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '../../lib/utils';
 import { Loader2 } from 'lucide-react';
+
 
 // Note: I will install class-variance-authority for easier variant management
 // If cva is not installed, I can implement it manually or just use clsx.
