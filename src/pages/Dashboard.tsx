@@ -55,21 +55,21 @@ export default function Dashboard() {
                 />
                 <StatCard
                     title="Pending Approvals"
-                    value={metrics?.pendingRequests.toString() || '0'}
+                    value={(metrics?.pendingRequests ?? 0).toString()}
                     trend={{ value: 'Active', isPositive: true, label: `${metrics?.totalRequests || 0} total requests` }}
                     icon={FileClock}
                     color="yellow"
                 />
                 <StatCard
                     title="Active POs"
-                    value={metrics?.totalOrders.toString() || '0'}
+                    value={(metrics?.totalOrders ?? 0).toString()}
                     trend={{ value: '2.1%', isPositive: true, label: 'vs last month' }}
                     icon={ShoppingBag}
                     color="green"
                 />
                 <StatCard
                     title="Approved Requests"
-                    value={metrics?.approvedRequests.toString() || '0'}
+                    value={(metrics?.approvedRequests ?? 0).toString()}
                     trend={{ value: `${metrics?.rejectedRequests || 0} rejected`, isPositive: false, label: 'this month' }}
                     icon={TrendingUp}
                     color="purple"
@@ -130,9 +130,9 @@ export default function Dashboard() {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                                    request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                        request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                                                            'bg-gray-100 text-gray-800'
+                                                request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                    request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                                                        'bg-gray-100 text-gray-800'
                                                 }`}>
                                                 {request.status}
                                             </span>

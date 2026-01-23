@@ -13,22 +13,31 @@ export const getKPIs = async (req: Request, res: Response) => {
         });
         const totalSpend = totalSpendResult._sum.totalAmount || 0;
 
-        const activeRequests = await prisma.purchaseRequest.count({
+        const totalRequests = await prisma.purchaseRequest.count();
+
+        const pendingRequests = await prisma.purchaseRequest.count({
             where: { status: RequestStatus.PENDING },
         });
 
-        const pendingApprovals = await prisma.purchaseRequest.count({
-            where: { status: RequestStatus.PENDING }, // Simplification
+        const approvedRequests = await prisma.purchaseRequest.count({
+            where: { status: RequestStatus.APPROVED },
         });
 
-        // Dummy avg fulfillment time logic for now
-        const avgFulfillment = '2.5 Days';
+        const rejectedRequests = await prisma.purchaseRequest.count({
+            where: { status: RequestStatus.REJECTED },
+        });
+
+        const totalOrders = await prisma.purchaseOrder.count({
+            where: { status: { not: OrderStatus.CANCELLED } },
+        });
 
         res.json({
+            totalRequests,
+            pendingRequests,
+            approvedRequests,
+            rejectedRequests,
+            totalOrders,
             totalSpend,
-            activeRequests,
-            pendingApprovals,
-            avgFulfillment,
         });
     } catch (error) {
         Logger.error(error);
