@@ -10,15 +10,17 @@ interface StatCardProps {
         label?: string; // e.g. "vs last month"
     };
     icon?: LucideIcon;
-    color?: 'teal' | 'blue' | 'yellow' | 'green';
+    color?: 'teal' | 'blue' | 'yellow' | 'green' | 'orange' | 'purple';
 }
 
 export function StatCard({ title, value, trend, icon: Icon, color = 'teal' }: StatCardProps) {
-    const colorStyles = {
+    const colorStyles: Record<string, string> = {
         teal: 'bg-teal-50 text-teal-700',
         blue: 'bg-blue-50 text-blue-700',
         yellow: 'bg-yellow-50 text-yellow-700',
         green: 'bg-green-50 text-green-700',
+        orange: 'bg-orange-50 text-orange-700',
+        purple: 'bg-purple-50 text-purple-700',
     };
 
     return (

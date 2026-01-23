@@ -1,72 +1,96 @@
 import { useNavigate } from 'react-router-dom';
-import { Package, PlayCircle, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 
 export default function OnboardingSuccess() {
     const navigate = useNavigate();
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
-            <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="min-h-screen bg-gray-100/50 flex items-center justify-center p-6 font-sans">
+            <div className="w-full max-w-[800px] bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100">
+                {/* Top branding bar */}
+                <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
                     <div className="flex items-center gap-2">
-                        <div className="p-1 bg-teal-600 rounded text-white"><Package className="h-4 w-4" /></div>
-                        <span className="font-bold text-gray-900">ProcurePro</span>
+                        {/* Logo Mark: Blue squares */}
+                        <div className="flex gap-0.5">
+                            <div className="h-2 w-2 bg-cyan-500"></div>
+                            <div className="h-2 w-2 bg-cyan-600"></div>
+                            <div className="h-2 w-2 bg-cyan-400 -ml-2.5 mt-2.5"></div>
+                        </div>
+                        <span className="font-bold text-gray-900 ml-2">ProcurePro</span>
                     </div>
-                    <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center">
-                        <img src="https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" className="h-8 w-8 rounded-full" alt="User" />
+                    {/* User Avatar */}
+                    <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-gray-100">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="Avatar" className="h-6 w-6" />
                     </div>
                 </div>
 
-                <div className="p-12 text-center">
-                    {/* Hero Image / Gradient Area */}
-                    <div className="mx-auto mb-8 relative w-full h-48 bg-gradient-to-r from-teal-400 to-blue-400 rounded-xl overflow-hidden flex items-center justify-center">
-                        <div className="h-24 w-24 bg-white rounded-full flex items-center justify-center shadow-lg">
-                            <CheckCircle2 className="h-12 w-12 text-teal-500" />
+                <div className="flex flex-col items-center justify-center py-16 px-4">
+                    {/* Hero Graphic Area */}
+                    <div className="relative w-full max-w-lg h-40 bg-gradient-to-r from-cyan-400 to-teal-400 rounded-t-2xl flex items-center justify-center overflow-hidden mb-8">
+                        {/* Soft Glows */}
+                        <div className="absolute top-1/2 left-1/4 h-32 w-32 bg-yellow-200 rounded-full blur-3xl opacity-50 -translate-y-1/2"></div>
+                        <div className="absolute top-1/2 right-1/4 h-32 w-32 bg-yellow-200 rounded-full blur-3xl opacity-50 -translate-y-1/2"></div>
+
+                        {/* Center Check Icon */}
+                        <div className="relative z-10 h-20 w-20 bg-white rounded-full flex items-center justify-center shadow-lg">
+                            <span className="text-4xl text-cyan-500">✓</span>
                         </div>
-                        {/* Decorative blurs could be added here with absolute positioning */}
                     </div>
 
-                    <h1 className="text-3xl font-bold text-gray-900 mb-4">You're all set, Alex!</h1>
-                    <p className="text-gray-500 max-w-md mx-auto mb-8">
-                        Your procurement workspace is ready. You've successfully laid the foundation for effortless spend management.
-                    </p>
+                    <div className="text-center max-w-md mx-auto space-y-4">
+                        <h1 className="text-3xl font-bold text-gray-900">You're all set, Alex!</h1>
+                        <p className="text-gray-500 leading-relaxed">
+                            Your procurement workspace is ready. You've successfully laid the foundation for effortless spend management.
+                        </p>
+                    </div>
 
-                    <div className="bg-gray-50 rounded-xl p-6 max-w-md mx-auto mb-8 text-left">
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-4">SETUP SUMMARY</p>
-                        <div className="space-y-3">
+                    {/* Config Summary Card */}
+                    <div className="bg-gray-50 rounded-xl p-8 max-w-md w-full mx-auto my-8 border border-gray-100">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">SETUP SUMMARY</p>
+                        <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="bg-teal-500 rounded-full p-0.5"><CheckCircle2 className="h-3 w-3 text-white" /></div>
+                                <div className="h-5 w-5 rounded-full bg-cyan-500 flex items-center justify-center">
+                                    <CheckCircle2 className="h-3 w-3 text-white" />
+                                </div>
                                 <span className="text-sm font-medium text-gray-700">Organization Profile Verified</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="bg-teal-500 rounded-full p-0.5"><CheckCircle2 className="h-3 w-3 text-white" /></div>
+                                <div className="h-5 w-5 rounded-full bg-cyan-500 flex items-center justify-center">
+                                    <CheckCircle2 className="h-3 w-3 text-white" />
+                                </div>
                                 <span className="text-sm font-medium text-gray-700">Team Members Invited</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <div className="bg-teal-500 rounded-full p-0.5"><CheckCircle2 className="h-3 w-3 text-white" /></div>
+                                <div className="h-5 w-5 rounded-full bg-cyan-500 flex items-center justify-center">
+                                    <CheckCircle2 className="h-3 w-3 text-white" />
+                                </div>
                                 <span className="text-sm font-medium text-gray-700">Payment Methods Connected</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex gap-4 justify-center">
-                        <Button className="bg-teal-500 hover:bg-teal-600 px-8" onClick={() => navigate('/')}>
-                            Go to Dashboard <ArrowRight className="ml-2 h-4 w-4" />
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
+                        <Button
+                            className="bg-[#24a0b5] hover:bg-[#1b8a9c] text-white px-8 py-6 rounded-lg font-semibold flex items-center gap-2 shadow-sm shadow-cyan-200"
+                            onClick={() => navigate('/')}
+                        >
+                            Go to Dashboard <ArrowRight className="h-4 w-4" />
                         </Button>
-                        <Button variant="outline" className="px-6">
-                            <PlayCircle className="mr-2 h-4 w-4 text-teal-500" /> 2-min Tour
+                        <Button variant="outline" className="px-8 py-6 rounded-lg font-semibold text-gray-600 border-gray-200 hover:bg-gray-50 flex items-center gap-2">
+                            <PlayCircle className="h-4 w-4 text-cyan-500" /> 2-min Tour
                         </Button>
                     </div>
 
-                    <p className="mt-8 text-xs text-gray-400 font-medium tracking-widest uppercase">
+                    <p className="text-[10px] uppercase tracking-widest text-gray-400 font-medium mt-10">
                         STREAMLINING YOUR SPEND STARTS NOW
                     </p>
                 </div>
 
-                <div className="p-6 border-t border-gray-100 text-center text-xs text-gray-400 flex justify-center gap-1">
-                    Need more help? <a href="#" className="text-teal-500 font-medium">Visit Support Center</a> or <a href="#" className="text-teal-500 font-medium">Contact Success Manager</a>
+                {/* Footer */}
+                <div className="py-6 text-center text-xs text-gray-400 border-t border-gray-100">
+                    Need more help? <a href="#" className="text-cyan-600 font-medium hover:underline">Visit Support Center</a> or <a href="#" className="text-cyan-600 font-medium hover:underline">Contact Success Manager</a>
                 </div>
             </div>
         </div>

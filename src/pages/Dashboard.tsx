@@ -21,7 +21,7 @@ export default function Dashboard() {
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard
-                    title="Total Spend YTD"
+                    title="Total Spend (MTD)"
                     value="$428,500"
                     trend={{ value: '12.4%', isPositive: true, label: 'vs last year' }}
                     icon={Wallet}
