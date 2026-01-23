@@ -1,0 +1,112 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  APPROVER
+  REQUESTER
+}
+
+enum RequestStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum OrderStatus {
+  DRAFT
+  SENT
+  PARTIAL
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(REQUESTER)
+  department String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requests  PurchaseRequest[]
+  approvals PurchaseRequest[] @relation("Approver")
+  auditLogs AuditLog[]
+}
+
+model Supplier {
+  id          String   @id @default(uuid())
+  name        String
+  category    String
+  status      String   @default("Pending") // Preferred, Standard, etc.
+  contactName String?
+  contactEmail String?
+  logoUrl     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      PurchaseOrder[]
+}
+
+model PurchaseRequest {
+  id          String       @id @default(uuid())
+  requesterId String
+  requester   User         @relation(fields: [requesterId], references: [id])
+  status      RequestStatus @default(DRAFT)
+  totalAmount Decimal      @db.Decimal(10, 2)
+  reason      String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  // Relations
+  items       RequestItem[]
+  approverId  String?
+  approver    User?        @relation("Approver", fields: [approverId], references: [id])
+  order       PurchaseOrder?
+}
+
+model RequestItem {
+  id          String          @id @default(uuid())
+  requestId   String
+  request     PurchaseRequest @relation(fields: [requestId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Decimal         @db.Decimal(10, 2)
+  totalPrice  Decimal         @db.Decimal(10, 2)
+}
+
+model PurchaseOrder {
+  id          String          @id @default(uuid())
+  requestId   String          @unique
+  request     PurchaseRequest @relation(fields: [requestId], references: [id])
+  supplierId  String
+  supplier    Supplier        @relation(fields: [supplierId], references: [id])
+  status      OrderStatus     @default(DRAFT)
+  totalAmount Decimal         @db.Decimal(10, 2)
+  issuedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  action    String
+  resource  String
+  details   String?
+  createdAt DateTime @default(now())
+}
