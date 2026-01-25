@@ -27,5 +27,5 @@ jobs:
 
       - name: Upload Coverage to OtterWise
         env:
-          OTTERWISE_TOKEN: ${{ secrets.OTTERWISE_TOKEN }}
+          OTTERWISE_TOKEN: ${{ secrets.chumley.ai-token }}
         run: bash <(curl -s https://raw.githubusercontent.com/getOtterWise/bash-uploader/main/uploader.sh)
