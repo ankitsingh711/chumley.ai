@@ -47,6 +47,11 @@ export interface Supplier {
     logoUrl?: string;
     createdAt: string;
     updatedAt: string;
+    stats?: {
+        activeOrders: number;
+        totalSpend: number;
+    };
+    lastOrderDate?: string;
 }
 
 export interface RequestItem {
@@ -162,6 +167,7 @@ export interface KPIMetrics {
     rejectedRequests: number;
     totalOrders: number;
     totalSpend: number;
+    departmentSpend?: Record<string, number>;
     avgProcessingTime?: number;
 }
 

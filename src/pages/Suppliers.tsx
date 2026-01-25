@@ -1,61 +1,55 @@
+import { useEffect, useState } from 'react';
 import { Download, Plus, LayoutGrid, List as ListIcon } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { SupplierCard, type Supplier } from '../components/suppliers/SupplierCard';
-
-const suppliers: Supplier[] = [
-    {
-        id: '1',
-        name: 'Nexus Cloud Services',
-        category: 'Software & Infrastructure',
-        status: 'Preferred',
-        logoColor: 'bg-teal-600',
-        contact: { name: 'Sarah Waters', role: 'Account Executive', image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
-        stats: { activeOrders: 12, totalSpend: '$42.8k' },
-        lastOrder: 'Last order: 2 days ago'
-    },
-    {
-        id: '2',
-        name: 'Global Office Supplies',
-        category: 'Office & Facilities',
-        status: 'Standard',
-        logoColor: 'bg-orange-500',
-        contact: { name: 'David Chen', role: 'Sales Representative', image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
-        stats: { activeOrders: 5, totalSpend: '$18.2k' },
-        lastOrder: 'Last order: 1 week ago'
-    },
-    {
-        id: '3',
-        name: 'Starlight Logistics',
-        category: 'Shipping & Logistics',
-        status: 'Review Pending',
-        logoColor: 'bg-emerald-600',
-        contact: { name: 'Elena Rodriguez', role: 'Logistics Manager', image: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
-        stats: { activeOrders: 2, totalSpend: '$9.5k' },
-        lastOrder: 'Contract expires soon'
-    },
-    {
-        id: '4',
-        name: 'Creative Pulse Agency',
-        category: 'Marketing & Creative',
-        status: 'Preferred',
-        logoColor: 'bg-purple-600',
-        contact: { name: 'Marcus Thorne', role: 'Creative Director', image: 'https://images.unsplash.com/photo-1599566150163-29194dcaad36?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
-        stats: { activeOrders: 8, totalSpend: '$31.4k' },
-        lastOrder: 'Last order: 4 days ago'
-    },
-    {
-        id: '5',
-        name: 'Precision Hardware Co.',
-        category: 'IT Hardware',
-        status: 'Standard',
-        logoColor: 'bg-blue-600',
-        contact: { name: 'Thomas Miller', role: 'Tech Consultant', image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80' },
-        stats: { activeOrders: 15, totalSpend: '$89.2k' },
-        lastOrder: 'Last order: 1 day ago'
-    }
-];
+import { SupplierCard, type Supplier as CardSupplier } from '../components/suppliers/SupplierCard';
+import { suppliersApi } from '../services/suppliers.service';
+import { useNavigate } from 'react-router-dom';
 
 export default function Suppliers() {
+    const navigate = useNavigate();
+    const [suppliers, setSuppliers] = useState<CardSupplier[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSuppliers = async () => {
+            try {
+                const data = await suppliersApi.getAll();
+                // Map API data to Card props
+                const mappedSuppliers: CardSupplier[] = data.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    category: s.category,
+                    status: (s.status === 'Preferred' || s.status === 'Standard' || s.status === 'Review Pending') ? s.status : 'Standard', // Default mapping
+                    logoColor: 'bg-teal-600', // Random or hash based if needed, staying static for now
+                    contact: {
+                        name: s.contactName || 'No Contact',
+                        role: 'Representative', // Placeholder as not in DB yet
+                        image: 'https://ui-avatars.com/api/?name=' + (s.contactName || s.name) + '&background=random',
+                    },
+                    stats: {
+                        activeOrders: s.stats?.activeOrders || 0,
+                        totalSpend: s.stats?.totalSpend
+                            ? `$${(s.stats.totalSpend / 1000).toFixed(1)}k`
+                            : '$0.0k',
+                    },
+                    lastOrder: s.lastOrderDate
+                        ? `Last order: ${new Date(s.lastOrderDate).toLocaleDateString()}`
+                        : 'No orders yet'
+                }));
+                setSuppliers(mappedSuppliers);
+            } catch (error) {
+                console.error('Failed to fetch suppliers:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchSuppliers();
+    }, []);
+
+    if (loading) {
+        return <div className="p-8 text-center">Loading suppliers...</div>;
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -66,7 +60,7 @@ export default function Suppliers() {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Export List</Button>
-                    <Button><Plus className="mr-2 h-4 w-4" /> Add New Supplier</Button>
+                    <Button onClick={() => navigate('/suppliers/new')}><Plus className="mr-2 h-4 w-4" /> Add New Supplier</Button>
                 </div>
             </div>
 
@@ -107,7 +101,9 @@ export default function Suppliers() {
                 ))}
 
                 {/* Add New Quick Card */}
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-teal-300 hover:bg-teal-50/50 transition-colors cursor-pointer group h-full min-h-[300px]">
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-teal-300 hover:bg-teal-50/50 transition-colors cursor-pointer group h-full min-h-[300px]"
+                    onClick={() => navigate('/suppliers/new')}
+                >
                     <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
                         <Plus className="h-6 w-6 text-teal-600" />
                     </div>

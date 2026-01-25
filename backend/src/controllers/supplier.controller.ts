@@ -19,8 +19,42 @@ export const getSuppliers = async (req: Request, res: Response) => {
     try {
         const suppliers = await prisma.supplier.findMany({
             orderBy: { createdAt: 'desc' },
+            include: {
+                orders: {
+                    select: {
+                        status: true,
+                        totalAmount: true,
+                        createdAt: true,
+                    }
+                }
+            }
         });
-        res.json(suppliers);
+
+        const suppliersWithStats = suppliers.map(supplier => {
+            const activeOrders = supplier.orders.filter(o =>
+                o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
+            ).length;
+
+            const totalSpend = supplier.orders.reduce((acc, curr) => {
+                return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
+            }, 0);
+
+            const lastOrderDate = supplier.orders.length > 0
+                ? supplier.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
+                : null;
+
+            return {
+                ...supplier,
+                orders: undefined, // remove raw orders from list response
+                stats: {
+                    activeOrders,
+                    totalSpend,
+                },
+                lastOrderDate,
+            };
+        });
+
+        res.json(suppliersWithStats);
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

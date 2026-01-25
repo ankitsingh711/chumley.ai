@@ -1,22 +1,30 @@
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 
-interface BudgetDepartment {
-    name: string;
-    category: string;
-    spent: number;
-    limit: number;
-    color: string; // Tailwind color class backbone e.g. "yellow" -> bg-yellow-500
+
+
+interface BudgetTrackerProps {
+    departmentSpend?: Record<string, number>;
 }
 
-const departments: BudgetDepartment[] = [
-    { name: 'IT Department', category: 'Infrastructure & SaaS Subscriptions', spent: 85000, limit: 100000, color: 'bg-yellow-500' },
-    { name: 'Marketing & Growth', category: 'Paid Media & Agency Fees', spent: 42000, limit: 120000, color: 'bg-green-500' },
-    { name: 'Human Resources', category: 'Training & Recruitment', spent: 14500, limit: 15000, color: 'bg-red-500' },
-    { name: 'Operations', category: 'Logistics & Supply Chain', spent: 60000, limit: 80000, color: 'bg-emerald-500' },
-];
+// Mock limits/categories for now, but spend will be real
+const departmentConfig: Record<string, { category: string; limit: number; color: string }> = {
+    'IT Department': { category: 'Infrastructure & SaaS Subscriptions', limit: 100000, color: 'bg-yellow-500' },
+    'Marketing & Growth': { category: 'Paid Media & Agency Fees', limit: 120000, color: 'bg-green-500' },
+    'Human Resources': { category: 'Training & Recruitment', limit: 15000, color: 'bg-red-500' },
+    'Operations': { category: 'Logistics & Supply Chain', limit: 80000, color: 'bg-emerald-500' },
+};
 
-export function BudgetTracker() {
+export function BudgetTracker({ departmentSpend = {} }: BudgetTrackerProps) {
+    // Merge config with real data. If a department exists in config, update its spend.
+    // If we have spend for a department not in config, we could add it dynamically or ignore.
+    // For this UI, we'll stick to the configured departments but show 0 if no spend.
+    const departments = Object.entries(departmentConfig).map(([name, config]) => ({
+        name,
+        ...config,
+        spent: departmentSpend[name] || 0
+    }));
+
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
@@ -49,7 +57,7 @@ export function BudgetTracker() {
                             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
                                 <div
                                     className={cn("h-full rounded-full transition-all duration-500", dept.color)}
-                                    style={{ width: `${percentage}%` }}
+                                    style={{ width: `${Math.min(percentage, 100)}%` }}
                                 />
                             </div>
 

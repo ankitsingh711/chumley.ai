@@ -80,12 +80,12 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column: Budget Tracking (2 cols wide) */}
                 <div className="lg:col-span-2">
-                    <BudgetTracker />
+                    <BudgetTracker departmentSpend={metrics?.departmentSpend} />
                 </div>
 
                 {/* Right Column: Breakdown & Sourcing */}
                 <div className="space-y-6">
-                    <RequestBreakdown />
+                    <RequestBreakdown metrics={metrics || undefined} />
                     <StrategicSourcing />
                 </div>
             </div>

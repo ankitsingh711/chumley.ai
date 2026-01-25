@@ -1,12 +1,23 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from 'recharts';
 
-const data = [
-    { name: 'In Progress', value: 60, color: '#14b8a6' }, // Teal-500
-    { name: 'Approved', value: 25, color: '#10b981' }, // Emerald-500
-    { name: 'Rejected', value: 15, color: '#ef4444' }, // Red-500
-];
+interface RequestBreakdownProps {
+    metrics?: {
+        pendingRequests: number;
+        approvedRequests: number;
+        rejectedRequests: number;
+        totalRequests: number;
+    }
+}
 
-export function RequestBreakdown() {
+export function RequestBreakdown({ metrics }: RequestBreakdownProps) {
+    const data = [
+        { name: 'In Progress', value: metrics?.pendingRequests || 0, color: '#14b8a6' }, // Teal-500
+        { name: 'Approved', value: metrics?.approvedRequests || 0, color: '#10b981' }, // Emerald-500
+        { name: 'Rejected', value: metrics?.rejectedRequests || 0, color: '#ef4444' }, // Red-500
+    ];
+
+    const total = metrics?.totalRequests || 0;
+
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm flex flex-col">
             <h3 className="mb-4 font-semibold text-gray-900">REQUEST BREAKDOWN</h3>
@@ -28,7 +39,7 @@ export function RequestBreakdown() {
                                 <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}
                             <Label
-                                value="142"
+                                value={total.toString()}
                                 position="center"
                                 className="fill-gray-900 text-2xl font-bold"
                             />
@@ -44,15 +55,18 @@ export function RequestBreakdown() {
             </div>
 
             <div className="mt-4 space-y-3">
-                {data.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                            <span className="text-gray-600">{item.name}</span>
+                {data.map((item) => {
+                    const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                    return (
+                        <div key={item.name} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                                <span className="text-gray-600">{item.name}</span>
+                            </div>
+                            <span className="font-medium text-gray-900">{percentage}%</span>
                         </div>
-                        <span className="font-medium text-gray-900">{item.value}%</span>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );

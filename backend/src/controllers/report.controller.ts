@@ -31,6 +31,26 @@ export const getKPIs = async (req: Request, res: Response) => {
             where: { status: { not: OrderStatus.CANCELLED } },
         });
 
+        // Calculate spend by department
+        const ordersWithDept = await prisma.purchaseOrder.findMany({
+            where: { status: { not: OrderStatus.CANCELLED } },
+            include: {
+                request: {
+                    include: {
+                        requester: {
+                            select: { department: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        const departmentSpend: Record<string, number> = {};
+        ordersWithDept.forEach(order => {
+            const dept = order.request?.requester?.department || 'Unassigned';
+            departmentSpend[dept] = (departmentSpend[dept] || 0) + Number(order.totalAmount);
+        });
+
         res.json({
             totalRequests,
             pendingRequests,
@@ -38,6 +58,7 @@ export const getKPIs = async (req: Request, res: Response) => {
             rejectedRequests,
             totalOrders,
             totalSpend,
+            departmentSpend,
         });
     } catch (error) {
         Logger.error(error);
