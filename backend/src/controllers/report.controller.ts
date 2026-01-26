@@ -7,33 +7,56 @@ const prisma = new PrismaClient();
 
 export const getKPIs = async (req: Request, res: Response) => {
     try {
+        const { startDate, endDate } = req.query;
+
+        // Build date filter
+        const dateFilter: any = {};
+        if (startDate) {
+            dateFilter.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+            const end = new Date(endDate as string);
+            end.setHours(23, 59, 59, 999); // Include the entire end date
+            dateFilter.lte = end;
+        }
+
+        const whereClause = Object.keys(dateFilter).length > 0
+            ? { createdAt: dateFilter, status: { not: OrderStatus.CANCELLED } }
+            : { status: { not: OrderStatus.CANCELLED } };
+
+        const requestWhereClause = Object.keys(dateFilter).length > 0
+            ? { createdAt: dateFilter }
+            : {};
+
         const totalSpendResult = await prisma.purchaseOrder.aggregate({
             _sum: { totalAmount: true },
-            where: { status: { not: OrderStatus.CANCELLED } },
+            where: whereClause,
         });
         const totalSpend = totalSpendResult._sum.totalAmount || 0;
 
-        const totalRequests = await prisma.purchaseRequest.count();
+        const totalRequests = await prisma.purchaseRequest.count({
+            where: requestWhereClause,
+        });
 
         const pendingRequests = await prisma.purchaseRequest.count({
-            where: { status: RequestStatus.PENDING },
+            where: { ...requestWhereClause, status: RequestStatus.PENDING },
         });
 
         const approvedRequests = await prisma.purchaseRequest.count({
-            where: { status: RequestStatus.APPROVED },
+            where: { ...requestWhereClause, status: RequestStatus.APPROVED },
         });
 
         const rejectedRequests = await prisma.purchaseRequest.count({
-            where: { status: RequestStatus.REJECTED },
+            where: { ...requestWhereClause, status: RequestStatus.REJECTED },
         });
 
         const totalOrders = await prisma.purchaseOrder.count({
-            where: { status: { not: OrderStatus.CANCELLED } },
+            where: whereClause,
         });
 
         // Calculate spend by department
         const ordersWithDept = await prisma.purchaseOrder.findMany({
-            where: { status: { not: OrderStatus.CANCELLED } },
+            where: whereClause,
             include: {
                 request: {
                     include: {
@@ -51,6 +74,27 @@ export const getKPIs = async (req: Request, res: Response) => {
             departmentSpend[dept] = (departmentSpend[dept] || 0) + Number(order.totalAmount);
         });
 
+        // Calculate average processing time
+        const completedRequests = await prisma.purchaseRequest.findMany({
+            where: {
+                ...requestWhereClause,
+                status: { in: [RequestStatus.APPROVED, RequestStatus.REJECTED] }
+            },
+            select: {
+                createdAt: true,
+                updatedAt: true,
+            }
+        });
+
+        let avgProcessingTime = 0;
+        if (completedRequests.length > 0) {
+            const totalDays = completedRequests.reduce((sum, req) => {
+                const days = Math.floor((req.updatedAt.getTime() - req.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+                return sum + days;
+            }, 0);
+            avgProcessingTime = totalDays / completedRequests.length;
+        }
+
         res.json({
             totalRequests,
             pendingRequests,
@@ -59,6 +103,7 @@ export const getKPIs = async (req: Request, res: Response) => {
             totalOrders,
             totalSpend,
             departmentSpend,
+            avgProcessingTime,
         });
     } catch (error) {
         Logger.error(error);
@@ -68,19 +113,32 @@ export const getKPIs = async (req: Request, res: Response) => {
 
 export const getMonthlySpend = async (req: Request, res: Response) => {
     try {
-        // This requires raw query or some processing since Prisma aggregation is limited on dates
-        // For simplicity, fetching last 6 months orders and processing in JS
-        const sixMonthsAgo = subMonths(new Date(), 6);
+        const { startDate, endDate } = req.query;
+
+        // Default to last 6 months if no date range provided
+        let start = subMonths(new Date(), 6);
+        let end = new Date();
+
+        if (startDate) {
+            start = new Date(startDate as string);
+        }
+        if (endDate) {
+            end = new Date(endDate as string);
+            end.setHours(23, 59, 59, 999);
+        }
 
         const orders = await prisma.purchaseOrder.findMany({
             where: {
-                createdAt: { gte: sixMonthsAgo },
+                createdAt: { gte: start, lte: end },
                 status: { not: OrderStatus.CANCELLED },
             },
             select: {
                 createdAt: true,
                 totalAmount: true,
             },
+            orderBy: {
+                createdAt: 'asc'
+            }
         });
 
         const spendByMonth: Record<string, number> = {};
@@ -91,9 +149,9 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
             spendByMonth[month] = (spendByMonth[month] || 0) + amount;
         });
 
-        const chartData = Object.entries(spendByMonth).map(([month, amount]) => ({
-            name: month,
-            value: amount
+        const chartData = Object.entries(spendByMonth).map(([month, spend]) => ({
+            month,
+            spend
         }));
 
         res.json(chartData);

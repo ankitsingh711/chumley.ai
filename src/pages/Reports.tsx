@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Plus, Calendar, Filter, X } from 'lucide-react';
+import { Download, Calendar, Filter, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -14,16 +14,18 @@ export default function Reports() {
     const [loading, setLoading] = useState(true);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string, end?: string }>({});
 
     useEffect(() => {
         loadData();
     }, []);
 
-    const loadData = async () => {
+    const loadData = async (startDate?: string, endDate?: string) => {
         try {
+            setLoading(true);
             const [kpiData, monthlyData, requestsData] = await Promise.all([
-                reportsApi.getKPIs(),
-                reportsApi.getMonthlySpend(),
+                reportsApi.getKPIs(startDate, endDate),
+                reportsApi.getMonthlySpend(startDate, endDate),
                 requestsApi.getAll(),
             ]);
             setMetrics(kpiData);
@@ -77,21 +79,28 @@ export default function Reports() {
         const start = new Date();
         start.setDate(start.getDate() - days);
 
-        setDateRange({
-            start: start.toISOString().split('T')[0],
-            end: end.toISOString().split('T')[0]
-        });
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        setDateRange({ start: startStr, end: endStr });
+        setActiveDateRange({ start: startStr, end: endStr });
         setShowDatePicker(false);
-        // In a real implementation, you would reload data with date filters here
-        console.log(`Filtering data from ${start.toISOString()} to ${end.toISOString()}`);
+        loadData(startStr, endStr);
     };
 
     const applyCustomDateRange = () => {
         if (dateRange.start && dateRange.end) {
+            setActiveDateRange({ start: dateRange.start, end: dateRange.end });
             setShowDatePicker(false);
-            // Filter data based on dateRange
-            console.log(`Custom range: ${dateRange.start} to ${dateRange.end}`);
+            loadData(dateRange.start, dateRange.end);
         }
+    };
+
+    const clearDateRange = () => {
+        setDateRange({ start: '', end: '' });
+        setActiveDateRange({});
+        setShowDatePicker(false);
+        loadData();
     };
 
     if (loading) {
@@ -113,7 +122,15 @@ export default function Reports() {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
+                    {(activeDateRange.start || activeDateRange.end) && (
+                        <p className="text-sm text-gray-500 mt-1">
+                            Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
+                            <button onClick={clearDateRange} className="ml-2 text-teal-600 hover:text-teal-700 font-medium">Clear</button>
+                        </p>
+                    )}
+                </div>
                 <div className="flex gap-2">
                     <div className="relative">
                         <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
