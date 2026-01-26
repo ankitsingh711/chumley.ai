@@ -23,8 +23,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Check for stored auth on mount
         const storedToken = localStorage.getItem('authToken');
         const storedUser = localStorage.getItem('currentUser');
+        const authExpiration = localStorage.getItem('authExpiration');
 
         if (storedToken && storedUser) {
+            if (authExpiration) {
+                const expirationDate = new Date(authExpiration);
+                const now = new Date();
+
+                if (now > expirationDate) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('currentUser');
+                    localStorage.removeItem('authExpiration');
+                    setIsLoading(false);
+                    return;
+                }
+            }
+
             try {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
@@ -32,6 +46,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 console.error('Error parsing stored user:', error);
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('currentUser');
+                localStorage.removeItem('authExpiration');
             }
         }
         setIsLoading(false);
@@ -68,6 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
         localStorage.removeItem('authToken');
         localStorage.removeItem('currentUser');
+        localStorage.removeItem('authExpiration');
     };
 
     return (

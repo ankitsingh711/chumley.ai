@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Plus, Calendar, Filter } from 'lucide-react';
+import { Download, Plus, Calendar, Filter, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -12,6 +12,8 @@ export default function Reports() {
     const [spendData, setSpendData] = useState<MonthlySpendData[]>([]);
     const [requests, setRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
 
     useEffect(() => {
         loadData();
@@ -31,6 +33,64 @@ export default function Reports() {
             console.error('Failed to load reports data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleExportData = async () => {
+        try {
+            const allRequests = await requestsApi.getAll();
+
+            // Create CSV content
+            const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
+            const rows = allRequests.map(req => [
+                req.id.slice(0, 8),
+                new Date(req.createdAt).toLocaleDateString(),
+                req.requester?.name || 'Unknown',
+                req.requester?.department || 'N/A',
+                req.totalAmount,
+                req.status
+            ]);
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.join(','))
+            ].join('\n');
+
+            // Download CSV
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `procurement_report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Failed to export data');
+        }
+    };
+
+    const applyDateRange = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+
+        setDateRange({
+            start: start.toISOString().split('T')[0],
+            end: end.toISOString().split('T')[0]
+        });
+        setShowDatePicker(false);
+        // In a real implementation, you would reload data with date filters here
+        console.log(`Filtering data from ${start.toISOString()} to ${end.toISOString()}`);
+    };
+
+    const applyCustomDateRange = () => {
+        if (dateRange.start && dateRange.end) {
+            setShowDatePicker(false);
+            // Filter data based on dateRange
+            console.log(`Custom range: ${dateRange.start} to ${dateRange.end}`);
         }
     };
 
@@ -55,8 +115,58 @@ export default function Reports() {
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
                 <div className="flex gap-2">
-                    <Button variant="outline"><Calendar className="mr-2 h-4 w-4" /> Date Range</Button>
-                    <Button className="bg-teal-700"><Download className="mr-2 h-4 w-4" /> Export Data</Button>
+                    <div className="relative">
+                        <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
+                            <Calendar className="mr-2 h-4 w-4" /> Date Range
+                        </Button>
+
+                        {showDatePicker && (
+                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10">
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="font-semibold text-gray-900">Select Date Range</h3>
+                                    <button onClick={() => setShowDatePicker(false)} className="text-gray-400 hover:text-gray-600">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-2 mb-4">
+                                    <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
+                                    <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
+                                    <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
+                                    <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
+                                </div>
+
+                                <div className="border-t pt-4">
+                                    <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <input
+                                            type="date"
+                                            value={dateRange.start}
+                                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                                            className="text-sm border border-gray-300 rounded px-2 py-1"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={dateRange.end}
+                                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                                            className="text-sm border border-gray-300 rounded px-2 py-1"
+                                        />
+                                    </div>
+                                    <Button
+                                        onClick={applyCustomDateRange}
+                                        size="sm"
+                                        className="w-full mt-2"
+                                        disabled={!dateRange.start || !dateRange.end}
+                                    >
+                                        Apply Custom Range
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <Button className="bg-teal-700" onClick={handleExportData}>
+                        <Download className="mr-2 h-4 w-4" /> Export Data
+                    </Button>
                 </div>
             </div>
 
@@ -169,8 +279,8 @@ export default function Reports() {
                                 <td className="px-6 py-3 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
                                 <td className="px-6 py-3">
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                            req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
-                                                'bg-red-100 text-red-700'
+                                        req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+                                            'bg-red-100 text-red-700'
                                         }`}>
                                         {req.status}
                                     </span>

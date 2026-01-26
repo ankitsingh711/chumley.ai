@@ -13,19 +13,31 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [rememberDevice, setRememberDevice] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+        e.preventDefault(); // Prevent form submission refresh immediately
         setError('');
         setLoading(true);
 
         try {
             await login(email, password);
+
+            // If remember device is checked, set expiration for 30 days
+            if (rememberDevice) {
+                const expirationDate = new Date();
+                expirationDate.setDate(expirationDate.getDate() + 30);
+                localStorage.setItem('authExpiration', expirationDate.toISOString());
+            } else {
+                localStorage.removeItem('authExpiration');
+            }
+
             const from = (location.state as any)?.from?.pathname || '/';
             navigate(from, { replace: true });
         } catch (err: any) {
-            setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
-        } finally {
+            console.error('Login error:', err);
+            const errorMessage = err.response?.data?.error || err.message || 'Login failed. Please check your credentials.';
+            setError(errorMessage);
             setLoading(false);
         }
     };
@@ -135,7 +147,13 @@ export default function Login() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                            <input type="checkbox" id="remember" className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600" />
+                            <input
+                                type="checkbox"
+                                id="remember"
+                                checked={rememberDevice}
+                                onChange={(e) => setRememberDevice(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
+                            />
                             <label htmlFor="remember" className="text-sm text-gray-700">Remember this device for 30 days</label>
                         </div>
 
