@@ -124,7 +124,7 @@ export function Header() {
                         type: 'order',
                         title: `Order #${order.id.slice(0, 8)}`,
                         subtitle: `$${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
-                        url: `/orders/${order.id}`
+                        url: `/orders`
                     });
                 });
 

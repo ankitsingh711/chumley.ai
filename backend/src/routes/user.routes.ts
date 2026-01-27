@@ -12,7 +12,7 @@ router.get('/', authorize([Role.ADMIN, Role.MANAGER]), getUsers);
 router.get('/:id', getUserById); // Users can view their own profile (logic to restrict to self needed, or allow read for all authenticated?)
 // For now allowing read by ID for authenticated users, but ideally restrict.
 
-router.put('/:id', authorize([Role.ADMIN]), updateUser);
+router.put('/:id', authorize([Role.ADMIN, Role.MANAGER]), updateUser);
 router.delete('/:id', authorize([Role.ADMIN]), deleteUser);
 
 export default router;

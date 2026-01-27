@@ -2,8 +2,50 @@ import { MapPin, CreditCard, Shield, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
 import { StatCard } from '../components/dashboard/StatCard';
+import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { suppliersApi } from '../services/suppliers.service';
+import type { Supplier } from '../types/api';
 
 export default function SupplierProfile() {
+    const { id } = useParams<{ id: string }>();
+    const [supplier, setSupplier] = useState<Supplier | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchSupplier = async () => {
+            if (!id) return;
+            try {
+                setIsLoading(true);
+                const data = await suppliersApi.getById(id);
+                setSupplier(data);
+            } catch (error) {
+                console.error('Failed to fetch supplier:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchSupplier();
+    }, [id]);
+
+    // Compute initials from supplier name
+    const initials = supplier?.name
+        ? supplier.name
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2)
+        : '??';
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center h-64">Loading...</div>;
+    }
+
+    if (!supplier) {
+        return <div className="flex items-center justify-center h-64">Supplier not found</div>;
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -11,14 +53,16 @@ export default function SupplierProfile() {
                 <div className="flex items-start justify-between">
                     <div className="flex gap-4">
                         <div className="h-16 w-16 rounded-lg bg-teal-900 flex items-center justify-center text-white text-2xl font-bold">
-                            GL
+                            {initials}
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h1 className="text-xl font-bold text-gray-900">Global Tech Solutions</h1>
-                                <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">VERIFIED</span>
+                                <h1 className="text-xl font-bold text-gray-900">{supplier.name}</h1>
+                                {supplier.status === 'Preferred' && (
+                                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">VERIFIED</span>
+                                )}
                             </div>
-                            <p className="text-sm text-gray-500">IT Hardware & Services | ID: SUP-9921</p>
+                            <p className="text-sm text-gray-500">{supplier.category} | ID: {supplier.id.slice(0, 8)}</p>
                             <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500">★ 4.8</span> (24 Reviews)
@@ -47,8 +91,15 @@ export default function SupplierProfile() {
                         <TabsContent value="overview" className="pt-6 space-y-6">
                             {/* Stats */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <StatCard title="TOTAL SPEND (YTD)" value="$128,450" trend={{ value: '+12%', isPositive: true }} />
-                                <StatCard title="ACTIVE ORDERS" value="04" />
+                                <StatCard
+                                    title="TOTAL SPEND (YTD)"
+                                    value={supplier.stats?.totalSpend ? `$${(supplier.stats.totalSpend / 1000).toFixed(1)}k` : '$0.0k'}
+                                    trend={{ value: '+12%', isPositive: true }}
+                                />
+                                <StatCard
+                                    title="ACTIVE ORDERS"
+                                    value={supplier.stats?.activeOrders?.toString().padStart(2, '0') || '00'}
+                                />
                                 <StatCard title="RELIABILITY SCORE" value="98.2%" color="green" />
                             </div>
 
@@ -106,13 +157,13 @@ export default function SupplierProfile() {
                                         <h3 className="font-semibold text-gray-900 mb-4">Contact Details</h3>
                                         <div className="space-y-4 text-sm">
                                             <div className="flex gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-gray-200 overflow-hidden">
-                                                    <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80" alt="Sarah" />
+                                                <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold">
+                                                    {supplier.contactName ? supplier.contactName.charAt(0).toUpperCase() : initials}
                                                 </div>
                                                 <div>
-                                                    <p className="font-medium">Sarah Miller</p>
+                                                    <p className="font-medium">{supplier.contactName || 'Contact Person'}</p>
                                                     <p className="text-xs text-gray-500">ACCOUNT MANAGER</p>
-                                                    <p className="text-xs text-teal-600">sarah@globaltech.com</p>
+                                                    <p className="text-xs text-teal-600">{supplier.contactEmail || 'No email'}</p>
                                                 </div>
                                             </div>
                                             <div className="flex gap-3">
