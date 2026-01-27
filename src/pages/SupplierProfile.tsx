@@ -109,19 +109,27 @@ export default function SupplierProfile() {
                                     {/* Recent Purchase Orders Widget */}
                                     <div className="rounded-xl border border-gray-100 bg-white p-6">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-semibold text-gray-900">Recent Purchase Orders</h3>
+                                            <h3 className="font-semibold text-gray-900">Recent Requests & Orders</h3>
                                             <Button variant="ghost" size="sm">View All</Button>
                                         </div>
                                         <div className="space-y-4">
-                                            {/* List Items Placeholder */}
-                                            {[1, 2, 3].map((i) => (
-                                                <div key={i} className="flex justify-between items-center py-2 border-b last:border-0 border-gray-50">
-                                                    <span className="text-sm font-medium text-teal-600">#PO-2023-049{i}</span>
-                                                    <span className="text-sm text-gray-500">Oct {24 - i}, 2023</span>
-                                                    <span className="text-sm font-medium">$12,450.00</span>
-                                                    <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-700">INTRAMIT</span>
-                                                </div>
-                                            ))}
+                                            {supplier.requests && supplier.requests.length > 0 ? (
+                                                supplier.requests.map((req) => (
+                                                    <div key={req.id} className="flex justify-between items-center py-2 border-b last:border-0 border-gray-50">
+                                                        <span className="text-sm font-medium text-teal-600">#{req.id.slice(0, 8)}</span>
+                                                        <span className="text-sm text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</span>
+                                                        <span className="text-sm font-medium">${Number(req.totalAmount).toLocaleString()}</span>
+                                                        <span className={`text-xs px-2 py-1 rounded ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                                                                req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
+                                                            }`}>
+                                                            {req.status}
+                                                        </span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-sm text-gray-500 text-center py-4">No recent activity</div>
+                                            )}
                                         </div>
                                     </div>
 

@@ -52,6 +52,8 @@ export interface Supplier {
         totalSpend: number;
     };
     lastOrderDate?: string;
+    requests?: PurchaseRequest[];
+    orders?: PurchaseOrder[];
 }
 
 export interface RequestItem {
@@ -75,6 +77,11 @@ export interface PurchaseRequest {
     items: RequestItem[];
     approverId?: string;
     approver?: User;
+    supplierId?: string;
+    supplier?: Supplier;
+    budgetCategory?: string;
+    deliveryLocation?: string;
+    expectedDeliveryDate?: string;
 }
 
 export interface PurchaseOrder {
@@ -121,6 +128,10 @@ export interface AuthResponse {
 
 export interface CreateRequestInput {
     reason?: string;
+    supplierId?: string;
+    budgetCategory?: string;
+    deliveryLocation?: string;
+    expectedDeliveryDate?: string;
     items: {
         description: string;
         quantity: number;

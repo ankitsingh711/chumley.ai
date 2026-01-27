@@ -59,6 +59,7 @@ model Supplier {
   updatedAt   DateTime @updatedAt
 
   orders      PurchaseOrder[]
+  requests    PurchaseRequest[]
 }
 
 model PurchaseRequest {
@@ -75,6 +76,15 @@ model PurchaseRequest {
   items       RequestItem[]
   approverId  String?
   approver    User?        @relation("Approver", fields: [approverId], references: [id])
+  
+  // Stitch Alignment Fields
+  supplierId  String?      // Optional for draft, required for submission ideally
+  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
+  
+  budgetCategory String?   // e.g. "IT", "Marketing"
+  deliveryLocation String?
+  expectedDeliveryDate DateTime?
+
   order       PurchaseOrder?
 }
 

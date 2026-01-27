@@ -68,6 +68,11 @@ export const getSupplierById = async (req: Request, res: Response) => {
             where: { id },
             include: {
                 orders: true,
+                requests: {
+                    where: { status: { not: 'DRAFT' } },
+                    orderBy: { createdAt: 'desc' },
+                    take: 20
+                }
             },
         });
 
@@ -75,7 +80,22 @@ export const getSupplierById = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Supplier not found' });
         }
 
-        res.json(supplier);
+        // Calculate detailed stats on the fly
+        const activeOrders = supplier.orders.filter(o =>
+            o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
+        ).length;
+
+        const totalSpend = supplier.orders.reduce((acc, curr) => {
+            return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
+        }, 0);
+
+        res.json({
+            ...supplier,
+            stats: {
+                activeOrders,
+                totalSpend,
+            }
+        });
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

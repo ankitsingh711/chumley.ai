@@ -7,23 +7,41 @@ interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
 }
 
-// Mock limits/categories for now, but spend will be real
+// Mock limits/categories for now, but spend will be real from API
 const departmentConfig: Record<string, { category: string; limit: number; color: string }> = {
     'IT Department': { category: 'Infrastructure & SaaS Subscriptions', limit: 100000, color: 'bg-yellow-500' },
     'Marketing & Growth': { category: 'Paid Media & Agency Fees', limit: 120000, color: 'bg-green-500' },
     'Human Resources': { category: 'Training & Recruitment', limit: 15000, color: 'bg-red-500' },
     'Operations': { category: 'Logistics & Supply Chain', limit: 80000, color: 'bg-emerald-500' },
+    'General & Admin': { category: 'Office Supplies & Misc', limit: 50000, color: 'bg-blue-500' },
 };
 
 export function BudgetTracker({ departmentSpend = {} }: BudgetTrackerProps) {
-    // Merge config with real data. If a department exists in config, update its spend.
-    // If we have spend for a department not in config, we could add it dynamically or ignore.
-    // For this UI, we'll stick to the configured departments but show 0 if no spend.
-    const departments = Object.entries(departmentConfig).map(([name, config]) => ({
-        name,
-        ...config,
-        spent: departmentSpend[name] || 0
-    }));
+    // Merge config with real data.
+    // If we have spend for a category not in config, we include it with defaults.
+    const allCategories = new Set([...Object.keys(departmentConfig), ...Object.keys(departmentSpend)]);
+
+    // Sort so "Unassigned" or others come last, configured ones first
+    const sortedCategories = Array.from(allCategories).sort((a, b) => {
+        const aConfig = departmentConfig[a];
+        const bConfig = departmentConfig[b];
+        if (aConfig && !bConfig) return -1;
+        if (!aConfig && bConfig) return 1;
+        return a.localeCompare(b);
+    });
+
+    const departments = sortedCategories.map((name) => {
+        const config = departmentConfig[name] || {
+            category: 'Miscellaneous',
+            limit: 10000, // Default limit for unknown categories 
+            color: 'bg-gray-400'
+        };
+        return {
+            name,
+            ...config,
+            spent: departmentSpend[name] || 0
+        };
+    });
 
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">

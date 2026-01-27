@@ -14,6 +14,10 @@ const itemSchema = z.object({
 
 const createRequestSchema = z.object({
     reason: z.string().optional(),
+    supplierId: z.string().uuid().optional(),
+    budgetCategory: z.string().optional(),
+    deliveryLocation: z.string().optional(),
+    expectedDeliveryDate: z.string().transform((str) => new Date(str)).optional(),
     items: z.array(itemSchema).min(1),
 });
 
@@ -38,6 +42,11 @@ export const createRequest = async (req: Request, res: Response) => {
                 reason: validatedData.reason,
                 totalAmount,
                 status: RequestStatus.PENDING, // Auto-submit for now
+                // New fields
+                supplierId: validatedData.supplierId,
+                budgetCategory: validatedData.budgetCategory,
+                deliveryLocation: validatedData.deliveryLocation,
+                expectedDeliveryDate: validatedData.expectedDeliveryDate,
                 items: {
                     create: validatedData.items.map((item) => ({
                         description: item.description,
@@ -49,6 +58,7 @@ export const createRequest = async (req: Request, res: Response) => {
             },
             include: {
                 items: true,
+                supplier: true,
             },
         });
 
@@ -101,6 +111,7 @@ export const getRequests = async (req: Request, res: Response) => {
                     select: { id: true, name: true, email: true, department: true },
                 },
                 items: true,
+                supplier: { select: { id: true, name: true } },
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -123,6 +134,7 @@ export const getRequestById = async (req: Request, res: Response) => {
                 requester: { select: { id: true, name: true } },
                 items: true,
                 approver: { select: { id: true, name: true } },
+                supplier: true,
             },
         });
 

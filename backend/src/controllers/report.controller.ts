@@ -55,11 +55,13 @@ export const getKPIs = async (req: Request, res: Response) => {
         });
 
         // Calculate spend by department
+        // Calculate spend by department/category
         const ordersWithDept = await prisma.purchaseOrder.findMany({
             where: whereClause,
             include: {
                 request: {
-                    include: {
+                    select: {
+                        budgetCategory: true,
                         requester: {
                             select: { department: true }
                         }
@@ -70,8 +72,9 @@ export const getKPIs = async (req: Request, res: Response) => {
 
         const departmentSpend: Record<string, number> = {};
         ordersWithDept.forEach(order => {
-            const dept = order.request?.requester?.department || 'Unassigned';
-            departmentSpend[dept] = (departmentSpend[dept] || 0) + Number(order.totalAmount);
+            // Prioritize budgetCategory set on the request, fallback to user department
+            const category = order.request?.budgetCategory || order.request?.requester?.department || 'Unassigned';
+            departmentSpend[category] = (departmentSpend[category] || 0) + Number(order.totalAmount);
         });
 
         // Calculate average processing time
