@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
@@ -19,34 +20,36 @@ import GoogleCallback from './pages/GoogleCallback';
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/invite" element={<Onboarding />} />
-          <Route path="/onboarding/success" element={<OnboardingSuccess />} />
-          <Route path="/email-template" element={<EmailTemplate />} />
-          <Route path="/auth/google/callback" element={<GoogleCallback />} />
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/invite" element={<Onboarding />} />
+            <Route path="/onboarding/success" element={<OnboardingSuccess />} />
+            <Route path="/email-template" element={<EmailTemplate />} />
+            <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
-          <Route
-            element={
-              <ProtectedRoute>
-                <Layout />
-              </ProtectedRoute>
-            }
-          >
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/requests" element={<Requests />} />
-            <Route path="/requests/new" element={<CreateRequest />} />
-            <Route path="/orders" element={<PurchaseOrders />} />
-            <Route path="/suppliers" element={<Suppliers />} />
-            <Route path="/suppliers/:id" element={<SupplierProfile />} />
-            <Route path="/reports" element={<Reports />} />
-            <Route path="/settings" element={<UserPermissions />} />
-          </Route>
+            <Route
+              element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/requests" element={<Requests />} />
+              <Route path="/requests/new" element={<CreateRequest />} />
+              <Route path="/orders" element={<PurchaseOrders />} />
+              <Route path="/suppliers" element={<Suppliers />} />
+              <Route path="/suppliers/:id" element={<SupplierProfile />} />
+              <Route path="/reports" element={<Reports />} />
+              <Route path="/settings" element={<UserPermissions />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

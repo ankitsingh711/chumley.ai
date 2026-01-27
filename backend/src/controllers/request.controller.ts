@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient, RequestStatus, Role } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
+import { sendNotification } from '../utils/websocket';
 
 const prisma = new PrismaClient();
 
@@ -52,6 +53,27 @@ export const createRequest = async (req: Request, res: Response) => {
         });
 
         Logger.info(`Purchase Request created: ${request.id} by ${requesterId}`);
+
+        // Notify approvers/managers about new request
+        const approvers = await prisma.user.findMany({
+            where: {
+                role: { in: [Role.ADMIN, Role.APPROVER, Role.MANAGER] },
+            },
+        });
+
+        approvers.forEach((approver) => {
+            sendNotification(approver.id, {
+                id: `notif-${Date.now()}-${Math.random()}`,
+                type: 'request_created',
+                title: 'New Purchase Request',
+                message: `${req.user!.name} created a new purchase request for $${totalAmount.toLocaleString()}`,
+                userId: approver.id,
+                createdAt: new Date(),
+                read: false,
+                metadata: { requestId: request.id },
+            });
+        });
+
         res.status(201).json(request);
     } catch (error: any) {
         Logger.error(error);
@@ -140,6 +162,23 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
         });
 
         Logger.info(`Request ${id} status updated to ${status} by ${approverId}`);
+
+        // Notify requester about status change
+        const notificationType = status === RequestStatus.APPROVED ? 'request_approved' : 'request_rejected';
+        const notificationTitle = status === RequestStatus.APPROVED ? 'Request Approved' : 'Request Rejected';
+        const notificationMessage = `Your purchase request #${id.slice(0, 8)} has been ${status.toLowerCase()} by ${req.user!.name}`;
+
+        sendNotification(request.requesterId, {
+            id: `notif-${Date.now()}-${Math.random()}`,
+            type: notificationType,
+            title: notificationTitle,
+            message: notificationMessage,
+            userId: request.requesterId,
+            createdAt: new Date(),
+            read: false,
+            metadata: { requestId: id, status },
+        });
+
         res.json(updatedRequest);
     } catch (error: any) {
         Logger.error(error);

@@ -45,7 +45,7 @@ export const register = async (req: Request, res: Response) => {
         });
 
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email },
+            { id: user.id, role: user.role, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -83,7 +83,7 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email },
+            { id: user.id, role: user.role, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -114,7 +114,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email },
+            { id: user.id, role: user.role, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Settings } from 'lucide-react';
+import { Search, Settings, CheckCircle, XCircle, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
 import type { Role, User } from '../types/api';
@@ -11,6 +11,9 @@ export default function UserPermissions() {
     const [saving, setSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [roleValue, setRoleValue] = useState<Role>();
+    const [showModal, setShowModal] = useState(false);
+    const [modalType, setModalType] = useState<'success' | 'error'>('success');
+    const [modalMessage, setModalMessage] = useState('');
 
     useEffect(() => {
         fetchUsers();
@@ -47,10 +50,14 @@ export default function UserPermissions() {
             setSelectedUser(updated);
             // Update in list
             setUsers(users.map(u => u.id === updated.id ? updated : u));
-            alert('User permissions updated successfully!');
+            setModalType('success');
+            setModalMessage(`Successfully updated ${updated.name}'s role to ${updated.role}`);
+            setShowModal(true);
         } catch (error) {
             console.error('Failed to update user:', error);
-            alert('Failed to update user permissions');
+            setModalType('error');
+            setModalMessage('Failed to update user permissions. Please try again.');
+            setShowModal(true);
         } finally {
             setSaving(false);
         }
@@ -241,6 +248,51 @@ export default function UserPermissions() {
                                     </div>
                                 )}
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success/Error Modal */}
+            {showModal && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className={`flex-shrink-0 ${modalType === 'success' ? 'text-green-500' : 'text-red-500'}`}>
+                                {modalType === 'success' ? (
+                                    <CheckCircle className="h-12 w-12" />
+                                ) : (
+                                    <XCircle className="h-12 w-12" />
+                                )}
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                    {modalType === 'success' ? 'Success!' : 'Error'}
+                                </h3>
+                                <p className="text-sm text-gray-600">
+                                    {modalMessage}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="flex-shrink-0 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <X className="h-5 w-5 text-gray-400" />
+                            </button>
+                        </div>
+                        <div className="mt-6 flex justify-end">
+                            <Button
+                                onClick={() => setShowModal(false)}
+                                className={modalType === 'success' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 hover:bg-gray-700'}
+                            >
+                                Close
+                            </Button>
                         </div>
                     </div>
                 </div>

@@ -1,10 +1,11 @@
-import { Search, Bell, MessageSquare, X } from 'lucide-react';
+import { Search, MessageSquare, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../../services/requests.service';
 import { suppliersApi } from '../../services/suppliers.service';
 import { ordersApi } from '../../services/orders.service';
+import NotificationBell from '../NotificationBell';
 
 interface SearchResult {
     id: string;
@@ -215,10 +216,7 @@ export function Header() {
             </div>
 
             <div className="flex items-center gap-4">
-                <button className="relative rounded-full p-2 hover:bg-gray-100">
-                    <Bell className="h-5 w-5 text-gray-600" />
-                    <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" />
-                </button>
+                <NotificationBell />
                 <button className="rounded-full p-2 hover:bg-gray-100">
                     <MessageSquare className="h-5 w-5 text-gray-600" />
                 </button>
