@@ -1,13 +1,4 @@
 // Backend API Models
-export const Role = {
-    ADMIN: 'ADMIN',
-    MANAGER: 'MANAGER',
-    APPROVER: 'APPROVER',
-    REQUESTER: 'REQUESTER',
-} as const;
-
-export type Role = (typeof Role)[keyof typeof Role];
-
 export const RequestStatus = {
     DRAFT: 'DRAFT',
     PENDING: 'PENDING',
@@ -31,7 +22,6 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    role: Role;
     department?: string;
     createdAt: string;
     updatedAt: string;
@@ -54,6 +44,51 @@ export interface Supplier {
     lastOrderDate?: string;
     requests?: PurchaseRequest[];
     orders?: PurchaseOrder[];
+    details?: SupplierDetails;
+    messages?: Message[];
+    interactions?: InteractionLog[];
+}
+
+export interface SupplierDetails {
+    id: string;
+    supplierId: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    paymentTerms?: string;
+    paymentMethod?: string;
+    internalNotes?: string;
+    rating?: number;
+    reviewCount?: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface Message {
+    id: string;
+    supplierId: string;
+    userId: string;
+    user?: { id: string; name: string; email: string };
+    subject?: string;
+    content: string;
+    isFromUser: boolean;
+    readAt?: string;
+    createdAt: string;
+}
+
+export interface InteractionLog {
+    id: string;
+    supplierId: string;
+    userId: string;
+    user?: { id: string; name: string; email: string };
+    eventType: string;
+    title: string;
+    description?: string;
+    eventDate: string;
+    createdAt: string;
 }
 
 export interface RequestItem {
@@ -117,7 +152,6 @@ export interface RegisterRequest {
     email: string;
     password: string;
     name: string;
-    role?: Role;
     department?: string;
 }
 
@@ -164,10 +198,39 @@ export interface CreateSupplierInput {
 
 export interface UpdateSupplierInput extends Partial<CreateSupplierInput> { }
 
+export interface UpdateSupplierDetailsInput {
+    name?: string;
+    category?: string;
+    status?: string;
+    contactName?: string;
+    contactEmail?: string;
+    phone?: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    paymentTerms?: string;
+    paymentMethod?: string;
+    internalNotes?: string;
+}
+
+export interface CreateMessageInput {
+    subject?: string;
+    content: string;
+    isFromUser?: boolean;
+}
+
+export interface CreateInteractionInput {
+    eventType: string;
+    title: string;
+    description?: string;
+    eventDate: string;
+}
+
 export interface UpdateUserInput {
     name?: string;
     email?: string;
-    role?: Role;
     department?: string;
 }
 

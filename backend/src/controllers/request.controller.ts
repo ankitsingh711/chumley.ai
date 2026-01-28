@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus, Role } from '@prisma/client';
+import { PrismaClient, RequestStatus } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
@@ -64,20 +64,20 @@ export const createRequest = async (req: Request, res: Response) => {
 
         Logger.info(`Purchase Request created: ${request.id} by ${requesterId}`);
 
-        // Notify approvers/managers about new request
-        const approvers = await prisma.user.findMany({
+        // Notify all users about new request (no role-based filtering)
+        const allUsers = await prisma.user.findMany({
             where: {
-                role: { in: [Role.ADMIN, Role.APPROVER, Role.MANAGER] },
+                id: { not: requesterId }, // Don't notify the creator
             },
         });
 
-        approvers.forEach((approver) => {
-            sendNotification(approver.id, {
+        allUsers.forEach((otherUser) => {
+            sendNotification(otherUser.id, {
                 id: `notif-${Date.now()}-${Math.random()}`,
                 type: 'request_created',
                 title: 'New Purchase Request',
                 message: `${req.user!.name} created a new purchase request for $${totalAmount.toLocaleString()}`,
-                userId: approver.id,
+                userId: otherUser.id,
                 createdAt: new Date(),
                 read: false,
                 metadata: { requestId: request.id },
@@ -96,16 +96,8 @@ export const createRequest = async (req: Request, res: Response) => {
 
 export const getRequests = async (req: Request, res: Response) => {
     try {
-        const user = req.user!;
-        const where: any = {};
-
-        // Requesters can only see their own requests
-        if (user.role === Role.REQUESTER) {
-            where.requesterId = user.id;
-        }
-
+        // All users can see all requests
         const requests = await prisma.purchaseRequest.findMany({
-            where,
             include: {
                 requester: {
                     select: { id: true, name: true, email: true, department: true },
@@ -142,10 +134,7 @@ export const getRequestById = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        // Authorization check
-        if (user.role === Role.REQUESTER && request.requesterId !== user.id) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
+        // All users can view all requests
 
         res.json(request);
     } catch (error) {

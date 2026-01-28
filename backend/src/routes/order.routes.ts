@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { createOrder, getOrders, getOrderById, updateOrderStatus } from '../controllers/order.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
-import { Role } from '@prisma/client';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -10,8 +9,8 @@ router.use(authenticate);
 router.get('/', getOrders);
 router.get('/:id', getOrderById);
 
-// Only Procurement folks (Admins/Managers) handle Orders
-router.post('/', authorize([Role.ADMIN, Role.MANAGER]), createOrder);
-router.patch('/:id/status', authorize([Role.ADMIN, Role.MANAGER]), updateOrderStatus);
+// All authenticated users can handle orders
+router.post('/', createOrder);
+router.patch('/:id/status', updateOrderStatus);
 
 export default router;

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 
@@ -7,7 +7,6 @@ const prisma = new PrismaClient();
 
 const updateUserSchema = z.object({
     name: z.string().min(2).optional(),
-    role: z.nativeEnum(Role).optional(),
     department: z.string().optional(),
 });
 
@@ -18,7 +17,6 @@ export const getUsers = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 name: true,
-                role: true,
                 department: true,
                 createdAt: true,
             },
@@ -39,7 +37,6 @@ export const getUserById = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 name: true,
-                role: true,
                 department: true,
                 createdAt: true,
             },
@@ -68,7 +65,6 @@ export const updateUser = async (req: Request, res: Response) => {
                 id: true,
                 email: true,
                 name: true,
-                role: true,
                 department: true,
             },
         });

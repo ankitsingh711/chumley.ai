@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { createRequest, getRequests, getRequestById, updateRequestStatus } from '../controllers/request.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
-import { Role } from '@prisma/client';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -11,7 +10,7 @@ router.post('/', createRequest);
 router.get('/', getRequests);
 router.get('/:id', getRequestById);
 
-// Only Approvers/Admins can update status
-router.patch('/:id/status', authorize([Role.ADMIN, Role.APPROVER, Role.MANAGER]), updateRequestStatus);
+// All authenticated users can update status
+router.patch('/:id/status', updateRequestStatus);
 
 export default router;

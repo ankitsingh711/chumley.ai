@@ -1,18 +1,16 @@
 import { Router } from 'express';
 import { getUsers, getUserById, updateUser, deleteUser } from '../controllers/user.controller';
-import { authenticate, authorize } from '../middleware/auth.middleware';
-import { Role } from '@prisma/client';
+import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
 
 // Protect all user routes
 router.use(authenticate);
 
-router.get('/', authorize([Role.ADMIN, Role.MANAGER]), getUsers);
-router.get('/:id', getUserById); // Users can view their own profile (logic to restrict to self needed, or allow read for all authenticated?)
-// For now allowing read by ID for authenticated users, but ideally restrict.
+router.get('/', getUsers);
+router.get('/:id', getUserById);
 
-router.put('/:id', authorize([Role.ADMIN, Role.MANAGER]), updateUser);
-router.delete('/:id', authorize([Role.ADMIN]), deleteUser);
+router.put('/:id', updateUser);
+router.delete('/:id', deleteUser);
 
 export default router;

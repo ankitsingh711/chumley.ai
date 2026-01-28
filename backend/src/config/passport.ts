@@ -34,7 +34,6 @@ export const configurePassport = () => {
                                 email,
                                 name: name || email.split('@')[0],
                                 password: '', // No password for OAuth users
-                                role: 'REQUESTER', // Default role
                             },
                         });
                     }

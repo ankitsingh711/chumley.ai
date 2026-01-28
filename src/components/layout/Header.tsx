@@ -34,13 +34,6 @@ export function Header() {
             .slice(0, 2);
     };
 
-    // Get role display name
-    const getRoleDisplay = (role?: string) => {
-        if (!role) return '';
-        // Convert ADMIN -> Admin, MANAGER -> Manager, etc.
-        return role.charAt(0) + role.slice(1).toLowerCase();
-    };
-
     // Close search results when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -225,7 +218,7 @@ export function Header() {
                     <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
                         <p className="text-xs text-gray-500">
-                            {user?.department || getRoleDisplay(user?.role)}
+                            {user?.department || 'User'}
                         </p>
                     </div>
                     <div className="h-9 w-9 overflow-hidden rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm">
@@ -233,6 +226,6 @@ export function Header() {
                     </div>
                 </div>
             </div>
-        </header>
+        </header >
     );
 }

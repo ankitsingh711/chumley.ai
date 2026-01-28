@@ -10,13 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  MANAGER
-  APPROVER
-  REQUESTER
-}
-
 enum RequestStatus {
   DRAFT
   PENDING
@@ -37,7 +30,6 @@ model User {
   email     String   @unique
   password  String
   name      String
-  role      Role     @default(REQUESTER)
   department String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -45,6 +37,8 @@ model User {
   requests  PurchaseRequest[]
   approvals PurchaseRequest[] @relation("Approver")
   auditLogs AuditLog[]
+  messages  Message[]
+  interactions InteractionLog[]
 }
 
 model Supplier {
@@ -60,6 +54,68 @@ model Supplier {
 
   orders      PurchaseOrder[]
   requests    PurchaseRequest[]
+  details     SupplierDetails?
+  messages    Message[]
+  interactions InteractionLog[]
+}
+
+model SupplierDetails {
+  id            String   @id @default(uuid())
+  supplierId    String   @unique
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  country       String?
+  
+  paymentTerms  String?  @default("Net 30")
+  paymentMethod String?  @default("Wire Transfer")
+  
+  internalNotes String?  @db.Text
+  rating        Decimal? @db.Decimal(3, 2)
+  reviewCount   Int?     @default(0)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  
+  subject    String?
+  content    String   @db.Text
+  isFromUser Boolean  @default(true) // true if sent by internal user, false if from supplier
+  
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  
+  @@index([supplierId, createdAt])
+}
+
+model InteractionLog {
+  id          String   @id @default(uuid())
+  supplierId  String
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  
+  eventType   String   // e.g., "meeting", "contract", "call", "email"
+  title       String
+  description String?  @db.Text
+  eventDate   DateTime
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([supplierId, eventDate])
 }
 
 model PurchaseRequest {

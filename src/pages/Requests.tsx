@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Download, Filter, Eye, Plus, Check, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { requestsApi } from '../services/requests.service';
 import { useAuth } from '../contexts/AuthContext';
 import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
-import { RequestStatus, Role } from '../types/api';
+import { RequestStatus } from '../types/api';
 
 export default function Requests() {
     const navigate = useNavigate();
@@ -15,10 +15,36 @@ export default function Requests() {
     const [filter, setFilter] = useState<'all' | RequestStatusType>('all');
     const [updating, setUpdating] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
+    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [advancedFilters, setAdvancedFilters] = useState({
+        dateFrom: '',
+        dateTo: '',
+        minAmount: '',
+        maxAmount: '',
+        requester: '',
+    });
+    const filterModalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         loadRequests();
     }, []);
+
+    // Close filter modal when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (filterModalRef.current && !filterModalRef.current.contains(event.target as Node)) {
+                setShowFilterModal(false);
+            }
+        };
+
+        if (showFilterModal) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showFilterModal]);
 
     const loadRequests = async () => {
         try {
@@ -84,11 +110,55 @@ export default function Requests() {
         document.body.removeChild(link);
     };
 
-    const filteredRequests = filter === 'all'
+    // Apply status filter
+    let filteredRequests = filter === 'all'
         ? requests
         : requests.filter(req => req.status === filter);
 
-    const canApprove = user?.role === Role.ADMIN || user?.role === Role.APPROVER || user?.role === Role.MANAGER;
+    // Apply advanced filters
+    if (advancedFilters.dateFrom) {
+        filteredRequests = filteredRequests.filter(req =>
+            new Date(req.createdAt) >= new Date(advancedFilters.dateFrom)
+        );
+    }
+    if (advancedFilters.dateTo) {
+        filteredRequests = filteredRequests.filter(req =>
+            new Date(req.createdAt) <= new Date(advancedFilters.dateTo)
+        );
+    }
+    if (advancedFilters.minAmount) {
+        filteredRequests = filteredRequests.filter(req =>
+            Number(req.totalAmount) >= Number(advancedFilters.minAmount)
+        );
+    }
+    if (advancedFilters.maxAmount) {
+        filteredRequests = filteredRequests.filter(req =>
+            Number(req.totalAmount) <= Number(advancedFilters.maxAmount)
+        );
+    }
+    if (advancedFilters.requester) {
+        filteredRequests = filteredRequests.filter(req =>
+            req.requester?.name?.toLowerCase().includes(advancedFilters.requester.toLowerCase()) ||
+            req.requester?.email?.toLowerCase().includes(advancedFilters.requester.toLowerCase())
+        );
+    }
+
+    const handleApplyFilters = () => {
+        setShowFilterModal(false);
+    };
+
+    const handleResetFilters = () => {
+        setAdvancedFilters({
+            dateFrom: '',
+            dateTo: '',
+            minAmount: '',
+            maxAmount: '',
+            requester: '',
+        });
+    };
+
+    // All authenticated users can approve
+    const canApprove = true;
 
     if (loading) {
         return (
@@ -139,7 +209,93 @@ export default function Requests() {
                             Approved
                         </Button>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-gray-500"><Filter className="h-4 w-4 mr-2" /> Filter</Button>
+                    <div className="relative">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-gray-500"
+                            onClick={() => setShowFilterModal(!showFilterModal)}
+                        >
+                            <Filter className="h-4 w-4 mr-2" /> Filter
+                        </Button>
+
+                        {/* Filter Dropdown */}
+                        {showFilterModal && (
+                            <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4">
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
+                                        <button onClick={handleResetFilters} className="text-xs text-teal-600 hover:text-teal-700">
+                                            Reset All
+                                        </button>
+                                    </div>
+
+                                    {/* Date Range */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input
+                                                type="date"
+                                                value={advancedFilters.dateFrom}
+                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateFrom: e.target.value })}
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                placeholder="From"
+                                            />
+                                            <input
+                                                type="date"
+                                                value={advancedFilters.dateTo}
+                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateTo: e.target.value })}
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                placeholder="To"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Amount Range */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-2">Amount Range</label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input
+                                                type="number"
+                                                value={advancedFilters.minAmount}
+                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                placeholder="Min ($)"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={advancedFilters.maxAmount}
+                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                placeholder="Max ($)"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Requester Search */}
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-2">Requester</label>
+                                        <input
+                                            type="text"
+                                            value={advancedFilters.requester}
+                                            onChange={(e) => setAdvancedFilters({ ...advancedFilters, requester: e.target.value })}
+                                            className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                            placeholder="Search by name or email"
+                                        />
+                                    </div>
+
+                                    {/* Apply Button */}
+                                    <Button
+                                        onClick={handleApplyFilters}
+                                        className="w-full bg-teal-600 hover:bg-teal-700"
+                                        size="sm"
+                                    >
+                                        Apply Filters
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {filteredRequests.length === 0 ? (

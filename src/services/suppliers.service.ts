@@ -3,6 +3,11 @@ import type {
     Supplier,
     CreateSupplierInput,
     UpdateSupplierInput,
+    UpdateSupplierDetailsInput,
+    Message,
+    CreateMessageInput,
+    InteractionLog,
+    CreateInteractionInput,
 } from '../types/api';
 
 export const suppliersApi = {
@@ -28,5 +33,35 @@ export const suppliersApi = {
 
     delete: async (id: string): Promise<void> => {
         await apiClient.delete(`/suppliers/${id}`);
+    },
+
+    getDetails: async (id: string): Promise<Supplier> => {
+        const response = await apiClient.get<Supplier>(`/suppliers/${id}/details`);
+        return response.data;
+    },
+
+    updateDetails: async (id: string, data: UpdateSupplierDetailsInput): Promise<Supplier> => {
+        const response = await apiClient.put<Supplier>(`/suppliers/${id}/details`, data);
+        return response.data;
+    },
+
+    getMessages: async (id: string): Promise<Message[]> => {
+        const response = await apiClient.get<Message[]>(`/suppliers/${id}/messages`);
+        return response.data;
+    },
+
+    sendMessage: async (id: string, data: CreateMessageInput): Promise<Message> => {
+        const response = await apiClient.post<Message>(`/suppliers/${id}/messages`, data);
+        return response.data;
+    },
+
+    getInteractions: async (id: string): Promise<InteractionLog[]> => {
+        const response = await apiClient.get<InteractionLog[]>(`/suppliers/${id}/interactions`);
+        return response.data;
+    },
+
+    createInteraction: async (id: string, data: CreateInteractionInput): Promise<InteractionLog> => {
+        const response = await apiClient.post<InteractionLog>(`/suppliers/${id}/interactions`, data);
+        return response.data;
     },
 };

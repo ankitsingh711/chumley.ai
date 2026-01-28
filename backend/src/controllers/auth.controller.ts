@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 
@@ -11,7 +11,6 @@ const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     name: z.string().min(2),
-    role: z.nativeEnum(Role).optional(),
     department: z.string().optional(),
 });
 
@@ -39,13 +38,12 @@ export const register = async (req: Request, res: Response) => {
                 email: validatedData.email,
                 password: hashedPassword,
                 name: validatedData.name,
-                role: validatedData.role || Role.REQUESTER,
                 department: validatedData.department,
             },
         });
 
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email, name: user.name },
+            { id: user.id, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -83,7 +81,7 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email, name: user.name },
+            { id: user.id, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -114,7 +112,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { id: user.id, role: user.role, email: user.email, name: user.name },
+            { id: user.id, email: user.email, name: user.name },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );

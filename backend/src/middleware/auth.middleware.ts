@@ -1,12 +1,10 @@
 /// <reference path="../types/express.d.ts" />
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
 
 export interface AuthRequest extends Request {
     user?: {
         id: string;
-        role: Role;
         email: string;
         name: string;
     };
@@ -34,16 +32,4 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
-export const authorize = (roles: Role[]) => {
-    return (req: AuthRequest, res: Response, next: NextFunction) => {
-        if (!req.user) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-
-        if (!roles.includes(req.user.role)) {
-            return res.status(403).json({ error: 'Forbidden' });
-        }
-
-        next();
-    };
-};
+// Authorization function removed - all authenticated users have full access
