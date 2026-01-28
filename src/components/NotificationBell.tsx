@@ -30,6 +30,8 @@ export default function NotificationBell() {
                 return '❌';
             case 'order_created':
                 return '📦';
+            case 'spending_threshold':
+                return '💰';
             default:
                 return '🔔';
         }

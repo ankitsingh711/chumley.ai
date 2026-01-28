@@ -30,7 +30,10 @@ export default function Suppliers() {
     });
     const [errors, setErrors] = useState<Partial<AddSupplierForm>>({});
 
+    const [activeFilter, setActiveFilter] = useState('All Vendors');
+
     const categories = ['Software', 'Office Supplies', 'Hardware', 'Marketing', 'Other'];
+    const filterOptions = ['All Vendors', ...categories];
     const statuses = ['Preferred', 'Standard', 'Review Pending'];
 
     useEffect(() => {
@@ -39,29 +42,26 @@ export default function Suppliers() {
 
     const fetchSuppliers = async () => {
         try {
+            setLoading(true);
             const data = await suppliersApi.getAll();
-            const mappedSuppliers: CardSupplier[] = data.map(s => ({
+            const mappedData: CardSupplier[] = data.map(s => ({
                 id: s.id,
                 name: s.name,
                 category: s.category,
-                status: (s.status === 'Preferred' || s.status === 'Standard' || s.status === 'Review Pending') ? s.status : 'Standard',
+                status: (['Preferred', 'Standard', 'Review Pending'].includes(s.status) ? s.status : 'Standard') as any,
                 logoColor: 'bg-teal-600',
                 contact: {
-                    name: s.contactName || 'No Contact',
+                    name: s.contactName || 'Unknown',
                     role: 'Representative',
-                    image: 'https://ui-avatars.com/api/?name=' + (s.contactName || s.name) + '&background=random',
+                    image: s.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(s.contactName || s.name),
                 },
                 stats: {
                     activeOrders: s.stats?.activeOrders || 0,
-                    totalSpend: s.stats?.totalSpend
-                        ? `$${(s.stats.totalSpend / 1000).toFixed(1)} k`
-                        : '$0.0k',
+                    totalSpend: s.stats?.totalSpend ? `$${s.stats.totalSpend.toLocaleString()}` : '$0',
                 },
-                lastOrder: s.lastOrderDate
-                    ? `Last order: ${new Date(s.lastOrderDate).toLocaleDateString()} `
-                    : 'No orders yet'
+                lastOrder: s.lastOrderDate ? new Date(s.lastOrderDate).toLocaleDateString() : 'No orders yet'
             }));
-            setSuppliers(mappedSuppliers);
+            setSuppliers(mappedData);
         } catch (error) {
             console.error('Failed to fetch suppliers:', error);
         } finally {
@@ -69,69 +69,13 @@ export default function Suppliers() {
         }
     };
 
-    const validateForm = (): boolean => {
-        const newErrors: Partial<AddSupplierForm> = {};
-
-        if (!formData.name.trim()) {
-            newErrors.name = 'Company name is required';
-        }
-
-        if (!formData.contactEmail.trim()) {
-            newErrors.contactEmail = 'Contact email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
-            newErrors.contactEmail = 'Invalid email format';
-        }
-
-        if (!formData.category) {
-            newErrors.category = 'Category is required';
-        }
-
-        setErrors(newErrors);
-        return Object.keys(newErrors).length === 0;
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!validateForm()) {
-            return;
-        }
-
-        setSaving(true);
-        try {
-            await suppliersApi.create({
-                name: formData.name,
-                contactEmail: formData.contactEmail,
-                contactName: formData.contactName || undefined,
-                category: formData.category,
-                status: formData.status,
-            });
-
-            // Reset form and close modal
-            setFormData({
-                name: '',
-                contactEmail: '',
-                contactName: '',
-                phone: '',
-                address: '',
-                category: 'Software',
-                status: 'Standard'
-            });
-            setShowAddModal(false);
-
-            // Refresh suppliers list
-            await fetchSuppliers();
-        } catch (error: any) {
-            console.error('Failed to create supplier:', error);
-            alert(error.response?.data?.error || 'Failed to create supplier');
-        } finally {
-            setSaving(false);
-        }
-    };
+    // Filter suppliers based on active selection
+    const filteredSuppliers = activeFilter === 'All Vendors'
+        ? suppliers
+        : suppliers.filter(s => s.category === activeFilter);
 
     const handleOpenModal = () => {
         setShowAddModal(true);
-        setErrors({});
     };
 
     const handleCloseModal = () => {
@@ -148,9 +92,59 @@ export default function Suppliers() {
         setErrors({});
     };
 
-    if (loading) {
-        return <div className="p-8 text-center">Loading suppliers...</div>;
-    }
+    const validateForm = () => {
+        const newErrors: Partial<AddSupplierForm> = {};
+        if (!formData.name) newErrors.name = 'Company Name is required';
+        if (!formData.category) newErrors.category = 'Category is required';
+        if (!formData.contactEmail) newErrors.contactEmail = 'Contact Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
+            newErrors.contactEmail = 'Invalid email address';
+        }
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        try {
+            setSaving(true);
+            const payload = {
+                name: formData.name,
+                category: formData.category,
+                status: formData.status,
+                contactName: formData.contactName,
+                contactEmail: formData.contactEmail,
+            };
+            const newSupplier = await suppliersApi.create(payload);
+
+            const mappedNew: CardSupplier = {
+                id: newSupplier.id,
+                name: newSupplier.name,
+                category: newSupplier.category,
+                status: (['Preferred', 'Standard', 'Review Pending'].includes(newSupplier.status) ? newSupplier.status : 'Standard') as any,
+                logoColor: 'bg-teal-600',
+                contact: {
+                    name: newSupplier.contactName || 'Unknown',
+                    role: 'Representative',
+                    image: newSupplier.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(newSupplier.contactName || newSupplier.name),
+                },
+                stats: {
+                    activeOrders: 0,
+                    totalSpend: '$0',
+                },
+                lastOrder: 'New',
+            };
+
+            setSuppliers([...suppliers, mappedNew]);
+            handleCloseModal();
+        } catch (error) {
+            console.error('Failed to create supplier:', error);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -166,29 +160,24 @@ export default function Suppliers() {
                 </div>
             </div>
 
-            {/* Filters & Search - Similar to Image 3 */}
+            {/* Filters & Search */}
             <div className="flex flex-col md:flex-row gap-4 justify-between items-center">
                 <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto no-scrollbar">
-                    <button className="whitespace-nowrap rounded-full bg-teal-800 px-4 py-1.5 text-sm font-medium text-white">All Vendors</button>
-                    <button className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Software</button>
-                    <button className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Office Supplies</button>
-                    <button className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Hardware</button>
-                    <button className="whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-gray-600 hover:bg-gray-50">Marketing</button>
+                    {filterOptions.map((filter) => (
+                        <button
+                            key={filter}
+                            onClick={() => setActiveFilter(filter)}
+                            className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${activeFilter === filter
+                                ? 'bg-teal-800 text-white'
+                                : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                                }`}
+                        >
+                            {filter}
+                        </button>
+                    ))}
                 </div>
 
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                    {/* <div className="relative flex-1 md:w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <input 
-                  placeholder="Search suppliers..." 
-                  className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-teal-500"
-                />
-             </div> */}
-                    {/* Note: The image shows search in header or top bar, but the image 3 specifically has a "Search" placeholder in the header or in text? 
-                 Actually Image 3 has a Filter bar with pills. Let's assume global search covers it or add a specific one.
-                 Wait, Image 3 top bar has "Search suppliers by name...". I'll add it.
-             */}
-
                     <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1">
                         <button className="p-1.5 rounded bg-gray-100 text-gray-900"><LayoutGrid className="h-4 w-4" /></button>
                         <button className="p-1.5 rounded text-gray-400 hover:text-gray-600"><ListIcon className="h-4 w-4" /></button>
@@ -198,7 +187,7 @@ export default function Suppliers() {
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {suppliers.map(supplier => (
+                {filteredSuppliers.map(supplier => (
                     <SupplierCard key={supplier.id} supplier={supplier} />
                 ))}
 
