@@ -18,5 +18,7 @@ import orderRoutes from './order.routes';
 router.use('/orders', orderRoutes);
 import reportRoutes from './report.routes';
 router.use('/reports', reportRoutes);
+import departmentRoutes from './department.routes';
+router.use('/departments', departmentRoutes);
 
 export default router;

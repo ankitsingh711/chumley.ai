@@ -31,4 +31,8 @@ export const requestsApi = {
         );
         return response.data;
     },
+
+    delete: async (id: string): Promise<void> => {
+        await apiClient.delete(`/requests/${id}`);
+    },
 };

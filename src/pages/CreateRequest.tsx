@@ -4,6 +4,7 @@ import { Plus, Trash2, MapPin, Calendar, Building2, Wallet } from 'lucide-react'
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
+import { departmentsApi, type Department } from '../services/departments.service';
 import type { CreateRequestInput, Supplier } from '../types/api';
 
 interface ItemRow {
@@ -11,14 +12,6 @@ interface ItemRow {
     quantity: number;
     unitPrice: number;
 }
-
-const BUDGET_CATEGORIES = [
-    'IT Department',
-    'Marketing & Growth',
-    'Human Resources',
-    'Operations',
-    'General & Admin'
-];
 
 export default function CreateRequest() {
     const navigate = useNavigate();
@@ -35,11 +28,13 @@ export default function CreateRequest() {
 
     // Data State
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
         loadSuppliers();
+        loadDepartments();
     }, []);
 
     const loadSuppliers = async () => {
@@ -48,6 +43,15 @@ export default function CreateRequest() {
             setSuppliers(data);
         } catch (err) {
             console.error('Failed to load suppliers', err);
+        }
+    };
+
+    const loadDepartments = async () => {
+        try {
+            const data = await departmentsApi.getAll();
+            setDepartments(data);
+        } catch (err) {
+            console.error('Failed to load departments', err);
         }
     };
 
@@ -281,20 +285,32 @@ export default function CreateRequest() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Budget Category</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                                    Budget Category <span className="text-red-500">*</span>
+                                </label>
                                 <div className="relative">
                                     <select
                                         value={budgetCategory}
                                         onChange={(e) => setBudgetCategory(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+                                        className="w-full appearance-none rounded-lg border-2 border-gray-200 bg-white px-4 py-3 pr-10 text-sm font-medium text-gray-900 outline-none transition-all hover:border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 cursor-pointer"
+                                        required
                                     >
-                                        <option value="">Select Category...</option>
-                                        {BUDGET_CATEGORIES.map(cat => (
-                                            <option key={cat} value={cat}>{cat}</option>
+                                        <option value="" className="text-gray-500">Select Department...</option>
+                                        {departments.map(dept => (
+                                            <option
+                                                key={dept.id}
+                                                value={dept.name}
+                                                className="py-2 text-gray-900"
+                                            >
+                                                {dept.name}
+                                            </option>
                                         ))}
                                     </select>
-                                    <Wallet className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                                    <Wallet className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                                 </div>
+                                {departments.length === 0 && (
+                                    <p className="mt-1 text-xs text-gray-500">Loading departments...</p>
+                                )}
                             </div>
 
                             <div>

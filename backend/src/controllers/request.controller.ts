@@ -210,3 +210,25 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+export const deleteRequest = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+
+        const request = await prisma.purchaseRequest.findUnique({ where: { id } });
+        if (!request) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        if (request.status !== RequestStatus.DRAFT) {
+            return res.status(400).json({ error: 'Only draft requests can be deleted' });
+        }
+
+        await prisma.purchaseRequest.delete({ where: { id } });
+
+        Logger.info(`Request ${id} deleted by ${req.user!.id}`);
+        res.status(204).send();
+    } catch (error) {
+        Logger.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};

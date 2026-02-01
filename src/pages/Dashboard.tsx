@@ -8,23 +8,27 @@ import { StrategicSourcing } from '../components/dashboard/StrategicSourcing';
 import { Button } from '../components/ui/Button';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
+import { departmentsApi, type Department } from '../services/departments.service';
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 
 export default function Dashboard() {
     const navigate = useNavigate();
     const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
     const [recentRequests, setRecentRequests] = useState<PurchaseRequest[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [kpiData, requestsData] = await Promise.all([
+                const [kpiData, requestsData, departmentsData] = await Promise.all([
                     reportsApi.getKPIs(),
                     requestsApi.getAll(),
+                    departmentsApi.getAll(),
                 ]);
                 setMetrics(kpiData);
                 setRecentRequests(requestsData.slice(0, 5)); // Show only 5 most recent
+                setDepartments(departmentsData);
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
             } finally {
@@ -80,7 +84,10 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column: Budget Tracking (2 cols wide) */}
                 <div className="lg:col-span-2">
-                    <BudgetTracker departmentSpend={metrics?.departmentSpend} />
+                    <BudgetTracker
+                        departmentSpend={metrics?.departmentSpend}
+                        departments={departments}
+                    />
                 </div>
 
                 {/* Right Column: Breakdown & Sourcing */}

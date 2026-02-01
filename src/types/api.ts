@@ -1,4 +1,19 @@
 // Backend API Models
+export const UserRole = {
+    SYSTEM_ADMIN: 'SYSTEM_ADMIN',
+    SENIOR_MANAGER: 'SENIOR_MANAGER',
+    MANAGER: 'MANAGER',
+    MEMBER: 'MEMBER',
+} as const;
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+export interface Department {
+    id: string;
+    name: string;
+    description?: string;
+}
+
 export const RequestStatus = {
     DRAFT: 'DRAFT',
     PENDING: 'PENDING',
@@ -22,7 +37,9 @@ export interface User {
     id: string;
     email: string;
     name: string;
-    department?: string;
+    role: UserRole;
+    departmentId?: string;
+    department?: Department | string; // Handle both object (from relations) and potential string legacy
     createdAt: string;
     updatedAt: string;
 }

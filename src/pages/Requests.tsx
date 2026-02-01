@@ -1,11 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X } from 'lucide-react';
+import { Download, Filter, Eye, Plus, Check, X, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { requestsApi } from '../services/requests.service';
 import { useAuth } from '../contexts/AuthContext';
+import { requestsApi } from '../services/requests.service';
 import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
-import { RequestStatus } from '../types/api';
+import { RequestStatus, UserRole } from '../types/api';
 
 export default function Requests() {
     const navigate = useNavigate();
@@ -65,6 +65,20 @@ export default function Requests() {
         } catch (error) {
             console.error('Failed to update status:', error);
             alert('Failed to update request status');
+        } finally {
+            setUpdating(null);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Are you sure you want to delete this request?')) return;
+        setUpdating(id);
+        try {
+            await requestsApi.delete(id);
+            await loadRequests();
+        } catch (error) {
+            console.error('Failed to delete request:', error);
+            alert('Failed to delete request');
         } finally {
             setUpdating(null);
         }
@@ -157,8 +171,30 @@ export default function Requests() {
         });
     };
 
-    // All authenticated users can approve
-    const canApprove = true;
+    // Check if user can approve a specific request
+    const canUserApprove = (req: PurchaseRequest) => {
+        if (!user) return false;
+
+        // System Admin can approve everything
+        if (user.role === UserRole.SYSTEM_ADMIN) return true;
+
+        // Managers can approve requests from their own department
+        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
+            // If request has no requester info, safest is to say no
+            if (!req.requester) return false;
+
+            // Check department match
+            // Handle case where department is an object (relation) or string (legacy/flat)
+            if (typeof req.requester.department === 'object' && req.requester.department !== null) {
+                return user.departmentId === req.requester.department.id;
+            }
+
+            // Should verify against user.departmentId, but if req has string department name, we can't easily check match unless we know user's department name
+            // For now, rely on ID match which is more robust
+        }
+
+        return false;
+    };
 
     if (loading) {
         return (
@@ -312,7 +348,7 @@ export default function Requests() {
                                 <th className="px-6 py-4 font-medium">Date</th>
                                 <th className="px-6 py-4 font-medium">Amount</th>
                                 <th className="px-6 py-4 font-medium">Status</th>
-                                {canApprove && <th className="px-6 py-4 font-medium">Actions</th>}
+                                <th className="px-6 py-4 font-medium">Actions</th>
                                 <th className="px-6 py-4 font-medium text-right"></th>
                             </tr>
                         </thead>
@@ -334,6 +370,7 @@ export default function Requests() {
                                     <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 font-bold text-gray-900">${Number(req.totalAmount).toLocaleString()}</td>
                                     <td className="px-6 py-4">
+
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
                                             ${req.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
                                                 req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
@@ -342,30 +379,42 @@ export default function Requests() {
                                             {req.status}
                                         </span>
                                     </td>
-                                    {canApprove && (
-                                        <td className="px-6 py-4">
-                                            {req.status === RequestStatus.PENDING && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
-                                                        disabled={updating === req.id}
-                                                        title="Approve"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
-                                                        disabled={updating === req.id}
-                                                        title="Reject"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </td>
-                                    )}
+                                    {/* Action Column */}
+                                    <td className="px-6 py-4">
+                                        {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.DRAFT) && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
+                                                    onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
+                                                    disabled={updating === req.id}
+                                                    title="Approve"
+                                                >
+                                                    <Check className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                    onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
+                                                    disabled={updating === req.id}
+                                                    title="Reject"
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                        {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
+                                        {req.status === RequestStatus.DRAFT && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
+                                            <div className="flex gap-2">
+                                                <button
+                                                    className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                    onClick={() => handleDelete(req.id)}
+                                                    disabled={updating === req.id}
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
                                             onClick={() => handleViewDetails(req)}
@@ -441,7 +490,11 @@ export default function Requests() {
                                     {selectedRequest.requester?.department && (
                                         <div className="pt-2 border-t">
                                             <p className="text-xs text-gray-500">Department</p>
-                                            <p className="text-sm font-medium text-gray-900">{selectedRequest.requester.department}</p>
+                                            <p className="text-sm font-medium text-gray-900">
+                                                {typeof selectedRequest.requester.department === 'object'
+                                                    ? selectedRequest.requester.department?.name
+                                                    : selectedRequest.requester.department}
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -487,7 +540,7 @@ export default function Requests() {
                             </div>
 
                             {/* Actions */}
-                            {canApprove && selectedRequest.status === RequestStatus.PENDING && (
+                            {canUserApprove(selectedRequest) && (selectedRequest.status === RequestStatus.PENDING || selectedRequest.status === RequestStatus.DRAFT) && (
                                 <div className="pt-4 border-t flex gap-3">
                                     <Button
                                         onClick={() => {

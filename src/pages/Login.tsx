@@ -38,6 +38,7 @@ export default function Login() {
             console.error('Login error:', err);
             const errorMessage = err.response?.data?.error || err.message || 'Login failed. Please check your credentials.';
             setError(errorMessage);
+        } finally {
             setLoading(false);
         }
     };
