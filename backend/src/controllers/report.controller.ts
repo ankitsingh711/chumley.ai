@@ -72,8 +72,10 @@ export const getKPIs = async (req: Request, res: Response) => {
 
         const departmentSpend: Record<string, number> = {};
         ordersWithDept.forEach(order => {
-            // Prioritize budgetCategory set on the request, fallback to user department
-            const category = order.request?.budgetCategory || order.request?.requester?.department || 'Unassigned';
+            // Prioritize budgetCategory set on the request, fallback to user department name
+            const budgetCategory = order.request?.budgetCategory;
+            const departmentName = order.request?.requester?.department?.name;
+            const category = budgetCategory || departmentName || 'Unassigned';
             departmentSpend[category] = (departmentSpend[category] || 0) + Number(order.totalAmount);
         });
 

@@ -11,7 +11,7 @@ const registerSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
     name: z.string().min(2),
-    department: z.string().optional(),
+    departmentId: z.string().uuid().optional(),
 });
 
 const loginSchema = z.object({
@@ -38,7 +38,7 @@ export const register = async (req: Request, res: Response) => {
                 email: validatedData.email,
                 password: hashedPassword,
                 name: validatedData.name,
-                department: validatedData.department,
+                ...(validatedData.departmentId && { departmentId: validatedData.departmentId }),
             },
         });
 

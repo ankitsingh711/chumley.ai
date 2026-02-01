@@ -7,19 +7,83 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  SYSTEM_ADMIN
+  SENIOR_MANAGER
+  MANAGER
+  MEMBER
+}
+
+model Department {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  users              User[]
+  categories         SpendingCategory[]
+  additionalUserRoles UserDepartmentRole[]
+}
+
+model SpendingCategory {
+  id           String  @id @default(uuid())
+  name         String
+  description  String?
+  parentId     String?
+  departmentId String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  department   Department         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  parent       SpendingCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children     SpendingCategory[] @relation("CategoryHierarchy")
+  requests     PurchaseRequest[]
+  
+  @@index([departmentId])
+  @@index([parentId])
+}
+
 model User {
   id           String            @id @default(uuid())
   email        String            @unique
   password     String
   name         String
-  department   String?
+  role         UserRole          @default(MEMBER)
+  departmentId String?
+  managerId    String?
   createdAt    DateTime          @default(now())
   updatedAt    DateTime          @updatedAt
-  auditLogs    AuditLog[]
-  interactions InteractionLog[]
-  messages     Message[]
-  approvals    PurchaseRequest[] @relation("Approver")
-  requests     PurchaseRequest[]
+  
+  department         Department?          @relation(fields: [departmentId], references: [id])
+  manager            User?                @relation("ManagerReportee", fields: [managerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reportees          User[]               @relation("ManagerReportee")
+  additionalRoles    UserDepartmentRole[]
+  
+  auditLogs          AuditLog[]
+  interactions       InteractionLog[]
+  messages           Message[]
+  approvals          PurchaseRequest[]    @relation("Approver")
+  requests           PurchaseRequest[]
+  approvalHistory    ApprovalHistory[]
+  
+  @@index([departmentId])
+  @@index([managerId])
+}
+
+model UserDepartmentRole {
+  id           String     @id @default(uuid())
+  userId       String
+  departmentId String
+  role         UserRole
+  createdAt    DateTime   @default(now())
+  
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, departmentId])
+  @@index([userId])
+  @@index([departmentId])
 }
 
 model Supplier {
@@ -96,6 +160,8 @@ model PurchaseRequest {
   status               RequestStatus  @default(DRAFT)
   totalAmount          Decimal        @db.Decimal(10, 2)
   reason               String?
+  categoryId           String?
+  currentApproverId    String?
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   approverId           String?
@@ -103,15 +169,50 @@ model PurchaseRequest {
   budgetCategory       String?
   deliveryLocation     String?
   expectedDeliveryDate DateTime?
+  
   order                PurchaseOrder?
-  approver             User?          @relation("Approver", fields: [approverId], references: [id])
-  requester            User           @relation(fields: [requesterId], references: [id])
-  supplier             Supplier?      @relation(fields: [supplierId], references: [id])
+  approver             User?              @relation("Approver", fields: [approverId], references: [id])
+  requester            User               @relation(fields: [requesterId], references: [id])
+  supplier             Supplier?          @relation(fields: [supplierId], references: [id])
+  category             SpendingCategory?  @relation(fields: [categoryId], references: [id])
   items                RequestItem[]
+  approvalHistory      ApprovalHistory[]
+  attachments          Attachment[]
 
   @@index([approverId], map: "PurchaseRequest_approverId_fkey")
   @@index([requesterId], map: "PurchaseRequest_requesterId_fkey")
   @@index([supplierId], map: "PurchaseRequest_supplierId_fkey")
+  @@index([categoryId])
+  @@index([currentApproverId])
+}
+
+model ApprovalHistory {
+  id         String          @id @default(uuid())
+  requestId  String
+  approverId String
+  action     String          // APPROVED, REJECTED, FORWARDED
+  comments   String?         @db.Text
+  createdAt  DateTime        @default(now())
+  
+  request    PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver   User            @relation(fields: [approverId], references: [id])
+  
+  @@index([requestId])
+  @@index([approverId])
+}
+
+model Attachment {
+  id         String          @id @default(uuid())
+  requestId  String
+  filename   String
+  fileUrl    String
+  fileSize   Int
+  mimeType   String
+  uploadedAt DateTime        @default(now())
+  
+  request    PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  
+  @@index([requestId])
 }
 
 model RequestItem {

@@ -4,6 +4,7 @@ import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
 import { sendPurchaseRequestNotification } from '../services/email.service';
+import approvalService from '../services/approval.service';
 
 const prisma = new PrismaClient();
 
@@ -42,7 +43,7 @@ export const createRequest = async (req: Request, res: Response) => {
                 requesterId,
                 reason: validatedData.reason,
                 totalAmount,
-                status: RequestStatus.PENDING, // Auto-submit for now
+                status: RequestStatus.DRAFT, // Start as draft
                 // New fields
                 supplierId: validatedData.supplierId,
                 budgetCategory: validatedData.budgetCategory,

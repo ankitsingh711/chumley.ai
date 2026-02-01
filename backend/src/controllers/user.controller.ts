@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 const updateUserSchema = z.object({
     name: z.string().min(2).optional(),
-    department: z.string().optional(),
+    departmentId: z.string().optional(),
 });
 
 export const getUsers = async (req: Request, res: Response) => {
