@@ -1,5 +1,6 @@
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
+import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/departments.service';
 
 interface BudgetTrackerProps {
@@ -21,6 +22,7 @@ const COLORS = [
 ];
 
 export function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
+    const navigate = useNavigate();
     // Default limit for illustration since we don't have it in DB yet
     const DEFAULT_LIMIT = 50000;
 
@@ -29,13 +31,19 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
 
     // Combine seeded departments with any extra spend categories (fallback)
     // We prioritize the seeded departments list to show correct names and descriptions
-    const trackedDepartments = departments.map((dept, index) => ({
-        name: dept.name,
-        category: dept.description || 'General Budget', // Use description as the subtitle
-        limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
-        color: COLORS[index % COLORS.length],
-        spent: spendMap[dept.name] || 0
-    }));
+    const trackedDepartments = departments.map((dept, index) => {
+        // Use embedded metrics from backend if available (new standard), otherwise fallback to props map
+        const spendFromMetrics = (dept as any).metrics?.totalSpent;
+        const spendFromMap = spendMap[dept.name] || 0;
+
+        return {
+            name: dept.name,
+            category: dept.description || 'General Budget', // Use description as the subtitle
+            limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
+            color: COLORS[index % COLORS.length],
+            spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
+        };
+    });
 
     // If there is spend for a category NOT in the departments list (e.g. old data or unassigned), add it
     Object.entries(spendMap).forEach(([name, amount]) => {
@@ -56,7 +64,12 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
-                <Button variant="ghost" size="sm" className="h-8 text-teal-700 hover:text-teal-800">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-teal-700 hover:text-teal-800"
+                    onClick={() => navigate('/budgets')}
+                >
                     View All
                 </Button>
             </div>

@@ -22,5 +22,7 @@ import departmentRoutes from './department.routes';
 router.use('/departments', departmentRoutes);
 import contractRoutes from './contract.routes';
 router.use('/contracts', contractRoutes);
+import chatRoutes from './chat.routes';
+router.use('/chat', chatRoutes);
 
 export default router;

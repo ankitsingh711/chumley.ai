@@ -17,6 +17,7 @@ import Onboarding from './pages/Onboarding';
 import OnboardingSuccess from './pages/OnboardingSuccess';
 import GoogleCallback from './pages/GoogleCallback';
 import Contracts from './pages/Contracts';
+import DepartmentBudgets from './pages/DepartmentBudgets';
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/suppliers/:id" element={<SupplierProfile />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/budgets" element={<DepartmentBudgets />} />
               <Route path="/contracts" element={<Contracts />} />
               <Route path="/settings" element={<UserPermissions />} />
             </Route>
