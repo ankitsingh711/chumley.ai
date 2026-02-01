@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,6 +5,152 @@ generator client {
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String            @id @default(uuid())
+  email        String            @unique
+  password     String
+  name         String
+  department   String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  auditLogs    AuditLog[]
+  interactions InteractionLog[]
+  messages     Message[]
+  approvals    PurchaseRequest[] @relation("Approver")
+  requests     PurchaseRequest[]
+}
+
+model Supplier {
+  id           String            @id @default(uuid())
+  name         String
+  category     String
+  status       String            @default("Pending")
+  contactName  String?
+  contactEmail String?
+  logoUrl      String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  interactions InteractionLog[]
+  messages     Message[]
+  orders       PurchaseOrder[]
+  requests     PurchaseRequest[]
+  details      SupplierDetails?
+}
+
+model SupplierDetails {
+  id            String   @id @default(uuid())
+  supplierId    String   @unique
+  phone         String?
+  address       String?
+  city          String?
+  state         String?
+  zipCode       String?
+  country       String?
+  paymentTerms  String?  @default("Net 30")
+  paymentMethod String?  @default("Wire Transfer")
+  internalNotes String?  @db.Text
+  rating        Decimal? @db.Decimal(3, 2)
+  reviewCount   Int?     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  supplierId String
+  userId     String
+  subject    String?
+  content    String    @db.Text
+  isFromUser Boolean   @default(true)
+  readAt     DateTime?
+  createdAt  DateTime  @default(now())
+  supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([supplierId, createdAt])
+  @@index([userId], map: "Message_userId_fkey")
+}
+
+model InteractionLog {
+  id          String   @id @default(uuid())
+  supplierId  String
+  userId      String
+  eventType   String
+  title       String
+  description String?  @db.Text
+  eventDate   DateTime
+  createdAt   DateTime @default(now())
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([supplierId, eventDate])
+  @@index([userId], map: "InteractionLog_userId_fkey")
+}
+
+model PurchaseRequest {
+  id                   String         @id @default(uuid())
+  requesterId          String
+  status               RequestStatus  @default(DRAFT)
+  totalAmount          Decimal        @db.Decimal(10, 2)
+  reason               String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  approverId           String?
+  supplierId           String?
+  budgetCategory       String?
+  deliveryLocation     String?
+  expectedDeliveryDate DateTime?
+  order                PurchaseOrder?
+  approver             User?          @relation("Approver", fields: [approverId], references: [id])
+  requester            User           @relation(fields: [requesterId], references: [id])
+  supplier             Supplier?      @relation(fields: [supplierId], references: [id])
+  items                RequestItem[]
+
+  @@index([approverId], map: "PurchaseRequest_approverId_fkey")
+  @@index([requesterId], map: "PurchaseRequest_requesterId_fkey")
+  @@index([supplierId], map: "PurchaseRequest_supplierId_fkey")
+}
+
+model RequestItem {
+  id          String          @id @default(uuid())
+  requestId   String
+  description String
+  quantity    Int
+  unitPrice   Decimal         @db.Decimal(10, 2)
+  totalPrice  Decimal         @db.Decimal(10, 2)
+  request     PurchaseRequest @relation(fields: [requestId], references: [id])
+
+  @@index([requestId], map: "RequestItem_requestId_fkey")
+}
+
+model PurchaseOrder {
+  id          String          @id @default(uuid())
+  requestId   String          @unique
+  supplierId  String
+  status      OrderStatus     @default(DRAFT)
+  totalAmount Decimal         @db.Decimal(10, 2)
+  issuedAt    DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  request     PurchaseRequest @relation(fields: [requestId], references: [id])
+  supplier    Supplier        @relation(fields: [supplierId], references: [id])
+
+  @@index([supplierId], map: "PurchaseOrder_supplierId_fkey")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  resource  String
+  details   String?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "AuditLog_userId_fkey")
 }
 
 enum RequestStatus {
@@ -23,156 +166,4 @@ enum OrderStatus {
   PARTIAL
   COMPLETED
   CANCELLED
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  department String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  requests  PurchaseRequest[]
-  approvals PurchaseRequest[] @relation("Approver")
-  auditLogs AuditLog[]
-  messages  Message[]
-  interactions InteractionLog[]
-}
-
-model Supplier {
-  id          String   @id @default(uuid())
-  name        String
-  category    String
-  status      String   @default("Pending") // Preferred, Standard, etc.
-  contactName String?
-  contactEmail String?
-  logoUrl     String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  orders      PurchaseOrder[]
-  requests    PurchaseRequest[]
-  details     SupplierDetails?
-  messages    Message[]
-  interactions InteractionLog[]
-}
-
-model SupplierDetails {
-  id            String   @id @default(uuid())
-  supplierId    String   @unique
-  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
-  phone         String?
-  address       String?
-  city          String?
-  state         String?
-  zipCode       String?
-  country       String?
-  
-  paymentTerms  String?  @default("Net 30")
-  paymentMethod String?  @default("Wire Transfer")
-  
-  internalNotes String?  @db.Text
-  rating        Decimal? @db.Decimal(3, 2)
-  reviewCount   Int?     @default(0)
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-}
-
-model Message {
-  id         String   @id @default(uuid())
-  supplierId String
-  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
-  userId     String
-  user       User     @relation(fields: [userId], references: [id])
-  
-  subject    String?
-  content    String   @db.Text
-  isFromUser Boolean  @default(true) // true if sent by internal user, false if from supplier
-  
-  readAt     DateTime?
-  createdAt  DateTime  @default(now())
-  
-  @@index([supplierId, createdAt])
-}
-
-model InteractionLog {
-  id          String   @id @default(uuid())
-  supplierId  String
-  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  
-  eventType   String   // e.g., "meeting", "contract", "call", "email"
-  title       String
-  description String?  @db.Text
-  eventDate   DateTime
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([supplierId, eventDate])
-}
-
-model PurchaseRequest {
-  id          String       @id @default(uuid())
-  requesterId String
-  requester   User         @relation(fields: [requesterId], references: [id])
-  status      RequestStatus @default(DRAFT)
-  totalAmount Decimal      @db.Decimal(10, 2)
-  reason      String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  
-  // Relations
-  items       RequestItem[]
-  approverId  String?
-  approver    User?        @relation("Approver", fields: [approverId], references: [id])
-  
-  // Stitch Alignment Fields
-  supplierId  String?      // Optional for draft, required for submission ideally
-  supplier    Supplier?    @relation(fields: [supplierId], references: [id])
-  
-  budgetCategory String?   // e.g. "IT", "Marketing"
-  deliveryLocation String?
-  expectedDeliveryDate DateTime?
-
-  order       PurchaseOrder?
-}
-
-model RequestItem {
-  id          String          @id @default(uuid())
-  requestId   String
-  request     PurchaseRequest @relation(fields: [requestId], references: [id])
-  description String
-  quantity    Int
-  unitPrice   Decimal         @db.Decimal(10, 2)
-  totalPrice  Decimal         @db.Decimal(10, 2)
-}
-
-model PurchaseOrder {
-  id          String          @id @default(uuid())
-  requestId   String          @unique
-  request     PurchaseRequest @relation(fields: [requestId], references: [id])
-  supplierId  String
-  supplier    Supplier        @relation(fields: [supplierId], references: [id])
-  status      OrderStatus     @default(DRAFT)
-  totalAmount Decimal         @db.Decimal(10, 2)
-  issuedAt    DateTime?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-}
-
-model AuditLog {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  action    String
-  resource  String
-  details   String?
-  createdAt DateTime @default(now())
 }

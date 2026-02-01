@@ -3,6 +3,7 @@ import { PrismaClient, RequestStatus } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
+import { sendPurchaseRequestNotification } from '../services/email.service';
 
 const prisma = new PrismaClient();
 
@@ -83,6 +84,25 @@ export const createRequest = async (req: Request, res: Response) => {
                 metadata: { requestId: request.id },
             });
         });
+
+        // Send email notification to supplier if available
+        if (request.supplier && request.supplier.contactEmail) {
+            // Send email asynchronously, don't block the response
+            sendPurchaseRequestNotification({
+                supplierEmail: request.supplier.contactEmail,
+                supplierName: request.supplier.name,
+                requesterName: req.user!.name,
+                requesterEmail: req.user!.email,
+                requestId: request.id,
+                items: validatedData.items,
+                totalAmount,
+                createdAt: request.createdAt,
+                reason: validatedData.reason,
+            }).catch((error) => {
+                // Log error but don't fail the request creation
+                Logger.error(`Failed to send email to supplier ${request.supplier!.name}:`, error);
+            });
+        }
 
         res.status(201).json(request);
     } catch (error: any) {
