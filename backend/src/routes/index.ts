@@ -20,5 +20,7 @@ import reportRoutes from './report.routes';
 router.use('/reports', reportRoutes);
 import departmentRoutes from './department.routes';
 router.use('/departments', departmentRoutes);
+import contractRoutes from './contract.routes';
+router.use('/contracts', contractRoutes);
 
 export default router;

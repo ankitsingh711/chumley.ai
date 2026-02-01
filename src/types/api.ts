@@ -33,6 +33,17 @@ export const OrderStatus = {
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 
+export const ContractStatus = {
+    DRAFT: 'DRAFT',
+    ACTIVE: 'ACTIVE',
+    EXPIRING_SOON: 'EXPIRING_SOON',
+    EXPIRED: 'EXPIRED',
+    TERMINATED: 'TERMINATED',
+    RENEWED: 'RENEWED',
+} as const;
+
+export type ContractStatus = (typeof ContractStatus)[keyof typeof ContractStatus];
+
 export interface User {
     id: string;
     email: string;
@@ -82,6 +93,33 @@ export interface SupplierDetails {
     reviewCount?: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export interface Contract {
+    id: string;
+    contractNumber: string;
+    title: string;
+    supplierId: string;
+    supplier?: Supplier;
+    ownerId: string;
+    owner?: User;
+    status: ContractStatus;
+    startDate: string;
+    endDate: string;
+    renewalDate?: string;
+    autoRenew: boolean;
+    noticePeriodDays: number;
+    totalValue: number;
+    currency: string;
+    paymentTerms?: string;
+    documentUrl?: string;
+    documentName?: string;
+    description?: string;
+    terms?: string;
+    notes?: string;
+    createdAt: string;
+    updatedAt: string;
+    daysUntilExpiry?: number;
 }
 
 export interface Message {

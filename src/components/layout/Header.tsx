@@ -15,7 +15,11 @@ interface SearchResult {
     url: string;
 }
 
-export function Header() {
+interface HeaderProps {
+    onChatToggle?: () => void;
+}
+
+export function Header({ onChatToggle }: HeaderProps) {
     const { user } = useAuth();
     const navigate = useNavigate();
     const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +27,9 @@ export function Header() {
     const [showResults, setShowResults] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
+
+    // Fix department rendering safely
+    const departmentName = typeof user?.department === 'object' ? user.department.name : user?.department;
 
     // Generate initials from user name
     const getInitials = (name: string) => {
@@ -210,7 +217,10 @@ export function Header() {
 
             <div className="flex items-center gap-4">
                 <NotificationBell />
-                <button className="rounded-full p-2 hover:bg-gray-100">
+                <button
+                    onClick={onChatToggle}
+                    className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+                >
                     <MessageSquare className="h-5 w-5 text-gray-600" />
                 </button>
 
@@ -218,7 +228,7 @@ export function Header() {
                     <div className="text-right">
                         <p className="text-sm font-medium text-gray-900">{user?.name || 'User'}</p>
                         <p className="text-xs text-gray-500">
-                            {user?.department || 'User'}
+                            {departmentName || 'User'}
                         </p>
                     </div>
                     <div className="h-9 w-9 overflow-hidden rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm">

@@ -1,13 +1,20 @@
 import { Button } from '../ui/Button';
+import { useNavigate } from 'react-router-dom';
 
 export function StrategicSourcing() {
+    const navigate = useNavigate();
+
     return (
         <div className="flex flex-col justify-between rounded-xl bg-teal-700 p-6 text-white shadow-sm">
             <div>
                 <h3 className="text-lg font-semibold">Strategic Sourcing</h3>
                 <div className="mt-4 h-24 rounded-lg bg-teal-800/50 border border-teal-600/30"></div>
             </div>
-            <Button variant="secondary" className="mt-4 w-full bg-white text-teal-700 hover:bg-teal-50">
+            <Button
+                variant="secondary"
+                className="mt-4 w-full bg-white text-teal-700 hover:bg-teal-50"
+                onClick={() => navigate('/contracts')}
+            >
                 MANAGE CONTRACTS
             </Button>
         </div>
