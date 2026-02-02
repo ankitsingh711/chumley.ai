@@ -11,6 +11,7 @@ const createSupplierSchema = z.object({
     phone: z.string().optional(),
     address: z.string().optional(),
     category: z.string().min(1),
+    logoUrl: z.string().optional(),
 });
 
 const updateSupplierSchema = createSupplierSchema.partial();
@@ -214,6 +215,7 @@ const updateSupplierDetailsSchema = z.object({
     status: z.string().optional(),
     contactName: z.string().optional(),
     contactEmail: z.string().email().optional(),
+    logoUrl: z.string().optional(),
     phone: z.string().optional(),
     address: z.string().optional(),
     city: z.string().optional(),
@@ -231,7 +233,7 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
         const validatedData = updateSupplierDetailsSchema.parse(req.body);
 
         // Extract base supplier fields
-        const { name, category, status, contactName, contactEmail, ...detailsFields } = validatedData;
+        const { name, category, status, contactName, contactEmail, logoUrl, ...detailsFields } = validatedData;
 
         // Update supplier base fields
         const supplierUpdateData: any = {};
@@ -240,6 +242,7 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
         if (status !== undefined) supplierUpdateData.status = status;
         if (contactName !== undefined) supplierUpdateData.contactName = contactName;
         if (contactEmail !== undefined) supplierUpdateData.contactEmail = contactEmail;
+        if (logoUrl !== undefined) supplierUpdateData.logoUrl = logoUrl;
 
         const supplier = await prisma.supplier.update({
             where: { id },

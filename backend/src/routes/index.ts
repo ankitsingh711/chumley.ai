@@ -24,5 +24,7 @@ import contractRoutes from './contract.routes';
 router.use('/contracts', contractRoutes);
 import chatRoutes from './chat.routes';
 router.use('/chat', chatRoutes);
+import uploadRoutes from './upload.routes';
+router.use('/upload', uploadRoutes);
 
 export default router;

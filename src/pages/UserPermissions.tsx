@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Settings, CheckCircle, XCircle, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
-import type { Role, User } from '../types/api';
+import { UserRole, type User } from '../types/api';
 
 export default function UserPermissions() {
     const [users, setUsers] = useState<User[]>([]);
@@ -10,7 +10,7 @@ export default function UserPermissions() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [roleValue, setRoleValue] = useState<Role>();
+    const [roleValue, setRoleValue] = useState<UserRole>();
     const [showModal, setShowModal] = useState(false);
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
@@ -85,6 +85,12 @@ export default function UserPermissions() {
         }
     };
 
+    const getDepartmentName = (dept: any) => {
+        if (!dept) return null;
+        if (typeof dept === 'string') return dept;
+        return dept.name;
+    };
+
     const filteredUsers = users.filter(user =>
         user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -129,7 +135,7 @@ export default function UserPermissions() {
                             </div>
                             <div className="flex-1 overflow-hidden">
                                 <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
-                                <p className="truncate text-xs text-gray-500">{user.department || user.email}</p>
+                                <p className="truncate text-xs text-gray-500">{getDepartmentName(user.department) || user.email}</p>
                             </div>
                             <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
                                 {user.role}
@@ -159,13 +165,13 @@ export default function UserPermissions() {
                                     <p className="text-xs text-gray-500">ASSIGN ROLE</p>
                                     <select
                                         value={roleValue}
-                                        onChange={(e) => setRoleValue(e.target.value as Role)}
+                                        onChange={(e) => setRoleValue(e.target.value as UserRole)}
                                         className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
                                     >
-                                        <option value="REQUESTER">Requester</option>
-                                        <option value="APPROVER">Approver</option>
-                                        <option value="MANAGER">Manager</option>
-                                        <option value="ADMIN">Administrator</option>
+                                        <option value={UserRole.MEMBER}>Team Member</option>
+                                        <option value={UserRole.MANAGER}>Manager</option>
+                                        <option value={UserRole.SENIOR_MANAGER}>Senior Manager</option>
+                                        <option value={UserRole.SYSTEM_ADMIN}>Administrator</option>
                                     </select>
                                 </div>
                                 <Button
@@ -188,7 +194,7 @@ export default function UserPermissions() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500">Department</p>
-                                    <p className="text-sm font-medium text-gray-900">{selectedUser.department || 'Not assigned'}</p>
+                                    <p className="text-sm font-medium text-gray-900">{getDepartmentName(selectedUser.department) || 'Not assigned'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500">Current Role</p>
@@ -205,7 +211,7 @@ export default function UserPermissions() {
                         <div className="py-6">
                             <h3 className="font-semibold text-gray-900 mb-4">Role Permissions</h3>
                             <div className="grid grid-cols-1 gap-4">
-                                {roleValue === 'ADMIN' && (
+                                {roleValue === UserRole.SYSTEM_ADMIN && (
                                     <div className="rounded-lg border border-teal-200 bg-teal-50 p-4">
                                         <h4 className="font-medium text-teal-900">Administrator</h4>
                                         <ul className="mt-2 text-sm text-teal-700 space-y-1">
@@ -216,30 +222,29 @@ export default function UserPermissions() {
                                         </ul>
                                     </div>
                                 )}
-                                {roleValue === 'MANAGER' && (
+                                {roleValue === UserRole.SENIOR_MANAGER && (
                                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                        <h4 className="font-medium text-blue-900">Manager</h4>
+                                        <h4 className="font-medium text-blue-900">Senior Manager</h4>
                                         <ul className="mt-2 text-sm text-blue-700 space-y-1">
                                             <li>• Can create and manage suppliers</li>
-                                            <li>• Approve purchase requests</li>
-                                            <li>• View department reports</li>
-                                            <li>• Manage team members' requests</li>
+                                            <li>• Approve purchase requests for department</li>
+                                            <li>• View department reports and budget</li>
                                         </ul>
                                     </div>
                                 )}
-                                {roleValue === 'APPROVER' && (
+                                {roleValue === UserRole.MANAGER && (
                                     <div className="rounded-lg border border-purple-200 bg-purple-50 p-4">
-                                        <h4 className="font-medium text-purple-900">Approver</h4>
+                                        <h4 className="font-medium text-purple-900">Manager</h4>
                                         <ul className="mt-2 text-sm text-purple-700 space-y-1">
-                                            <li>• Can approve/reject purchase requests</li>
+                                            <li>• Approve purchase requests</li>
                                             <li>• View assigned requests</li>
-                                            <li>• Limited report access</li>
+                                            <li>• Manage direct reports</li>
                                         </ul>
                                     </div>
                                 )}
-                                {roleValue === 'REQUESTER' && (
+                                {roleValue === UserRole.MEMBER && (
                                     <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-                                        <h4 className="font-medium text-gray-900">Requester</h4>
+                                        <h4 className="font-medium text-gray-900">Team Member</h4>
                                         <ul className="mt-2 text-sm text-gray-700 space-y-1">
                                             <li>• Can create purchase requests</li>
                                             <li>• View own requests</li>

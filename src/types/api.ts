@@ -268,6 +268,7 @@ export interface UpdateSupplierDetailsInput {
     paymentTerms?: string;
     paymentMethod?: string;
     internalNotes?: string;
+    logoUrl?: string;
 }
 
 export interface CreateMessageInput {
@@ -287,6 +288,7 @@ export interface UpdateUserInput {
     name?: string;
     email?: string;
     department?: string;
+    role?: string;
 }
 
 export interface KPIMetrics {

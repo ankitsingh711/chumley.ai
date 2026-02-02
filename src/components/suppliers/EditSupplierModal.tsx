@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { suppliersApi } from '../../services/suppliers.service';
+import { ImageUpload } from '../ui/ImageUpload';
 import type { Supplier, UpdateSupplierDetailsInput } from '../../types/api';
 
 interface EditSupplierModalProps {
@@ -27,6 +28,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
         paymentTerms: supplier.details?.paymentTerms || 'Net 30',
         paymentMethod: supplier.details?.paymentMethod || 'Wire Transfer',
         internalNotes: supplier.details?.internalNotes || '',
+        logoUrl: supplier.logoUrl || ''
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -129,6 +131,13 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     ))}
                                 </select>
                             </div>
+                        </div>
+                        <div className="mt-4">
+                            <ImageUpload
+                                value={formData.logoUrl}
+                                onChange={(url: string) => setFormData({ ...formData, logoUrl: url })}
+                                label="Company Logo"
+                            />
                         </div>
                     </div>
 
