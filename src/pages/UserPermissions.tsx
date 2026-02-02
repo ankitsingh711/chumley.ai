@@ -102,50 +102,70 @@ export default function UserPermissions() {
 
     return (
         <div className="flex h-full gap-6">
-            {/* Left Sidebar: Organization */}
-            <div className="w-80 flex-shrink-0 rounded-xl border border-gray-100 bg-white p-4 shadow-sm h-fit">
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold text-gray-900">Organization</h2>
-                    <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
-                </div>
+            {/* Left Sidebar: Navigation & Organization */}
+            <div className="w-80 flex-shrink-0 space-y-6">
 
-                <div className="relative mb-4">
-                    <input
-                        type="text"
-                        placeholder="Filter members..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-4 text-sm outline-none focus:border-teal-500"
-                    />
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                </div>
-
-                <div className="space-y-1">
-                    {filteredUsers.map(user => (
-                        <div
-                            key={user.id}
-                            onClick={() => setSelectedUser(user)}
-                            className={`flex items-center gap-3 rounded-lg p-2 cursor-pointer ${selectedUser?.id === user.id
-                                ? 'bg-teal-50 border border-teal-100'
-                                : 'hover:bg-gray-50'
-                                }`}
-                        >
-                            <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-xs">
-                                {getInitials(user.name)}
-                            </div>
-                            <div className="flex-1 overflow-hidden">
-                                <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
-                                <p className="truncate text-xs text-gray-500">{getDepartmentName(user.department) || user.email}</p>
-                            </div>
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
-                                {user.role}
-                            </span>
+                {/* Navigation */}
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+                    <h2 className="font-semibold text-gray-900 mb-2 px-2">Settings</h2>
+                    <nav className="space-y-1">
+                        <div className="flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-700">
+                            <Settings className="h-4 w-4" />
+                            <span>User Permissions</span>
                         </div>
-                    ))}
+                        <a href="/settings/approval-workflows" className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50">
+                            <CheckCircle className="h-4 w-4" />
+                            <span>Approval Workflows</span>
+                        </a>
+                    </nav>
                 </div>
 
-                <p className="mt-4 text-xs text-gray-400 text-center">{users.length} total members</p>
+                {/* Organization List */}
+                <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm h-fit">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="font-semibold text-gray-900">Organization</h2>
+                        <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
+                    </div>
+
+                    <div className="relative mb-4">
+                        <input
+                            type="text"
+                            placeholder="Filter members..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-4 text-sm outline-none focus:border-teal-500"
+                        />
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
+                    </div>
+
+                    <div className="space-y-1">
+                        {filteredUsers.map(user => (
+                            <div
+                                key={user.id}
+                                onClick={() => setSelectedUser(user)}
+                                className={`flex items-center gap-3 rounded-lg p-2 cursor-pointer ${selectedUser?.id === user.id
+                                    ? 'bg-teal-50 border border-teal-100'
+                                    : 'hover:bg-gray-50'
+                                    }`}
+                            >
+                                <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-xs">
+                                    {getInitials(user.name)}
+                                </div>
+                                <div className="flex-1 overflow-hidden">
+                                    <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
+                                    <p className="truncate text-xs text-gray-500">{getDepartmentName(user.department) || user.email}</p>
+                                </div>
+                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
+                                    {user.role}
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <p className="mt-4 text-xs text-gray-400 text-center">{users.length} total members</p>
+                </div>
             </div>
+
 
             {/* Main Content: Settings */}
             {selectedUser && (

@@ -18,6 +18,7 @@ import OnboardingSuccess from './pages/OnboardingSuccess';
 import GoogleCallback from './pages/GoogleCallback';
 import Contracts from './pages/Contracts';
 import DepartmentBudgets from './pages/DepartmentBudgets';
+import ApprovalWorkflow from './pages/ApprovalWorkflow';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
               <Route path="/budgets" element={<DepartmentBudgets />} />
               <Route path="/contracts" element={<Contracts />} />
               <Route path="/settings" element={<UserPermissions />} />
+              <Route path="/settings/approval-workflows" element={<ApprovalWorkflow />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

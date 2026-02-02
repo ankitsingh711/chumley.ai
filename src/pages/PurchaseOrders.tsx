@@ -9,6 +9,8 @@ export default function PurchaseOrders() {
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+
     useEffect(() => {
         loadOrders();
     }, []);
@@ -22,6 +24,66 @@ export default function PurchaseOrders() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleView = (order: PurchaseOrder) => {
+        setSelectedOrder(order);
+    };
+
+    const closeModal = () => {
+        setSelectedOrder(null);
+    };
+
+    const handleDownload = (order: PurchaseOrder) => {
+        // Generate CSV content
+        const headers = ['PO ID', 'Supplier', 'Date Issued', 'Total Amount', 'Status'];
+        const row = [
+            order.id,
+            `"${order.supplier?.name || 'Unknown'}"`,
+            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            Number(order.totalAmount).toFixed(2),
+            order.status
+        ];
+
+        const csvContent = [headers.join(','), row.join(',')].join('\n');
+
+        // Create blob and download link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `purchase-order-${order.id.slice(0, 8)}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const handleExportAll = () => {
+        // Generate CSV content for all orders
+        const headers = ['PO ID', 'Supplier', 'Date Issued', 'Total Amount', 'Status'];
+        const rows = orders.map(order => [
+            order.id,
+            `"${order.supplier?.name || 'Unknown'}"`,
+            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            Number(order.totalAmount).toFixed(2),
+            order.status
+        ]);
+
+        const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+        // Create blob and download link
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+
+        link.setAttribute('href', url);
+        link.setAttribute('download', `purchase-orders-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const getStatusColor = (status: string) => {
@@ -52,7 +114,7 @@ export default function PurchaseOrders() {
                     <p className="text-sm text-gray-500">Manage and track all corporate purchase orders in one place.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+                    <Button variant="outline" onClick={handleExportAll}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
                 </div>
             </div>
 
@@ -89,7 +151,7 @@ export default function PurchaseOrders() {
                         <tbody className="divide-y divide-gray-100">
                             {orders.map((po) => (
                                 <tr key={po.id} className="hover:bg-gray-50/50">
-                                    <td className="px-6 py-4 font-medium text-teal-600 cursor-pointer hover:underline">
+                                    <td className="px-6 py-4 font-medium text-teal-600 cursor-pointer hover:underline" onClick={() => handleView(po)}>
                                         #{po.id.slice(0, 8)}
                                     </td>
                                     <td className="px-6 py-4 font-medium text-gray-900">
@@ -109,8 +171,20 @@ export default function PurchaseOrders() {
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <div className="flex items-center justify-end gap-2 text-gray-400">
-                                            <button className="p-1 hover:text-gray-600"><Eye className="h-4 w-4" /></button>
-                                            <button className="p-1 hover:text-gray-600"><Download className="h-4 w-4" /></button>
+                                            <button
+                                                className="p-1 hover:text-gray-600"
+                                                onClick={() => handleView(po)}
+                                                title="View Details"
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                className="p-1 hover:text-gray-600"
+                                                onClick={() => handleDownload(po)}
+                                                title="Download CSV"
+                                            >
+                                                <Download className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -119,6 +193,89 @@ export default function PurchaseOrders() {
                     </table>
                 )}
             </div>
+
+            {/* Order Details Modal */}
+            {selectedOrder && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    onClick={closeModal}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900">Purchase Order Details</h2>
+                                <p className="text-sm text-gray-500">#{selectedOrder.id.slice(0, 8)}</p>
+                            </div>
+                            <button
+                                onClick={closeModal}
+                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                            >
+                                <span className="sr-only">Close</span>
+                                <svg className="h-5 w-5 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 space-y-6">
+                            {/* Status & Amount */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-xs text-gray-500 uppercase font-medium mb-1">Status</p>
+                                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(selectedOrder.status)}`}>
+                                        {selectedOrder.status}
+                                    </span>
+                                </div>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <p className="text-xs text-gray-500 uppercase font-medium mb-1">Total Amount</p>
+                                    <p className="text-2xl font-bold text-gray-900">${Number(selectedOrder.totalAmount).toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            {/* Supplier Info */}
+                            <div>
+                                <h3 className="text-sm font-semibold text-gray-900 mb-3">Supplier Information</h3>
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                                            {selectedOrder.supplier?.name?.charAt(0) || 'S'}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-gray-900">{selectedOrder.supplier?.name || 'Unknown'}</p>
+                                            <p className="text-sm text-gray-500">{selectedOrder.supplier?.contactEmail || 'No email provided'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Dates */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase font-medium mb-1">Date Issued</p>
+                                    <p className="text-sm text-gray-900">{selectedOrder.issuedAt ? new Date(selectedOrder.issuedAt).toLocaleDateString() : 'Not issued'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 uppercase font-medium mb-1">Last Updated</p>
+                                    <p className="text-sm text-gray-900">{new Date(selectedOrder.updatedAt).toLocaleDateString()}</p>
+                                </div>
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="pt-4 border-t flex justify-end gap-3">
+                                <Button variant="outline" onClick={closeModal}>Close</Button>
+                                <Button onClick={() => handleDownload(selectedOrder)}>
+                                    <Download className="mr-2 h-4 w-4" /> Download CSV
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
