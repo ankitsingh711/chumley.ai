@@ -4,6 +4,7 @@ export interface Department {
     id: string;
     name: string;
     description: string | null;
+    budget: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -42,6 +43,14 @@ export const departmentsApi = {
      */
     async getSpendingByCategory(id: string) {
         const response = await apiClient.get(`/departments/${id}/spending/categories`);
+        return response.data;
+    },
+
+    /**
+     * Update department details
+     */
+    async update(id: string, data: Partial<Department>): Promise<Department> {
+        const response = await apiClient.patch(`/departments/${id}`, data);
         return response.data;
     }
 };

@@ -12,6 +12,7 @@ export interface Department {
     id: string;
     name: string;
     description?: string;
+    budget?: number;
 }
 
 export const RequestStatus = {

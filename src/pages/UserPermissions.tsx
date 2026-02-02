@@ -180,7 +180,7 @@ export default function UserPermissions() {
                                     Configure granular permissions and spending limits for this user profile.
                                 </p>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-end gap-3">
                                 <div className="text-right">
                                     <p className="text-xs text-gray-500">ASSIGN ROLE</p>
                                     <select

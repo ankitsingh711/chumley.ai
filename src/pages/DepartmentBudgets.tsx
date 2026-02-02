@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, PieChart } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, PieChart, Edit2, X, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -10,7 +10,6 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Toolti
 
 interface DepartmentBudget extends Department {
     spent: number;
-    limit: number;
     metrics: {
         pendingCount: number;
         userCount: number;
@@ -40,6 +39,11 @@ export default function DepartmentBudgets() {
         utilization: 0
     });
 
+    // Editing State
+    const [editingDept, setEditingDept] = useState<DepartmentBudget | null>(null);
+    const [editValue, setEditValue] = useState('');
+    const [saving, setSaving] = useState(false);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -49,30 +53,20 @@ export default function DepartmentBudgets() {
             setLoading(true);
             const [depts] = await Promise.all([
                 departmentsApi.getAll(),
-                reportsApi.getMonthlySpend() // We might need a better endpoint for current totals, but this serves for trend
+                reportsApi.getMonthlySpend()
             ]);
 
-            // Mocking spending data for now as we don't have a direct "spend by department" endpoint in the provided context
-            // In a real scenario, we'd fetch this from the backend.
-            // Using the logic from BudgetTracker where mock data might be passed or calculated.
-
-            // For now, let's auto-generate some realistic looking data based on the seeded depts
-            // or try to use what we have.
-
-            // We'll mock the specific spend aggregation here since `reportsApi.getKPIs` gives totals but not per-dept breakdown list
-            // without fetching all requests.
-
             const processedDepts = depts.map((dept) => {
-                // Default budget limit since it's not in the DB yet
-                const limit = 50000;
+                // Use actual budget from DB or default to 0
+                const budget = dept.budget && Number(dept.budget) > 0 ? Number(dept.budget) : 0;
 
                 // Use real spending data from backend if available, otherwise 0
                 const spent = (dept as any).metrics?.totalSpent || 0;
 
                 return {
                     ...dept,
+                    budget, // Store as number for calculation
                     spent,
-                    limit,
                     metrics: {
                         pendingCount: 0,
                         userCount: (dept as any).metrics?.userCount || (dept as any).users?.length || 0
@@ -82,7 +76,7 @@ export default function DepartmentBudgets() {
 
             setDepartments(processedDepts);
 
-            const totalLimit = processedDepts.reduce((sum, d) => sum + d.limit, 0);
+            const totalLimit = processedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
             const totalSpent = processedDepts.reduce((sum, d) => sum + d.spent, 0);
 
             setTotalStats({
@@ -95,6 +89,44 @@ export default function DepartmentBudgets() {
             console.error('Failed to load department budgets:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleEditClick = (dept: DepartmentBudget) => {
+        setEditingDept(dept);
+        setEditValue(dept.budget?.toString() || '0');
+    };
+
+    const handleSaveBudget = async () => {
+        if (!editingDept) return;
+
+        setSaving(true);
+        try {
+            const newBudget = parseFloat(editValue);
+            if (isNaN(newBudget) || newBudget < 0) return; // Simple validation
+
+            await departmentsApi.update(editingDept.id, { budget: newBudget });
+
+            // Update local state
+            const updatedDepts = departments.map(d =>
+                d.id === editingDept.id ? { ...d, budget: newBudget } : d
+            );
+            setDepartments(updatedDepts);
+
+            // Recalculate totals
+            const totalLimit = updatedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
+            const totalSpent = updatedDepts.reduce((sum, d) => sum + d.spent, 0);
+            setTotalStats({
+                totalBudget: totalLimit,
+                totalSpent,
+                utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
+            });
+
+            setEditingDept(null);
+        } catch (error) {
+            console.error('Failed to update budget:', error);
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -152,8 +184,9 @@ export default function DepartmentBudgets() {
                         <h3 className="font-semibold text-gray-900 mb-6">Department Breakdown</h3>
                         <div className="space-y-8">
                             {departments.map((dept, index) => {
-                                const percentage = Math.round((dept.spent / dept.limit) * 100);
-                                const remaining = dept.limit - dept.spent;
+                                const currentBudget = dept.budget || 0;
+                                const percentage = currentBudget > 0 ? Math.round((dept.spent / currentBudget) * 100) : 0;
+                                const remaining = currentBudget - dept.spent;
                                 const color = COLORS[index % COLORS.length];
 
                                 return (
@@ -165,13 +198,20 @@ export default function DepartmentBudgets() {
                                                     <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 font-medium">
                                                         {dept.metrics.userCount} Members
                                                     </span>
+                                                    <button
+                                                        onClick={() => handleEditClick(dept)}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-teal-600 transition-opacity"
+                                                        title="Edit Budget"
+                                                    >
+                                                        <Edit2 className="h-3 w-3" />
+                                                    </button>
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-0.5">{dept.description || 'General Operations'}</p>
                                             </div>
                                             <div className="text-right">
                                                 <div className="flex items-center justify-end gap-2 mb-1">
                                                     <span className="text-xs font-medium text-gray-500">
-                                                        ${dept.spent.toLocaleString()} / ${dept.limit.toLocaleString()}
+                                                        ${dept.spent.toLocaleString()} / ${currentBudget.toLocaleString()}
                                                     </span>
                                                     <span className={cn("text-lg font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
                                                         {percentage}%
@@ -227,21 +267,43 @@ export default function DepartmentBudgets() {
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
-                    <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                        <h4 className="text-sm font-semibold text-gray-900 mb-2">Budget Insights</h4>
-                        <ul className="text-xs text-gray-500 space-y-2">
-                            <li className="flex items-start gap-2">
-                                <TrendingDown className="h-3 w-3 text-green-500 mt-0.5" />
-                                <span>Overall spending is on track at {totalStats.utilization}% utilization.</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <TrendingUp className="h-3 w-3 text-orange-500 mt-0.5" />
-                                <span>Technology department has the highest request volume.</span>
-                            </li>
-                        </ul>
-                    </div>
                 </div>
             </div>
+
+            {/* Edit Budget Modal */}
+            {editingDept && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setEditingDept(null)}>
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">Set Budget: {editingDept.name}</h3>
+                            <button onClick={() => setEditingDept(null)} className="text-gray-400 hover:text-gray-600">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Budget Limit ($)</label>
+                                <input
+                                    type="number"
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none"
+                                    value={editValue}
+                                    onChange={(e) => setEditValue(e.target.value)}
+                                    min="0"
+                                    step="1000"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button variant="ghost" onClick={() => setEditingDept(null)}>Cancel</Button>
+                                <Button onClick={handleSaveBudget} disabled={saving} className="bg-teal-700 hover:bg-teal-800">
+                                    {saving ? 'Saving...' : 'Save Changes'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

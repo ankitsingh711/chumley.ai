@@ -18,6 +18,7 @@ model Department {
   id          String   @id @default(uuid())
   name        String   @unique
   description String?
+  budget      Decimal  @default(0.00) @db.Decimal(15, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
