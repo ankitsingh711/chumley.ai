@@ -53,7 +53,7 @@ export default function Suppliers() {
                 name: s.name,
                 category: s.category,
                 status: (['Preferred', 'Standard', 'Review Pending'].includes(s.status) ? s.status : 'Standard') as any,
-                logoColor: 'bg-teal-600',
+                logoColor: 'bg-primary-600',
                 contact: {
                     name: s.contactName || 'Unknown',
                     role: 'Representative',
@@ -130,7 +130,7 @@ export default function Suppliers() {
                 name: newSupplier.name,
                 category: newSupplier.category,
                 status: (['Preferred', 'Standard', 'Review Pending'].includes(newSupplier.status) ? newSupplier.status : 'Standard') as any,
-                logoColor: 'bg-teal-600',
+                logoColor: 'bg-primary-600',
                 contact: {
                     name: newSupplier.contactName || 'Unknown',
                     role: 'Representative',
@@ -174,7 +174,7 @@ export default function Suppliers() {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${activeFilter === filter
-                                ? 'bg-teal-800 text-white'
+                                ? 'bg-primary-800 text-white'
                                 : 'border border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
@@ -194,7 +194,7 @@ export default function Suppliers() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full py-12 flex justify-center text-teal-600">
+                    <div className="col-span-full py-12 flex justify-center text-primary-600">
                         <Loader2 className="h-8 w-8 animate-spin" />
                     </div>
                 ) : (
@@ -204,11 +204,11 @@ export default function Suppliers() {
                 )}
 
                 {/* Add New Quick Card */}
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-teal-300 hover:bg-teal-50/50 transition-colors cursor-pointer group h-full min-h-[300px]"
+                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer group h-full min-h-[300px]"
                     onClick={handleOpenModal}
                 >
                     <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                        <Plus className="h-6 w-6 text-teal-600" />
+                        <Plus className="h-6 w-6 text-primary-600" />
                     </div>
                     <h3 className="font-semibold text-gray-900">Add New Supplier</h3>
                     <p className="text-sm text-gray-500 mt-1 max-w-[200px]">Onboard a new vendor to your approved list</p>
@@ -245,7 +245,7 @@ export default function Suppliers() {
                                 {/* Company Information */}
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-                                        <div className="h-8 w-1 bg-teal-500 rounded-full" />
+                                        <div className="h-8 w-1 bg-primary-500 rounded-full" />
                                         <h3 className="text-lg font-bold text-gray-900">Company Information</h3>
                                     </div>
 
@@ -259,7 +259,7 @@ export default function Suppliers() {
                                                     type="text"
                                                     value={formData.name}
                                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                                    className={`w-full rounded-xl border ${errors.name ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-teal-500 focus:ring-teal-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
+                                                    className={`w-full rounded-xl border ${errors.name ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
                                                     placeholder="e.g., ABC Corporation"
                                                 />
                                                 {errors.name && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.name}</p>}
@@ -273,7 +273,7 @@ export default function Suppliers() {
                                                     <select
                                                         value={formData.category}
                                                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                                        className={`w-full rounded-xl border ${errors.category ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-teal-500 focus:ring-teal-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all bg-white`}
+                                                        className={`w-full rounded-xl border ${errors.category ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all bg-white`}
                                                     >
                                                         {categories.map(cat => (
                                                             <option key={cat} value={cat}>{cat}</option>
@@ -288,7 +288,7 @@ export default function Suppliers() {
                                                     <select
                                                         value={formData.status}
                                                         onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all bg-white"
+                                                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all bg-white"
                                                     >
                                                         {statuses.map(status => (
                                                             <option key={status} value={status}>{status}</option>
@@ -305,7 +305,7 @@ export default function Suppliers() {
                                                     value={formData.address}
                                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                                     rows={3}
-                                                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all resize-none"
+                                                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all resize-none"
                                                     placeholder="123 Main St, City, State, ZIP"
                                                 />
                                             </div>
@@ -337,7 +337,7 @@ export default function Suppliers() {
                                                 type="text"
                                                 value={formData.contactName}
                                                 onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                                                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all"
+                                                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
                                                 placeholder="John Doe"
                                             />
                                         </div>
@@ -350,7 +350,7 @@ export default function Suppliers() {
                                                 type="email"
                                                 value={formData.contactEmail}
                                                 onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                                                className={`w-full rounded-xl border ${errors.contactEmail ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-teal-500 focus:ring-teal-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
+                                                className={`w-full rounded-xl border ${errors.contactEmail ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
                                                 placeholder="contact@company.com"
                                             />
                                             {errors.contactEmail && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.contactEmail}</p>}
@@ -364,7 +364,7 @@ export default function Suppliers() {
                                                 type="tel"
                                                 value={formData.phone}
                                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all"
+                                                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
                                                 placeholder="+1 (555) 000-0000"
                                             />
                                         </div>
@@ -386,7 +386,7 @@ export default function Suppliers() {
                             </Button>
                             <Button
                                 onClick={handleSubmit}
-                                className="px-6 py-2.5 h-auto bg-teal-600 hover:bg-teal-700 text-sm font-semibold shadow-md shadow-teal-200"
+                                className="px-6 py-2.5 h-auto bg-primary-600 hover:bg-primary-600 text-sm font-semibold shadow-md shadow-primary-200"
                                 disabled={saving}
                             >
                                 {saving ? (

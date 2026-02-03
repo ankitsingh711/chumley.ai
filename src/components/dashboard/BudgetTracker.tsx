@@ -18,7 +18,7 @@ const COLORS = [
     'bg-purple-500',
     'bg-pink-500',
     'bg-orange-500',
-    'bg-teal-500',
+    'bg-primary-500',
 ];
 
 export function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
@@ -67,7 +67,7 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-teal-700 hover:text-teal-800"
+                    className="h-8 text-primary-600 hover:text-primary-700"
                     onClick={() => navigate('/budgets')}
                 >
                     View All

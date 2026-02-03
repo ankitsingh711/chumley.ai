@@ -133,7 +133,7 @@ export default function CreateRequest() {
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={() => navigate('/requests')}>Cancel</Button>
                     <Button
-                        className="bg-teal-700 hover:bg-teal-800"
+                        className="bg-primary-700 hover:bg-primary-600"
                         onClick={handleSubmit}
                         disabled={loading}
                     >
@@ -154,7 +154,7 @@ export default function CreateRequest() {
                     {/* General Info */}
                     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                         <h3 className="flex items-center gap-2 font-semibold text-gray-900 mb-6">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] text-white font-bold">1</span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">1</span>
                             General Information
                         </h3>
 
@@ -165,7 +165,7 @@ export default function CreateRequest() {
                                     <select
                                         value={selectedSupplierId}
                                         onChange={(e) => setSelectedSupplierId(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+                                        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-primary-500"
                                     >
                                         <option value="">Select a supplier...</option>
                                         {suppliers.map(s => (
@@ -182,7 +182,7 @@ export default function CreateRequest() {
                                     value={reason}
                                     onChange={(e) => setReason(e.target.value)}
                                     placeholder="Briefly explain the business need..."
-                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-teal-500 min-h-[80px]"
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
                                 />
                             </div>
                         </div>
@@ -192,13 +192,13 @@ export default function CreateRequest() {
                     <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
                         <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                             <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] text-white font-bold">2</span>
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">2</span>
                                 Item Details
                             </h3>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-teal-600 hover:text-teal-700 hover:bg-teal-50"
+                                className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
                                 onClick={addItem}
                             >
                                 <Plus className="h-4 w-4 mr-1" /> Add Row
@@ -266,7 +266,7 @@ export default function CreateRequest() {
                                     ))}
                                     <tr className="bg-gray-50 font-bold">
                                         <td colSpan={3} className="px-6 py-4 text-right">Grand Total:</td>
-                                        <td className="px-6 py-4 text-teal-700">${calculateTotal().toFixed(2)}</td>
+                                        <td className="px-6 py-4 text-primary-700">${calculateTotal().toFixed(2)}</td>
                                         <td></td>
                                     </tr>
                                 </tbody>
@@ -279,7 +279,7 @@ export default function CreateRequest() {
                 <div className="space-y-6">
                     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                         <h3 className="flex items-center gap-2 font-semibold text-gray-900 mb-4">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-teal-600 text-[10px] text-white font-bold">3</span>
+                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">3</span>
                             Budget & Shipping
                         </h3>
 
@@ -321,7 +321,7 @@ export default function CreateRequest() {
                                         value={deliveryLocation}
                                         onChange={(e) => setDeliveryLocation(e.target.value)}
                                         placeholder="e.g. HQ - Receiving Dock"
-                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
                                     />
                                     <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 </div>
@@ -334,7 +334,7 @@ export default function CreateRequest() {
                                         type="date"
                                         value={expectedDeliveryDate}
                                         onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
                                     />
                                     <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 </div>

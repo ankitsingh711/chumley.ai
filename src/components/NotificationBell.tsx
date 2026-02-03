@@ -81,7 +81,7 @@ export default function NotificationBell() {
                         {notifications.length > 0 && (
                             <button
                                 onClick={markAllAsRead}
-                                className="text-xs text-teal-600 hover:text-teal-700 font-medium flex items-center gap-1"
+                                className="text-xs text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1"
                             >
                                 <CheckCheck className="h-3 w-3" />
                                 Mark all read
@@ -101,7 +101,7 @@ export default function NotificationBell() {
                                 <div
                                     key={notification.id}
                                     onClick={() => handleNotificationClick(notification)}
-                                    className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.read ? 'bg-teal-50/30' : ''
+                                    className={`px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors ${!notification.read ? 'bg-primary-50/30' : ''
                                         }`}
                                 >
                                     <div className="flex gap-3">
@@ -131,7 +131,7 @@ export default function NotificationBell() {
                                                     {formatTime(notification.createdAt)}
                                                 </span>
                                                 {!notification.read && (
-                                                    <span className="h-2 w-2 bg-teal-500 rounded-full"></span>
+                                                    <span className="h-2 w-2 bg-primary-500 rounded-full"></span>
                                                 )}
                                             </div>
                                         </div>

@@ -173,7 +173,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onFocus={() => searchResults.length > 0 && setShowResults(true)}
-                    className="h-10 w-full rounded-md border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                    className="h-10 w-full rounded-md border border-gray-200 bg-gray-50 pl-9 pr-8 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                 />
                 {searchQuery && (
                     <button
@@ -231,7 +231,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                             {departmentName || 'User'}
                         </p>
                     </div>
-                    <div className="h-9 w-9 overflow-hidden rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="h-9 w-9 overflow-hidden rounded-full bg-primary-500 flex items-center justify-center text-white font-semibold text-sm">
                         {user?.name ? getInitials(user.name) : 'U'}
                     </div>
                 </div>

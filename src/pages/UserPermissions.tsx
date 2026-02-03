@@ -75,7 +75,7 @@ export default function UserPermissions() {
     const getRoleBadgeClass = (role: string) => {
         switch (role) {
             case 'ADMIN':
-                return 'bg-teal-600 text-white';
+                return 'bg-primary-600 text-white';
             case 'MANAGER':
                 return 'bg-blue-500 text-white';
             case 'APPROVER':
@@ -109,7 +109,7 @@ export default function UserPermissions() {
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
                     <h2 className="font-semibold text-gray-900 mb-2 px-2">Settings</h2>
                     <nav className="space-y-1">
-                        <div className="flex items-center gap-2 rounded-lg bg-teal-50 px-3 py-2 text-sm font-medium text-teal-700">
+                        <div className="flex items-center gap-2 rounded-lg bg-primary-50 px-3 py-2 text-sm font-medium text-primary-700">
                             <Settings className="h-4 w-4" />
                             <span>User Permissions</span>
                         </div>
@@ -133,7 +133,7 @@ export default function UserPermissions() {
                             placeholder="Filter members..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-4 text-sm outline-none focus:border-teal-500"
+                            className="w-full rounded-md border border-gray-200 bg-gray-50 py-2 pl-8 pr-4 text-sm outline-none focus:border-primary-500"
                         />
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
                     </div>
@@ -144,11 +144,11 @@ export default function UserPermissions() {
                                 key={user.id}
                                 onClick={() => setSelectedUser(user)}
                                 className={`flex items-center gap-3 rounded-lg p-2 cursor-pointer ${selectedUser?.id === user.id
-                                    ? 'bg-teal-50 border border-teal-100'
+                                    ? 'bg-primary-50 border border-primary-100'
                                     : 'hover:bg-gray-50'
                                     }`}
                             >
-                                <div className="h-8 w-8 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold text-xs">
+                                <div className="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold text-xs">
                                     {getInitials(user.name)}
                                 </div>
                                 <div className="flex-1 overflow-hidden">
@@ -176,7 +176,7 @@ export default function UserPermissions() {
                             <div>
                                 <p className="text-xs font-medium text-gray-500 uppercase">Settings &gt; User Permissions</p>
                                 <h1 className="mt-1 text-2xl font-bold text-gray-900">Manage Access: {selectedUser.name}</h1>
-                                <p className="text-sm text-teal-600 mt-1 max-w-xl">
+                                <p className="text-sm text-primary-600 mt-1 max-w-xl">
                                     Configure granular permissions and spending limits for this user profile.
                                 </p>
                             </div>
@@ -186,7 +186,7 @@ export default function UserPermissions() {
                                     <select
                                         value={roleValue}
                                         onChange={(e) => setRoleValue(e.target.value as UserRole)}
-                                        className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-teal-500 focus:outline-none"
+                                        className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none"
                                     >
                                         <option value={UserRole.MEMBER}>Team Member</option>
                                         <option value={UserRole.MANAGER}>Manager</option>
@@ -197,7 +197,7 @@ export default function UserPermissions() {
                                 <Button
                                     onClick={handleSaveChanges}
                                     disabled={saving || roleValue === selectedUser.role}
-                                    className="bg-teal-700 hover:bg-teal-800"
+                                    className="bg-primary-700 hover:bg-primary-600"
                                 >
                                     {saving ? 'Saving...' : 'Save Changes'}
                                 </Button>
@@ -232,9 +232,9 @@ export default function UserPermissions() {
                             <h3 className="font-semibold text-gray-900 mb-4">Role Permissions</h3>
                             <div className="grid grid-cols-1 gap-4">
                                 {roleValue === UserRole.SYSTEM_ADMIN && (
-                                    <div className="rounded-lg border border-teal-200 bg-teal-50 p-4">
-                                        <h4 className="font-medium text-teal-900">Administrator</h4>
-                                        <ul className="mt-2 text-sm text-teal-700 space-y-1">
+                                    <div className="rounded-lg border border-primary-200 bg-primary-50 p-4">
+                                        <h4 className="font-medium text-primary-900">Administrator</h4>
+                                        <ul className="mt-2 text-sm text-primary-700 space-y-1">
                                             <li>• Full system access and user management</li>
                                             <li>• Can create, approve, and manage all requests</li>
                                             <li>• Access to all suppliers and purchase orders</li>
@@ -314,7 +314,7 @@ export default function UserPermissions() {
                         <div className="mt-6 flex justify-end">
                             <Button
                                 onClick={() => setShowModal(false)}
-                                className={modalType === 'success' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-gray-600 hover:bg-gray-700'}
+                                className={modalType === 'success' ? 'bg-primary-600 hover:bg-primary-600' : 'bg-gray-600 hover:bg-gray-700'}
                             >
                                 Close
                             </Button>

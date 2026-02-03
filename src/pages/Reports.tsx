@@ -106,7 +106,7 @@ export default function Reports() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         )
     }
@@ -127,7 +127,7 @@ export default function Reports() {
                     {(activeDateRange.start || activeDateRange.end) && (
                         <p className="text-sm text-gray-500 mt-1">
                             Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
-                            <button onClick={clearDateRange} className="ml-2 text-teal-600 hover:text-teal-700 font-medium">Clear</button>
+                            <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
                         </p>
                     )}
                 </div>
@@ -181,7 +181,7 @@ export default function Reports() {
                             </div>
                         )}
                     </div>
-                    <Button className="bg-teal-700" onClick={handleExportData}>
+                    <Button className="bg-primary-700" onClick={handleExportData}>
                         <Download className="mr-2 h-4 w-4" /> Export Data
                     </Button>
                 </div>
@@ -193,7 +193,7 @@ export default function Reports() {
                     title="Total Spend YTD"
                     value={`$${metrics?.totalSpend.toLocaleString()}`}
                     trend={{ value: '+12.4%', isPositive: true, label: 'vs last year' }}
-                    color="teal"
+                    color="primary"
                 />
                 <StatCard
                     title="Active Requests"
@@ -225,15 +225,15 @@ export default function Reports() {
                             <AreaChart data={spendData}>
                                 <defs>
                                     <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                                        <stop offset="5%" stopColor="#5080CE" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="#5080CE" stopOpacity={0} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
                                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
                                 <Tooltip />
-                                <Area type="monotone" dataKey="spend" stroke="#14b8a6" strokeWidth={2} fillOpacity={1} fill="url(#colorSpend)" />
+                                <Area type="monotone" dataKey="spend" stroke="#5080CE" strokeWidth={2} fillOpacity={1} fill="url(#colorSpend)" />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
@@ -290,7 +290,7 @@ export default function Reports() {
                     <tbody className="divide-y divide-gray-100 text-sm">
                         {requests.map(req => (
                             <tr key={req.id}>
-                                <td className="px-6 py-3 text-teal-600 font-medium">#{req.id.slice(0, 8)}</td>
+                                <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
                                 <td className="px-6 py-3 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                                 <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
                                 <td className="px-6 py-3 font-medium">${Number(req.totalAmount).toLocaleString()}</td>

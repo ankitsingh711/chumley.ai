@@ -42,7 +42,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
             return { icon: Printer, color: 'text-orange-500 bg-orange-50' };
         }
         if (normalized.includes('logistic') || normalized.includes('shipping')) {
-            return { icon: Truck, color: 'text-teal-500 bg-teal-50' };
+            return { icon: Truck, color: 'text-primary-500 bg-primary-50' };
         }
         if (normalized.includes('marketing') || normalized.includes('creative')) {
             return { icon: Palette, color: 'text-purple-500 bg-purple-50' };
@@ -82,7 +82,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
             </div>
 
             <div className="mb-6">
-                <h3 className="font-bold text-gray-900 text-lg group-hover:text-teal-600 transition-colors">{supplier.name}</h3>
+                <h3 className="font-bold text-gray-900 text-lg group-hover:text-primary-600 transition-colors">{supplier.name}</h3>
                 <p className="text-sm text-gray-400 font-medium">{supplier.category}</p>
             </div>
 
@@ -114,7 +114,7 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
                 </p>
                 <Button
                     variant="ghost"
-                    className="text-teal-600 hover:text-teal-700 hover:bg-teal-50 text-xs font-semibold h-8 px-3"
+                    className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
                     onClick={() => navigate(`/suppliers/${supplier.id}`)}
                 >
                     View Profile

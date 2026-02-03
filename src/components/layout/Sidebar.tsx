@@ -33,7 +33,7 @@ export function Sidebar() {
     return (
         <div className="flex h-screen w-64 flex-col border-r bg-white">
             <div className="flex items-center gap-2 p-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-teal-700 text-white">
+                <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-500 text-white">
                     <Package className="h-5 w-5" />
                 </div>
                 <div>
@@ -52,11 +52,11 @@ export function Sidebar() {
                             className={cn(
                                 'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                                 isActive
-                                    ? 'bg-teal-50 text-teal-700'
+                                    ? 'bg-primary-50 text-primary-700'
                                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                             )}
                         >
-                            <item.icon className={cn('h-5 w-5', isActive ? 'text-teal-700' : 'text-gray-400')} />
+                            <item.icon className={cn('h-5 w-5', isActive ? 'text-primary-700' : 'text-gray-400')} />
                             {item.label}
                         </Link>
                     );
@@ -68,7 +68,7 @@ export function Sidebar() {
                     to="/settings"
                     className={cn(
                         'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                        location.pathname === '/settings' && 'bg-teal-50 text-teal-700'
+                        location.pathname === '/settings' && 'bg-primary-50 text-primary-700'
                     )}
                 >
                     <Settings className="h-5 w-5 text-gray-400" />

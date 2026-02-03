@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Minimize2, Maximize2 } from 'lucide-react';
+import { X, Send, Bot } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 
 interface Message {
@@ -92,14 +92,14 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     return (
         <div className="fixed bottom-6 right-6 z-50 flex w-96 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 transition-all duration-300 animate-in slide-in-from-bottom-10 fade-in backdrop-blur-sm">
             {/* Header */}
-            <div className="flex items-center justify-between bg-teal-600 px-4 py-3 text-white">
+            <div className="flex items-center justify-between bg-primary-600 px-4 py-3 text-white">
                 <div className="flex items-center gap-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
                         <Bot className="h-5 w-5" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-sm">ProcureBot</h3>
-                        <p className="text-[10px] text-teal-100 opacity-90">Always here to help</p>
+                        <p className="text-[10px] text-primary-100 opacity-90">Always here to help</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -136,7 +136,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         <button
                             key={i}
                             onClick={() => handleSend(reply)}
-                            className="whitespace-nowrap rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700 hover:bg-teal-100 transition-colors"
+                            className="whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 transition-colors"
                         >
                             {reply}
                         </button>
@@ -158,12 +158,12 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Type a message..."
-                        className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all placeholder:text-gray-400"
+                        className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400"
                     />
                     <button
                         type="submit"
                         disabled={!inputValue.trim()}
-                        className="rounded-full bg-teal-600 p-2.5 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+                        className="rounded-full bg-primary-600 p-2.5 text-white hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
                     >
                         <Send className="h-4 w-4" />
                     </button>

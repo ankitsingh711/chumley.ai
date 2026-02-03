@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, DollarSign, PieChart, Edit2, X, Check } from 'lucide-react';
+import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -26,7 +26,7 @@ const COLORS = [
     '#a855f7', // purple
     '#ec4899', // pink
     '#f97316', // orange
-    '#14b8a6', // teal
+    '#5080CE', // teal
 ];
 
 export default function DepartmentBudgets() {
@@ -133,7 +133,7 @@ export default function DepartmentBudgets() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         );
     }
@@ -169,7 +169,7 @@ export default function DepartmentBudgets() {
                 <StatCard
                     title="Remaining Budget"
                     value={`$${(totalStats.totalBudget - totalStats.totalSpent).toLocaleString()}`}
-                    color="teal"
+                    color="primary"
                     icon={PieChart}
                     trend={{ value: `${100 - totalStats.utilization}%`, isPositive: true, label: 'available' }}
                 />
@@ -200,7 +200,7 @@ export default function DepartmentBudgets() {
                                                     </span>
                                                     <button
                                                         onClick={() => handleEditClick(dept)}
-                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-teal-600 transition-opacity"
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
                                                         title="Edit Budget"
                                                     >
                                                         <Edit2 className="h-3 w-3" />
@@ -217,7 +217,7 @@ export default function DepartmentBudgets() {
                                                         {percentage}%
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-teal-600 font-medium">
+                                                <p className="text-xs text-primary-600 font-medium">
                                                     ${remaining.toLocaleString()} Available
                                                 </p>
                                             </div>
@@ -286,7 +286,7 @@ export default function DepartmentBudgets() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Annual Budget Limit ($)</label>
                                 <input
                                     type="number"
-                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-teal-500 focus:outline-none"
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none"
                                     value={editValue}
                                     onChange={(e) => setEditValue(e.target.value)}
                                     min="0"
@@ -296,7 +296,7 @@ export default function DepartmentBudgets() {
 
                             <div className="flex justify-end gap-3 mt-6">
                                 <Button variant="ghost" onClick={() => setEditingDept(null)}>Cancel</Button>
-                                <Button onClick={handleSaveBudget} disabled={saving} className="bg-teal-700 hover:bg-teal-800">
+                                <Button onClick={handleSaveBudget} disabled={saving} className="bg-primary-700 hover:bg-primary-600">
                                     {saving ? 'Saving...' : 'Save Changes'}
                                 </Button>
                             </div>

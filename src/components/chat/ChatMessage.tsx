@@ -16,7 +16,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
     return (
         <div className={`flex w-full gap-3 ${isBot ? 'justify-start' : 'justify-end'}`}>
             {isBot && (
-                <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-teal-100 text-teal-600">
+                <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-primary-100 text-primary-600">
                     <Bot className="h-4 w-4" />
                 </div>
             )}
@@ -25,7 +25,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 <div
                     className={`rounded-2xl px-4 py-2.5 shadow-sm text-sm ${isBot
                             ? 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
-                            : 'bg-teal-600 text-white rounded-tr-none'
+                            : 'bg-primary-600 text-white rounded-tr-none'
                         }`}
                 >
                     {message.text}

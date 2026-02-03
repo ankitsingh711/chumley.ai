@@ -27,7 +27,7 @@ export default function OnboardingSuccess() {
 
                 <div className="flex flex-col items-center justify-center py-16 px-4">
                     {/* Hero Graphic Area */}
-                    <div className="relative w-full max-w-lg h-40 bg-gradient-to-r from-cyan-400 to-teal-400 rounded-t-2xl flex items-center justify-center overflow-hidden mb-8">
+                    <div className="relative w-full max-w-lg h-40 bg-gradient-to-r from-primary-400 to-primary-500 rounded-t-2xl flex items-center justify-center overflow-hidden mb-8">
                         {/* Soft Glows */}
                         <div className="absolute top-1/2 left-1/4 h-32 w-32 bg-yellow-200 rounded-full blur-3xl opacity-50 -translate-y-1/2"></div>
                         <div className="absolute top-1/2 right-1/4 h-32 w-32 bg-yellow-200 rounded-full blur-3xl opacity-50 -translate-y-1/2"></div>

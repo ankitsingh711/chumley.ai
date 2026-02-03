@@ -41,6 +41,7 @@ function App() {
             >
               <Route path="/" element={<Dashboard />} />
               <Route path="/requests" element={<Requests />} />
+              <Route path="/requests/:id" element={<Requests />} />
               <Route path="/requests/new" element={<CreateRequest />} />
               <Route path="/orders" element={<PurchaseOrders />} />
               <Route path="/suppliers" element={<Suppliers />} />

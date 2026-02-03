@@ -98,7 +98,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     type="text"
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     required
                                 />
                             </div>
@@ -109,7 +109,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <select
                                     value={formData.category}
                                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     required
                                 >
                                     {categories.map(cat => (
@@ -124,7 +124,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <select
                                     value={formData.status}
                                     onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 >
                                     {statuses.map(status => (
                                         <option key={status} value={status}>{status}</option>
@@ -153,7 +153,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     type="text"
                                     value={formData.contactName}
                                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 />
                             </div>
                             <div>
@@ -164,7 +164,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     type="email"
                                     value={formData.contactEmail}
                                     onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 />
                             </div>
                             <div className="col-span-2">
@@ -175,7 +175,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     placeholder="+1 (555) 000-0000"
                                 />
                             </div>
@@ -194,7 +194,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                     type="text"
                                     value={formData.address}
                                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     placeholder="1201 Tech Plaza"
                                 />
                             </div>
@@ -207,7 +207,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                         type="text"
                                         value={formData.city}
                                         onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                         placeholder="Austin"
                                     />
                                 </div>
@@ -219,7 +219,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                         type="text"
                                         value={formData.state}
                                         onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                         placeholder="TX"
                                     />
                                 </div>
@@ -231,7 +231,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                         type="text"
                                         value={formData.zipCode}
                                         onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                         placeholder="78701"
                                     />
                                 </div>
@@ -250,7 +250,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <select
                                     value={formData.paymentTerms}
                                     onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 >
                                     <option value="Net 15">Net 15</option>
                                     <option value="Net 30">Net 30</option>
@@ -266,7 +266,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <select
                                     value={formData.paymentMethod}
                                     onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 >
                                     <option value="Wire Transfer">Wire Transfer</option>
                                     <option value="ACH">ACH</option>
@@ -286,7 +286,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                             value={formData.internalNotes}
                             onChange={(e) => setFormData({ ...formData, internalNotes: e.target.value })}
                             rows={3}
-                            className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none"
+                            className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 resize-none"
                             placeholder="Add internal procurement notes..."
                         />
                     </div>
@@ -304,7 +304,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                         </Button>
                         <Button
                             type="submit"
-                            className="flex-1 bg-teal-600 hover:bg-teal-700"
+                            className="flex-1 bg-primary-600 hover:bg-primary-600"
                             disabled={isSaving}
                         >
                             {isSaving ? 'Saving...' : 'Save Changes'}

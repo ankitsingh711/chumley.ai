@@ -87,7 +87,7 @@ export default function ApprovalWorkflow() {
                     <h1 className="text-2xl font-bold text-gray-900">Approval Workflows</h1>
                     <p className="text-sm text-gray-500">Configure how purchase requests are routed and approved.</p>
                 </div>
-                <Button onClick={handleSave} disabled={loading} className="bg-teal-700 hover:bg-teal-800">
+                <Button onClick={handleSave} disabled={loading} className="bg-primary-700 hover:bg-primary-600">
                     {loading ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
                 </Button>
             </div>
@@ -111,14 +111,14 @@ export default function ApprovalWorkflow() {
 
                                     {/* Card */}
                                     <div className={`relative group w-80 p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer hover:shadow-md
-                                        ${step.type === 'TRIGGER' ? 'bg-teal-50 border-teal-200' :
+                                        ${step.type === 'TRIGGER' ? 'bg-primary-50 border-primary-200' :
                                             step.type === 'CONDITION' ? 'bg-amber-50 border-amber-200' :
-                                                'bg-white border-gray-200 hover:border-teal-500'}`}
+                                                'bg-white border-gray-200 hover:border-primary-500'}`}
                                     >
                                         <div className="flex justify-between items-start">
                                             <div>
                                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full mb-2 inline-block
-                                                    ${step.type === 'TRIGGER' ? 'bg-teal-100 text-teal-700' :
+                                                    ${step.type === 'TRIGGER' ? 'bg-primary-100 text-primary-700' :
                                                         step.type === 'CONDITION' ? 'bg-amber-100 text-amber-700' :
                                                             'bg-gray-100 text-gray-700'}`}>
                                                     {step.type}
@@ -143,7 +143,7 @@ export default function ApprovalWorkflow() {
                             <div className="h-8 w-0.5 bg-gray-300"></div>
                             <button
                                 onClick={handleAddStepClick}
-                                className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-dashed border-gray-300 hover:border-teal-500 hover:text-teal-500 transition-colors"
+                                className="flex items-center justify-center w-10 h-10 rounded-full bg-white border-2 border-dashed border-gray-300 hover:border-primary-500 hover:text-primary-500 transition-colors"
                             >
                                 <Plus className="h-5 w-5" />
                             </button>
@@ -164,11 +164,11 @@ export default function ApprovalWorkflow() {
                             <div className="pt-4 border-t border-gray-100">
                                 <h3 className="text-sm font-medium text-gray-700 mb-3">Available Triggers</h3>
                                 <div className="space-y-2">
-                                    <div className="p-3 border border-gray-200 rounded-lg hover:border-teal-500 cursor-pointer transition-colors bg-gray-50">
+                                    <div className="p-3 border border-gray-200 rounded-lg hover:border-primary-500 cursor-pointer transition-colors bg-gray-50">
                                         <p className="text-sm font-medium text-gray-900">Purchase Request</p>
                                         <p className="text-xs text-gray-500">Triggered when a new request is created</p>
                                     </div>
-                                    <div className="p-3 border border-gray-200 rounded-lg hover:border-teal-500 cursor-pointer transition-colors opacity-60">
+                                    <div className="p-3 border border-gray-200 rounded-lg hover:border-primary-500 cursor-pointer transition-colors opacity-60">
                                         <p className="text-sm font-medium text-gray-900">Invoice Received</p>
                                         <p className="text-xs text-gray-500">Coming soon</p>
                                     </div>
@@ -197,7 +197,7 @@ export default function ApprovalWorkflow() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Step Type</label>
                                 <div className="grid grid-cols-2 gap-3">
                                     <button
-                                        className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${newStepType === 'APPROVAL' ? 'bg-teal-50 border-teal-500 text-teal-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
+                                        className={`p-3 rounded-lg border text-sm font-medium text-center transition-colors ${newStepType === 'APPROVAL' ? 'bg-primary-50 border-primary-500 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
                                         onClick={() => setNewStepType('APPROVAL')}
                                     >
                                         Approval
@@ -215,7 +215,7 @@ export default function ApprovalWorkflow() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
                                     placeholder={newStepType === 'APPROVAL' ? "e.g. Manager Approval" : "e.g. Check Amount"}
                                     value={newStepTitle}
                                     onChange={(e) => setNewStepTitle(e.target.value)}
@@ -226,7 +226,7 @@ export default function ApprovalWorkflow() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                                 <input
                                     type="text"
-                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none"
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
                                     placeholder={newStepType === 'APPROVAL' ? "e.g. Requires manager sign-off" : "e.g. Amount > $1,000"}
                                     value={newStepDescription}
                                     onChange={(e) => setNewStepDescription(e.target.value)}

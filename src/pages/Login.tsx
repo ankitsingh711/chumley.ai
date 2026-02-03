@@ -46,7 +46,7 @@ export default function Login() {
     return (
         <div className="flex min-h-screen w-full bg-white">
             {/* Left Side - Brand / Teal Background */}
-            <div className="hidden lg:flex w-1/2 flex-col justify-between bg-[#117a8b] p-16 text-white relative overflow-hidden">
+            <div className="hidden lg:flex w-1/2 flex-col justify-between bg-gradient-to-br from-primary-400 to-primary-500 p-16 text-white relative overflow-hidden">
                 {/* Abstract background pattern placeholder - subtle dots or grid */}
                 <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
@@ -60,7 +60,7 @@ export default function Login() {
 
                     <div className="max-w-xl">
                         <h2 className="text-5xl font-bold leading-tight mb-6">Master your organization's spend management.</h2>
-                        <p className="text-lg text-teal-50/80 leading-relaxed mb-12">
+                        <p className="text-lg text-white/80 leading-relaxed mb-12">
                             The modern procurement platform designed for efficiency, transparency, and scalable growth. Join thousands of organizations optimizing their supply chains.
                         </p>
                     </div>
@@ -96,9 +96,9 @@ export default function Login() {
                         <p className="text-gray-500 mt-2">Please enter your details to access your dashboard.</p>
                     </div>
 
-                    <div className="rounded-lg bg-teal-50 border border-teal-100 p-4 flex gap-3 items-start">
-                        <div className="flex-shrink-0 h-5 w-5 rounded-full bg-teal-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">i</div>
-                        <p className="text-sm text-teal-800">Access is by invitation only. Please contact your organization's administrator for an invite.</p>
+                    <div className="rounded-lg bg-primary-50 border border-primary-100 p-4 flex gap-3 items-start">
+                        <div className="flex-shrink-0 h-5 w-5 rounded-full bg-primary-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">i</div>
+                        <p className="text-sm text-primary-800">Access is by invitation only. Please contact your organization's administrator for an invite.</p>
                     </div>
 
                     {error && (
@@ -117,7 +117,7 @@ export default function Login() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
                                 disabled={loading}
-                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400 disabled:opacity-50"
+                                className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400 disabled:opacity-50"
                                 placeholder="name@company.com"
                             />
                         </div>
@@ -125,7 +125,7 @@ export default function Login() {
                         <div className="space-y-2">
                             <div className="flex items-center justify-between">
                                 <label className="text-sm font-semibold text-gray-900">Password</label>
-                                <a href="#" className="text-sm font-semibold text-teal-700 hover:text-teal-800">Forgot password?</a>
+                                <a href="#" className="text-sm font-semibold text-primary-600 hover:text-primary-700">Forgot password?</a>
                             </div>
                             <div className="relative">
                                 <input
@@ -134,7 +134,7 @@ export default function Login() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     disabled={loading}
-                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 pr-12 text-sm outline-none focus:border-teal-600 focus:ring-1 focus:ring-teal-600 transition-all placeholder:text-gray-400 disabled:opacity-50"
+                                    className="w-full rounded-lg border border-gray-200 bg-white px-4 py-3 pr-12 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400 disabled:opacity-50"
                                     placeholder="Enter your password"
                                 />
                                 <button
@@ -153,7 +153,7 @@ export default function Login() {
                                 id="remember"
                                 checked={rememberDevice}
                                 onChange={(e) => setRememberDevice(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-teal-600 focus:ring-teal-600"
+                                className="h-4 w-4 rounded border-gray-300 text-primary-500 focus:ring-primary-500"
                             />
                             <label htmlFor="remember" className="text-sm text-gray-700">Remember this device for 30 days</label>
                         </div>
@@ -161,7 +161,7 @@ export default function Login() {
                         <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#117a8b] hover:bg-[#0e6675] text-white py-6 text-base font-semibold rounded-lg shadow-sm disabled:opacity-50"
+                            className="w-full bg-primary-500 hover:bg-primary-600 text-white py-6 text-base font-semibold rounded-lg shadow-sm disabled:opacity-50"
                         >
                             {loading ? 'Signing in...' : 'Sign In'}
                         </Button>
@@ -183,7 +183,7 @@ export default function Login() {
                     <div className="pt-8 mt-8 border-t border-gray-100 text-center space-y-2">
                         <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">ENTERPRISE ACCESS</p>
                         <p className="text-sm text-gray-500">ProcurifyX is an invite-only platform.</p>
-                        <button className="text-sm font-bold text-[#117a8b]">Contact support for inquiries</button>
+                        <button className="text-sm font-bold text-primary-600">Contact support for inquiries</button>
                     </div>
                 </div>
             </div>

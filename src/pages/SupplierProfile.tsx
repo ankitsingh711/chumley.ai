@@ -64,7 +64,7 @@ export default function SupplierProfile() {
             <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between">
                     <div className="flex gap-4">
-                        <div className="h-16 w-16 rounded-lg bg-teal-900 flex items-center justify-center text-white text-2xl font-bold">
+                        <div className="h-16 w-16 rounded-lg bg-primary-900 flex items-center justify-center text-white text-2xl font-bold">
                             {initials}
                         </div>
                         <div>
@@ -94,10 +94,10 @@ export default function SupplierProfile() {
                 <div className="mt-8">
                     <Tabs defaultValue="overview">
                         <TabsList className="bg-transparent p-0 border-b w-full justify-start rounded-none h-auto">
-                            <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-teal-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Overview</TabsTrigger>
-                            <TabsTrigger value="orders" className="data-[state=active]:border-b-2 data-[state=active]:border-teal-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Purchase Orders</TabsTrigger>
-                            <TabsTrigger value="compliance" className="data-[state=active]:border-b-2 data-[state=active]:border-teal-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Compliance & Documents</TabsTrigger>
-                            <TabsTrigger value="performance" className="data-[state=active]:border-b-2 data-[state=active]:border-teal-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Performance</TabsTrigger>
+                            <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-primary-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Overview</TabsTrigger>
+                            <TabsTrigger value="orders" className="data-[state=active]:border-b-2 data-[state=active]:border-primary-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Purchase Orders</TabsTrigger>
+                            <TabsTrigger value="compliance" className="data-[state=active]:border-b-2 data-[state=active]:border-primary-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Compliance & Documents</TabsTrigger>
+                            <TabsTrigger value="performance" className="data-[state=active]:border-b-2 data-[state=active]:border-primary-600 data-[state=active]:shadow-none rounded-none px-4 py-2">Performance</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="overview" className="pt-6 space-y-6">
@@ -128,7 +128,7 @@ export default function SupplierProfile() {
                                             {supplier.requests && supplier.requests.length > 0 ? (
                                                 supplier.requests.map((req) => (
                                                     <div key={req.id} className="flex justify-between items-center py-2 border-b last:border-0 border-gray-50">
-                                                        <span className="text-sm font-medium text-teal-600">#{req.id.slice(0, 8)}</span>
+                                                        <span className="text-sm font-medium text-primary-600">#{req.id.slice(0, 8)}</span>
                                                         <span className="text-sm text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</span>
                                                         <span className="text-sm font-medium">${Number(req.totalAmount).toLocaleString()}</span>
                                                         <span className={`text-xs px-2 py-1 rounded ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
@@ -177,13 +177,13 @@ export default function SupplierProfile() {
                                         <h3 className="font-semibold text-gray-900 mb-4">Contact Details</h3>
                                         <div className="space-y-4 text-sm">
                                             <div className="flex gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold">
+                                                <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold">
                                                     {supplier.contactName ? supplier.contactName.charAt(0).toUpperCase() : initials}
                                                 </div>
                                                 <div>
                                                     <p className="font-medium">{supplier.contactName || 'Contact Person'}</p>
                                                     <p className="text-xs text-gray-500">ACCOUNT MANAGER</p>
-                                                    <p className="text-xs text-teal-600">{supplier.contactEmail || 'No email'}</p>
+                                                    <p className="text-xs text-primary-600">{supplier.contactEmail || 'No email'}</p>
                                                     {supplier.details?.phone && (
                                                         <p className="text-xs text-gray-500 mt-1">📞 {supplier.details.phone}</p>
                                                     )}
@@ -223,7 +223,7 @@ export default function SupplierProfile() {
                                             {interactions.length > 0 ? (
                                                 interactions.map((interaction, index) => (
                                                     <div key={interaction.id} className="relative">
-                                                        <span className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${index === 0 ? 'bg-teal-500' : 'bg-gray-300'
+                                                        <span className={`absolute -left-[21px] top-1 h-3 w-3 rounded-full ring-4 ring-white ${index === 0 ? 'bg-primary-500' : 'bg-gray-300'
                                                             }`}></span>
                                                         <p className="text-sm font-medium">{interaction.title}</p>
                                                         <p className="text-xs text-gray-400">
@@ -285,7 +285,7 @@ export default function SupplierProfile() {
                                                         Cancel
                                                     </Button>
                                                     <Button
-                                                        className="flex-1 text-xs h-8 bg-teal-600 hover:bg-teal-700"
+                                                        className="flex-1 text-xs h-8 bg-primary-600 hover:bg-primary-600"
                                                         onClick={async () => {
                                                             if (!id || !newLog.title) return;
                                                             try {

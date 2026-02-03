@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { Download, Filter, Eye, Plus, Check, X, Trash2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { RequestStatus, UserRole } from '../types/api';
 
 export default function Requests() {
     const navigate = useNavigate();
+    const { id: requestIdFromUrl } = useParams<{ id: string }>();
     const { user } = useAuth();
     const [requests, setRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
@@ -28,6 +29,16 @@ export default function Requests() {
     useEffect(() => {
         loadRequests();
     }, []);
+
+    // Auto-open request modal if ID is in URL
+    useEffect(() => {
+        if (requestIdFromUrl && requests.length > 0) {
+            const request = requests.find(r => r.id === requestIdFromUrl);
+            if (request) {
+                setSelectedRequest(request);
+            }
+        }
+    }, [requestIdFromUrl, requests]);
 
     // Close filter modal when clicking outside
     useEffect(() => {
@@ -199,7 +210,7 @@ export default function Requests() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         );
     }
@@ -261,7 +272,7 @@ export default function Requests() {
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
-                                        <button onClick={handleResetFilters} className="text-xs text-teal-600 hover:text-teal-700">
+                                        <button onClick={handleResetFilters} className="text-xs text-primary-600 hover:text-primary-700">
                                             Reset All
                                         </button>
                                     </div>
@@ -274,14 +285,14 @@ export default function Requests() {
                                                 type="date"
                                                 value={advancedFilters.dateFrom}
                                                 onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateFrom: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
                                                 placeholder="From"
                                             />
                                             <input
                                                 type="date"
                                                 value={advancedFilters.dateTo}
                                                 onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateTo: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
                                                 placeholder="To"
                                             />
                                         </div>
@@ -295,14 +306,14 @@ export default function Requests() {
                                                 type="number"
                                                 value={advancedFilters.minAmount}
                                                 onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
                                                 placeholder="Min ($)"
                                             />
                                             <input
                                                 type="number"
                                                 value={advancedFilters.maxAmount}
                                                 onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
                                                 placeholder="Max ($)"
                                             />
                                         </div>
@@ -315,7 +326,7 @@ export default function Requests() {
                                             type="text"
                                             value={advancedFilters.requester}
                                             onChange={(e) => setAdvancedFilters({ ...advancedFilters, requester: e.target.value })}
-                                            className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                                            className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
                                             placeholder="Search by name or email"
                                         />
                                     </div>
@@ -323,7 +334,7 @@ export default function Requests() {
                                     {/* Apply Button */}
                                     <Button
                                         onClick={handleApplyFilters}
-                                        className="w-full bg-teal-600 hover:bg-teal-700"
+                                        className="w-full bg-primary-600 hover:bg-primary-600"
                                         size="sm"
                                     >
                                         Apply Filters
@@ -355,12 +366,12 @@ export default function Requests() {
                         <tbody className="divide-y divide-gray-100">
                             {filteredRequests.map((req) => (
                                 <tr key={req.id} className="hover:bg-gray-50/50">
-                                    <td className="px-6 py-4 font-medium text-teal-600">
+                                    <td className="px-6 py-4 font-medium text-primary-600">
                                         #{req.id.slice(0, 8)}
                                     </td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-semibold text-sm">
+                                            <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
                                                 {req.requester?.name?.charAt(0) || 'U'}
                                             </div>
                                             <span className="font-medium text-gray-900">{req.requester?.name || 'Unknown'}</span>
@@ -418,7 +429,7 @@ export default function Requests() {
                                     <td className="px-6 py-4 text-right">
                                         <button
                                             onClick={() => handleViewDetails(req)}
-                                            className="p-1 hover:text-teal-600 text-gray-400"
+                                            className="p-1 hover:text-primary-600 text-gray-400"
                                         >
                                             <Eye className="h-4 w-4" />
                                         </button>
@@ -479,7 +490,7 @@ export default function Requests() {
                                 <h3 className="text-sm font-semibold text-gray-900 mb-3">Requester Information</h3>
                                 <div className="bg-gray-50 rounded-lg p-4 space-y-2">
                                     <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-full bg-teal-600 flex items-center justify-center text-white font-semibold">
+                                        <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold">
                                             {selectedRequest.requester?.name?.charAt(0) || 'U'}
                                         </div>
                                         <div>

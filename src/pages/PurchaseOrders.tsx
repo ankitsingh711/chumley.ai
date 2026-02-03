@@ -100,7 +100,7 @@ export default function PurchaseOrders() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         );
     }
@@ -125,7 +125,7 @@ export default function PurchaseOrders() {
                     <input
                         type="text"
                         placeholder="Search by PO ID, supplier..."
-                        className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                        className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     />
                 </div>
             </div>
@@ -151,7 +151,7 @@ export default function PurchaseOrders() {
                         <tbody className="divide-y divide-gray-100">
                             {orders.map((po) => (
                                 <tr key={po.id} className="hover:bg-gray-50/50">
-                                    <td className="px-6 py-4 font-medium text-teal-600 cursor-pointer hover:underline" onClick={() => handleView(po)}>
+                                    <td className="px-6 py-4 font-medium text-primary-600 cursor-pointer hover:underline" onClick={() => handleView(po)}>
                                         #{po.id.slice(0, 8)}
                                     </td>
                                     <td className="px-6 py-4 font-medium text-gray-900">

@@ -98,7 +98,7 @@ export default function Contracts() {
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
             </div>
         );
     }
@@ -250,7 +250,7 @@ export default function Contracts() {
                                     required
                                     value={formData.title}
                                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     placeholder="e.g., Office Supplies Annual Contract"
                                 />
                             </div>
@@ -263,7 +263,7 @@ export default function Contracts() {
                                     required
                                     value={formData.supplierId}
                                     onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 >
                                     <option value="">Select a supplier</option>
                                     {suppliers.length === 0 && (
@@ -285,7 +285,7 @@ export default function Contracts() {
                                         required
                                         value={formData.startDate}
                                         onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     />
                                 </div>
                                 <div>
@@ -297,7 +297,7 @@ export default function Contracts() {
                                         required
                                         value={formData.endDate}
                                         onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     />
                                 </div>
                             </div>
@@ -312,7 +312,7 @@ export default function Contracts() {
                                     step="0.01"
                                     value={formData.totalValue}
                                     onChange={(e) => setFormData({ ...formData, totalValue: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     placeholder="50000.00"
                                 />
                             </div>
@@ -323,7 +323,7 @@ export default function Contracts() {
                                     type="text"
                                     value={formData.paymentTerms}
                                     onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                     placeholder="Net 30"
                                 />
                             </div>
@@ -334,7 +334,7 @@ export default function Contracts() {
                                     rows={3}
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none"
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 resize-none"
                                     placeholder="Contract details..."
                                 />
                             </div>
@@ -345,7 +345,7 @@ export default function Contracts() {
                                     id="autoRenew"
                                     checked={formData.autoRenew}
                                     onChange={(e) => setFormData({ ...formData, autoRenew: e.target.checked })}
-                                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                                 />
                                 <label htmlFor="autoRenew" className="text-sm text-gray-700">
                                     Auto-renew this contract
@@ -365,7 +365,7 @@ export default function Contracts() {
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="flex-1 bg-teal-600 hover:bg-teal-700"
+                                    className="flex-1 bg-primary-600 hover:bg-primary-600"
                                     disabled={saving}
                                 >
                                     {saving ? 'Creating...' : 'Create Contract'}

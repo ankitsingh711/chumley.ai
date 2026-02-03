@@ -133,7 +133,7 @@ export function MessageSupplierModal({ supplierId, supplierName, isOpen, onClose
                                     <div className={`flex ${message.isFromUser ? 'justify-end' : 'justify-start'}`}>
                                         <div className={`max-w-[70%] ${message.isFromUser ? 'order-2' : 'order-1'}`}>
                                             <div className={`rounded-lg px-4 py-2 ${message.isFromUser
-                                                ? 'bg-teal-600 text-white'
+                                                ? 'bg-primary-600 text-white'
                                                 : 'bg-gray-100 text-gray-900'
                                                 }`}>
                                                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -160,7 +160,7 @@ export function MessageSupplierModal({ supplierId, supplierName, isOpen, onClose
                                 value={subject}
                                 onChange={(e) => setSubject(e.target.value)}
                                 placeholder="Subject (optional)"
-                                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500"
+                                className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                             />
                         )}
 
@@ -170,13 +170,13 @@ export function MessageSupplierModal({ supplierId, supplierName, isOpen, onClose
                                 value={newMessage}
                                 onChange={(e) => setNewMessage(e.target.value)}
                                 placeholder="Type your message..."
-                                className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 resize-none"
+                                className="flex-1 rounded-lg border border-gray-200 px-4 py-2 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 resize-none"
                                 rows={2}
                                 disabled={isSending}
                             />
                             <Button
                                 type="submit"
-                                className="bg-teal-600 hover:bg-teal-700 px-4"
+                                className="bg-primary-600 hover:bg-primary-600 px-4"
                                 disabled={isSending || !newMessage.trim()}
                             >
                                 <Send className="h-4 w-4" />

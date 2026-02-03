@@ -86,7 +86,7 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
 
                     {loading && (
                         <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl backdrop-blur-sm z-20">
-                            <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                         </div>
                     )}
                 </div>
@@ -96,17 +96,17 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
                     variant="ghost"
                     onClick={() => fileInputRef.current?.click()}
                     disabled={loading}
-                    className="h-32 w-full max-w-sm flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl hover:bg-teal-50 hover:border-teal-400 hover:text-teal-600 transition-all group"
+                    className="h-32 w-full max-w-sm flex flex-col items-center justify-center gap-3 border-2 border-dashed border-gray-300 rounded-xl hover:bg-primary-50 hover:border-primary-400 hover:text-primary-600 transition-all group"
                 >
                     {loading ? (
-                        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+                        <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                     ) : (
                         <>
                             <div className="p-3 bg-gray-50 rounded-full group-hover:bg-white group-hover:shadow-sm transition-all">
-                                <Upload className="h-6 w-6 text-gray-400 group-hover:text-teal-500" />
+                                <Upload className="h-6 w-6 text-gray-400 group-hover:text-primary-500" />
                             </div>
                             <div className="text-center">
-                                <span className="text-sm font-semibold text-gray-600 group-hover:text-teal-700">Click to upload</span>
+                                <span className="text-sm font-semibold text-gray-600 group-hover:text-primary-700">Click to upload</span>
                                 <p className="text-xs text-gray-400 mt-1">SVG, PNG, JPG (max 5MB)</p>
                             </div>
                         </>
