@@ -23,7 +23,7 @@ export default function Onboarding() {
                         <div className="h-8 w-8 bg-[#1f4b55] rounded-lg flex items-center justify-center text-white">
                             <Wallet className="h-5 w-5" />
                         </div>
-                        <span className="font-bold text-lg text-gray-900">ProcurementHub</span>
+                        <span className="font-bold text-lg text-gray-900">Chumley AI</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                         <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> Secure Invitation

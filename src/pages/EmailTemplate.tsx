@@ -15,13 +15,13 @@ export default function EmailTemplate() {
                                 <div className="h-1.5 w-1.5 bg-white rounded-[1px]"></div>
                             </div>
                         </div>
-                        <span className="font-bold text-gray-900 text-lg">ProcurementPlatform</span>
+                        <span className="font-bold text-gray-900 text-lg">Chumley AI</span>
                     </div>
                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">OFFICIAL INVITATION</span>
                 </div>
 
                 <div className="px-12 py-8">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Join Acme Corp on ProcurementPlatform</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Join Acme Corp on Chumley AI</h1>
 
                     <p className="text-gray-600 mb-2">Hello Sarah,</p>
                     <p className="text-gray-600 mb-8 leading-relaxed">
@@ -70,7 +70,7 @@ export default function EmailTemplate() {
                     </div>
 
                     <p className="text-[10px] text-gray-400 max-w-sm mx-auto leading-relaxed">
-                        © 2024 ProcurementPlatform Inc. 123 Enterprise Way, Suite 400, San Francisco, CA. You received this because an administrator invited you.
+                        © 2024 Chumley AI Inc. 123 Enterprise Way, Suite 400, San Francisco, CA. You received this because an administrator invited you.
                     </p>
                 </div>
             </div>

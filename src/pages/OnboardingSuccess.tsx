@@ -17,7 +17,7 @@ export default function OnboardingSuccess() {
                             <div className="h-2 w-2 bg-cyan-600"></div>
                             <div className="h-2 w-2 bg-cyan-400 -ml-2.5 mt-2.5"></div>
                         </div>
-                        <span className="font-bold text-gray-900 ml-2">ProcurePro</span>
+                        <span className="font-bold text-gray-900 ml-2">Chumley AI</span>
                     </div>
                     {/* User Avatar */}
                     <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-gray-100">

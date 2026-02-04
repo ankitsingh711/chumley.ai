@@ -98,7 +98,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         <Bot className="h-5 w-5" />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm">ProcureBot</h3>
+                        <h3 className="font-semibold text-sm">ChumleyBot</h3>
                         <p className="text-[10px] text-primary-100 opacity-90">Always here to help</p>
                     </div>
                 </div>

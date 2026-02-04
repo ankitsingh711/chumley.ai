@@ -37,7 +37,7 @@ export function Sidebar() {
                     <Package className="h-5 w-5" />
                 </div>
                 <div>
-                    <h1 className="text-lg font-bold text-gray-900 leading-none">ProcureCorp</h1>
+                    <h1 className="text-lg font-bold text-gray-900 leading-none">Chumley AI</h1>
                     <p className="text-xs text-gray-500">Global Ops</p>
                 </div>
             </div>
