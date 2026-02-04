@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Eye, EyeOff, LayoutTemplate } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { LogoIcon } from '../components/ui/Logo';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
@@ -53,9 +54,9 @@ export default function Login() {
                 <div className="relative z-10">
                     <div className="flex items-center gap-3 mb-24">
                         <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm border border-white/30">
-                            <LayoutTemplate className="h-6 w-6 text-white" />
+                            <LogoIcon className="h-6 w-6 text-white" />
                         </div>
-                        <h1 className="text-2xl font-bold tracking-tight">ProcurifyX</h1>
+                        <h1 className="text-2xl font-bold tracking-tight">Chumley AI</h1>
                     </div>
 
                     <div className="max-w-xl">
@@ -84,7 +85,7 @@ export default function Login() {
                 </div>
 
                 <div className="relative z-10 mt-12 text-xs text-white/40">
-                    © 2024 ProcurifyX Inc. All rights reserved.
+                    © 2024 Chumley AI Inc. All rights reserved.
                 </div>
             </div>
 
@@ -182,7 +183,7 @@ export default function Login() {
 
                     <div className="pt-8 mt-8 border-t border-gray-100 text-center space-y-2">
                         <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">ENTERPRISE ACCESS</p>
-                        <p className="text-sm text-gray-500">ProcurifyX is an invite-only platform.</p>
+                        <p className="text-sm text-gray-500">Chumley AI is an invite-only platform.</p>
                         <button className="text-sm font-bold text-primary-600">Contact support for inquiries</button>
                     </div>
                 </div>

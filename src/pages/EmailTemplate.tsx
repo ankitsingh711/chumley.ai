@@ -1,4 +1,5 @@
 import { Shield, ExternalLink, Moon } from 'lucide-react';
+import { LogoWithText } from '../components/ui/Logo';
 
 export default function EmailTemplate() {
     return (
@@ -7,15 +8,7 @@ export default function EmailTemplate() {
                 {/* Email Header */}
                 <div className="p-8 pb-4 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-[#1f5f70] rounded text-white grid place-items-center">
-                            <div className="grid grid-cols-2 gap-0.5">
-                                <div className="h-1.5 w-1.5 bg-white rounded-[1px]"></div>
-                                <div className="h-1.5 w-1.5 bg-white/50 rounded-[1px]"></div>
-                                <div className="h-1.5 w-1.5 bg-white/50 rounded-[1px]"></div>
-                                <div className="h-1.5 w-1.5 bg-white rounded-[1px]"></div>
-                            </div>
-                        </div>
-                        <span className="font-bold text-gray-900 text-lg">Chumley AI</span>
+                        <LogoWithText />
                     </div>
                     <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">OFFICIAL INVITATION</span>
                 </div>

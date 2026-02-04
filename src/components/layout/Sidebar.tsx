@@ -6,9 +6,9 @@ import {
     Users,
     BarChart3,
     Settings,
-    LogOut,
-    Package
+    LogOut
 } from 'lucide-react';
+import { LogoIcon } from '../ui/Logo';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -33,12 +33,12 @@ export function Sidebar() {
     return (
         <div className="flex h-screen w-64 flex-col border-r bg-white">
             <div className="flex items-center gap-2 p-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded bg-primary-500 text-white">
-                    <Package className="h-5 w-5" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white">
+                    <LogoIcon />
                 </div>
-                <div>
+                <div className="flex flex-col">
                     <h1 className="text-lg font-bold text-gray-900 leading-none">Chumley AI</h1>
-                    <p className="text-xs text-gray-500">Global Ops</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Global Ops</p>
                 </div>
             </div>
 

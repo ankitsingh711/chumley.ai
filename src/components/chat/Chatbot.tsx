@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot } from 'lucide-react';
+import { X, Send } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
+import { LogoWithText } from '../ui/Logo';
 
 interface Message {
     id: string;
@@ -94,8 +95,8 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
             {/* Header */}
             <div className="flex items-center justify-between bg-primary-600 px-4 py-3 text-white">
                 <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20">
-                        <Bot className="h-5 w-5" />
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
+                        <LogoWithText classNameIcon="bg-transparent text-white" showText={false} />
                     </div>
                     <div>
                         <h3 className="font-semibold text-sm">ChumleyBot</h3>

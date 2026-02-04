@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { LogoWithText } from '../components/ui/Logo';
 
 export default function OnboardingSuccess() {
     const navigate = useNavigate();
@@ -11,13 +12,7 @@ export default function OnboardingSuccess() {
                 {/* Top branding bar */}
                 <div className="px-8 py-5 border-b border-gray-100 flex items-center justify-between bg-white">
                     <div className="flex items-center gap-2">
-                        {/* Logo Mark: Blue squares */}
-                        <div className="flex gap-0.5">
-                            <div className="h-2 w-2 bg-cyan-500"></div>
-                            <div className="h-2 w-2 bg-cyan-600"></div>
-                            <div className="h-2 w-2 bg-cyan-400 -ml-2.5 mt-2.5"></div>
-                        </div>
-                        <span className="font-bold text-gray-900 ml-2">Chumley AI</span>
+                        <LogoWithText />
                     </div>
                     {/* User Avatar */}
                     <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-gray-100">

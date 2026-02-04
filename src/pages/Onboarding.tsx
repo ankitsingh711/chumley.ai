@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, Eye, EyeOff, CheckCircle2, User, Wallet } from 'lucide-react';
+import { Briefcase, Eye, EyeOff, CheckCircle2, User } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { LogoWithText } from '../components/ui/Logo';
 
 export default function Onboarding() {
     const navigate = useNavigate();
@@ -20,10 +21,7 @@ export default function Onboarding() {
             <div className="w-full max-w-[500px] bg-white rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in duration-500">
                 <div className="px-8 py-6 border-b border-gray-50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <div className="h-8 w-8 bg-[#1f4b55] rounded-lg flex items-center justify-center text-white">
-                            <Wallet className="h-5 w-5" />
-                        </div>
-                        <span className="font-bold text-lg text-gray-900">Chumley AI</span>
+                        <LogoWithText />
                     </div>
                     <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500">
                         <CheckCircle2 className="h-3.5 w-3.5 text-blue-500" /> Secure Invitation
