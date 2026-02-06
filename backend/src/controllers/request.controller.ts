@@ -43,7 +43,7 @@ export const createRequest = async (req: Request, res: Response) => {
                 requesterId,
                 reason: validatedData.reason,
                 totalAmount,
-                status: RequestStatus.DRAFT, // Start as draft
+                status: RequestStatus.IN_PROGRESS, // Start as in progress
                 // New fields
                 supplierId: validatedData.supplierId,
                 budgetCategory: validatedData.budgetCategory,
@@ -219,8 +219,8 @@ export const deleteRequest = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        if (request.status !== RequestStatus.DRAFT) {
-            return res.status(400).json({ error: 'Only draft requests can be deleted' });
+        if (request.status !== RequestStatus.IN_PROGRESS) {
+            return res.status(400).json({ error: 'Only in-progress requests can be deleted' });
         }
 
         await prisma.purchaseRequest.delete({ where: { id } });

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RequestStatus } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 
@@ -32,13 +32,14 @@ export const getSuppliers = async (req: Request, res: Response) => {
         });
 
         const suppliersWithStats = suppliers.map(supplier => {
-            const activeOrders = supplier.orders.filter(o =>
+            const s = supplier as any;
+            const activeOrders = s.orders ? s.orders.filter((o: any) =>
                 o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
-            ).length;
+            ).length : 0;
 
-            const totalSpend = supplier.orders.reduce((acc, curr) => {
+            const totalSpend = s.orders ? s.orders.reduce((acc: number, curr: any) => {
                 return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
-            }, 0);
+            }, 0) : 0;
 
             const lastOrderDate = supplier.orders.length > 0
                 ? supplier.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
@@ -70,7 +71,7 @@ export const getSupplierById = async (req: Request, res: Response) => {
             include: {
                 orders: true,
                 requests: {
-                    where: { status: { not: 'DRAFT' } },
+                    where: { status: { not: RequestStatus.IN_PROGRESS } },
                     orderBy: { createdAt: 'desc' },
                     take: 20
                 }
@@ -82,9 +83,10 @@ export const getSupplierById = async (req: Request, res: Response) => {
         }
 
         // Calculate detailed stats on the fly
-        const activeOrders = supplier.orders.filter(o =>
+        const s = supplier as any;
+        const activeOrders = s.orders ? s.orders.filter((o: any) =>
             o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
-        ).length;
+        ).length : 0;
 
         const totalSpend = supplier.orders.reduce((acc, curr) => {
             return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
@@ -176,7 +178,7 @@ export const getSupplierDetails = async (req: Request, res: Response) => {
                 details: true,
                 orders: true,
                 requests: {
-                    where: { status: { not: 'DRAFT' } },
+                    where: { status: { not: RequestStatus.IN_PROGRESS } },
                     orderBy: { createdAt: 'desc' },
                     take: 20
                 }
@@ -187,13 +189,14 @@ export const getSupplierDetails = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Supplier not found' });
         }
 
-        const activeOrders = supplier.orders.filter(o =>
+        const s = supplier as any;
+        const activeOrders = s.orders ? s.orders.filter((o: any) =>
             o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
-        ).length;
+        ).length : 0;
 
-        const totalSpend = supplier.orders.reduce((acc, curr) => {
+        const totalSpend = s.orders ? s.orders.reduce((acc: number, curr: any) => {
             return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
-        }, 0);
+        }, 0) : 0;
 
         res.json({
             ...supplier,

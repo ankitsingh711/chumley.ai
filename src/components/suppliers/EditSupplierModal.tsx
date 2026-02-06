@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { suppliersApi } from '../../services/suppliers.service';
@@ -55,9 +56,9 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 p-4 overflow-y-auto"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-[100] p-4 overflow-y-auto"
             onClick={onClose}
         >
             <div
@@ -312,6 +313,7 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

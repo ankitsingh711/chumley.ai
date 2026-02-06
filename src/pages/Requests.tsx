@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X, Trash2 } from 'lucide-react';
+import { Download, Filter, Eye, Plus, Check, X, Trash2, Search } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { requestsApi } from '../services/requests.service';
@@ -14,6 +15,7 @@ export default function Requests() {
     const [requests, setRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | RequestStatusType>('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [updating, setUpdating] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
     const [showFilterModal, setShowFilterModal] = useState(false);
@@ -138,7 +140,19 @@ export default function Requests() {
     // Apply status filter
     let filteredRequests = filter === 'all'
         ? requests
-        : requests.filter(req => req.status === filter);
+        : filter === RequestStatus.PENDING
+            ? requests.filter(req => req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS)
+            : requests.filter(req => req.status === filter);
+
+    // Apply search query
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        filteredRequests = filteredRequests.filter(req =>
+            req.id.toLowerCase().includes(query) ||
+            req.requester?.name?.toLowerCase().includes(query) ||
+            req.requester?.email?.toLowerCase().includes(query)
+        );
+    }
 
     // Apply advanced filters
     if (advancedFilters.dateFrom) {
@@ -256,92 +270,106 @@ export default function Requests() {
                             Approved
                         </Button>
                     </div>
-                    <div className="relative">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-gray-500"
-                            onClick={() => setShowFilterModal(!showFilterModal)}
-                        >
-                            <Filter className="h-4 w-4 mr-2" /> Filter
-                        </Button>
 
-                        {/* Filter Dropdown */}
-                        {showFilterModal && (
-                            <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4">
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
-                                        <button onClick={handleResetFilters} className="text-xs text-primary-600 hover:text-primary-700">
-                                            Reset All
-                                        </button>
-                                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="relative w-64">
+                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search requests..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 bg-white"
+                            />
+                        </div>
 
-                                    {/* Date Range */}
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
-                                        <div className="grid grid-cols-2 gap-2">
+                        <div className="relative">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-gray-500"
+                                onClick={() => setShowFilterModal(!showFilterModal)}
+                            >
+                                <Filter className="h-4 w-4 mr-2" /> Filter
+                            </Button>
+
+                            {/* Filter Dropdown */}
+                            {showFilterModal && (
+                                <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
+                                            <button onClick={handleResetFilters} className="text-xs text-primary-600 hover:text-primary-700">
+                                                Reset All
+                                            </button>
+                                        </div>
+
+                                        {/* Date Range */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="date"
+                                                    value={advancedFilters.dateFrom}
+                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateFrom: e.target.value })}
+                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                                    placeholder="From"
+                                                />
+                                                <input
+                                                    type="date"
+                                                    value={advancedFilters.dateTo}
+                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateTo: e.target.value })}
+                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                                    placeholder="To"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Amount Range */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-2">Amount Range</label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <input
+                                                    type="number"
+                                                    value={advancedFilters.minAmount}
+                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
+                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                                    placeholder="Min ($)"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    value={advancedFilters.maxAmount}
+                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
+                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                                    placeholder="Max ($)"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Requester Search */}
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-700 mb-2">Requester</label>
                                             <input
-                                                type="date"
-                                                value={advancedFilters.dateFrom}
-                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateFrom: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                placeholder="From"
-                                            />
-                                            <input
-                                                type="date"
-                                                value={advancedFilters.dateTo}
-                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateTo: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                placeholder="To"
+                                                type="text"
+                                                value={advancedFilters.requester}
+                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, requester: e.target.value })}
+                                                className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                                placeholder="Search by name or email"
                                             />
                                         </div>
-                                    </div>
 
-                                    {/* Amount Range */}
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-2">Amount Range</label>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <input
-                                                type="number"
-                                                value={advancedFilters.minAmount}
-                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                placeholder="Min ($)"
-                                            />
-                                            <input
-                                                type="number"
-                                                value={advancedFilters.maxAmount}
-                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
-                                                className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                placeholder="Max ($)"
-                                            />
-                                        </div>
+                                        {/* Apply Button */}
+                                        <Button
+                                            onClick={handleApplyFilters}
+                                            className="w-full bg-primary-600 hover:bg-primary-600"
+                                            size="sm"
+                                        >
+                                            Apply Filters
+                                        </Button>
                                     </div>
-
-                                    {/* Requester Search */}
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-2">Requester</label>
-                                        <input
-                                            type="text"
-                                            value={advancedFilters.requester}
-                                            onChange={(e) => setAdvancedFilters({ ...advancedFilters, requester: e.target.value })}
-                                            className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                            placeholder="Search by name or email"
-                                        />
-                                    </div>
-
-                                    {/* Apply Button */}
-                                    <Button
-                                        onClick={handleApplyFilters}
-                                        className="w-full bg-primary-600 hover:bg-primary-600"
-                                        size="sm"
-                                    >
-                                        Apply Filters
-                                    </Button>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -387,12 +415,12 @@ export default function Requests() {
                                                 req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
                                                     req.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
                                                         'bg-gray-100 text-gray-700'}`}>
-                                            {req.status}
+                                            {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
                                         </span>
                                     </td>
                                     {/* Action Column */}
                                     <td className="px-6 py-4">
-                                        {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.DRAFT) && (
+                                        {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
                                             <div className="flex gap-2">
                                                 <button
                                                     className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
@@ -413,7 +441,7 @@ export default function Requests() {
                                             </div>
                                         )}
                                         {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
-                                        {req.status === RequestStatus.DRAFT && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
+                                        {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
                                             <div className="flex gap-2">
                                                 <button
                                                     className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
@@ -442,9 +470,9 @@ export default function Requests() {
             </div>
 
             {/* Request Detail Modal */}
-            {selectedRequest && (
+            {selectedRequest && createPortal(
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
                     onClick={closeModal}
                 >
                     <div
@@ -476,7 +504,7 @@ export default function Requests() {
                                             selectedRequest.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
                                                 selectedRequest.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
                                                     'bg-gray-100 text-gray-700'}`}>
-                                        {selectedRequest.status}
+                                        {selectedRequest.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : selectedRequest.status}
                                     </span>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
@@ -551,7 +579,7 @@ export default function Requests() {
                             </div>
 
                             {/* Actions */}
-                            {canUserApprove(selectedRequest) && (selectedRequest.status === RequestStatus.PENDING || selectedRequest.status === RequestStatus.DRAFT) && (
+                            {canUserApprove(selectedRequest) && (selectedRequest.status === RequestStatus.PENDING || selectedRequest.status === RequestStatus.IN_PROGRESS) && (
                                 <div className="pt-4 border-t flex gap-3">
                                     <Button
                                         onClick={() => {
@@ -576,7 +604,8 @@ export default function Requests() {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

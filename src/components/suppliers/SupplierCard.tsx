@@ -87,7 +87,14 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
             </div>
 
             <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-50">
-                <img src={supplier.contact.image} alt={supplier.contact.name} className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm" />
+                <img
+                    src={supplier.contact.image}
+                    alt={supplier.contact.name}
+                    className="h-8 w-8 rounded-full object-cover ring-2 ring-white shadow-sm"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(supplier.contact.name)}&background=random`;
+                    }}
+                />
                 <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-900 truncate">{supplier.contact.name}</p>
                     <p className="text-xs text-gray-400 truncate">{supplier.contact.role}</p>

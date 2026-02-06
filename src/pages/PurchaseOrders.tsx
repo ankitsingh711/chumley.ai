@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Download, Eye } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ordersApi } from '../services/orders.service';
@@ -10,6 +11,15 @@ export default function PurchaseOrders() {
     const [loading, setLoading] = useState(true);
 
     const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+
+    const filteredOrders = orders.filter(order => {
+        const query = searchQuery.toLowerCase();
+        return (
+            order.id.toLowerCase().includes(query) ||
+            order.supplier?.name.toLowerCase().includes(query)
+        );
+    });
 
     useEffect(() => {
         loadOrders();
@@ -90,7 +100,7 @@ export default function PurchaseOrders() {
         switch (status) {
             case OrderStatus.SENT: return 'bg-blue-50 text-blue-700';
             case OrderStatus.COMPLETED: return 'bg-green-50 text-green-700';
-            case OrderStatus.DRAFT: return 'bg-gray-100 text-gray-700';
+            case OrderStatus.IN_PROGRESS: return 'bg-gray-100 text-gray-700';
             case OrderStatus.CANCELLED: return 'bg-red-50 text-red-700';
             case OrderStatus.PARTIAL: return 'bg-yellow-50 text-yellow-700';
             default: return 'bg-gray-100 text-gray-700';
@@ -125,6 +135,8 @@ export default function PurchaseOrders() {
                     <input
                         type="text"
                         placeholder="Search by PO ID, supplier..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                     />
                 </div>
@@ -132,7 +144,7 @@ export default function PurchaseOrders() {
 
             {/* Table */}
             <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                {orders.length === 0 ? (
+                {filteredOrders.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                         No purchase orders found.
                     </div>
@@ -149,7 +161,7 @@ export default function PurchaseOrders() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {orders.map((po) => (
+                            {filteredOrders.map((po) => (
                                 <tr key={po.id} className="hover:bg-gray-50/50">
                                     <td className="px-6 py-4 font-medium text-primary-600 cursor-pointer hover:underline" onClick={() => handleView(po)}>
                                         #{po.id.slice(0, 8)}
@@ -166,7 +178,7 @@ export default function PurchaseOrders() {
                                     <td className="px-6 py-4">
                                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusColor(po.status)}`}>
                                             <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-60"></span>
-                                            {po.status}
+                                            {po.status === OrderStatus.IN_PROGRESS ? 'IN PROGRESS' : po.status}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-right">
@@ -195,9 +207,9 @@ export default function PurchaseOrders() {
             </div>
 
             {/* Order Details Modal */}
-            {selectedOrder && (
+            {selectedOrder && createPortal(
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
                     onClick={closeModal}
                 >
                     <div
@@ -228,7 +240,7 @@ export default function PurchaseOrders() {
                                 <div className="bg-gray-50 rounded-lg p-4">
                                     <p className="text-xs text-gray-500 uppercase font-medium mb-1">Status</p>
                                     <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${getStatusColor(selectedOrder.status)}`}>
-                                        {selectedOrder.status}
+                                        {selectedOrder.status === OrderStatus.IN_PROGRESS ? 'IN PROGRESS' : selectedOrder.status}
                                     </span>
                                 </div>
                                 <div className="bg-gray-50 rounded-lg p-4">
@@ -274,7 +286,8 @@ export default function PurchaseOrders() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

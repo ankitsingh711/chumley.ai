@@ -45,7 +45,7 @@ export const createOrder = async (req: Request, res: Response) => {
                 requestId: validatedData.requestId,
                 supplierId: validatedData.supplierId,
                 totalAmount: request.totalAmount, // Inherit amount
-                status: OrderStatus.DRAFT,
+                status: OrderStatus.IN_PROGRESS,
             },
         });
 

@@ -16,7 +16,7 @@ export interface Department {
 }
 
 export const RequestStatus = {
-    DRAFT: 'DRAFT',
+    IN_PROGRESS: 'IN_PROGRESS',
     PENDING: 'PENDING',
     APPROVED: 'APPROVED',
     REJECTED: 'REJECTED',
@@ -25,7 +25,7 @@ export const RequestStatus = {
 export type RequestStatus = (typeof RequestStatus)[keyof typeof RequestStatus];
 
 export const OrderStatus = {
-    DRAFT: 'DRAFT',
+    IN_PROGRESS: 'IN_PROGRESS',
     SENT: 'SENT',
     PARTIAL: 'PARTIAL',
     COMPLETED: 'COMPLETED',

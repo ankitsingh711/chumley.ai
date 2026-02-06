@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Send } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { suppliersApi } from '../../services/suppliers.service';
@@ -80,9 +81,9 @@ export function MessageSupplierModal({ supplierId, supplierName, isOpen, onClose
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
             onClick={onClose}
         >
             <div
@@ -185,6 +186,7 @@ export function MessageSupplierModal({ supplierId, supplierName, isOpen, onClose
                     </form>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

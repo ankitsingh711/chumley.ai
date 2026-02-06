@@ -160,7 +160,7 @@ model InteractionLog {
 model PurchaseRequest {
   id                   String         @id @default(uuid())
   requesterId          String
-  status               RequestStatus  @default(DRAFT)
+  status               RequestStatus  @default(IN_PROGRESS)
   totalAmount          Decimal        @db.Decimal(10, 2)
   reason               String?
   categoryId           String?
@@ -234,7 +234,7 @@ model PurchaseOrder {
   id          String          @id @default(uuid())
   requestId   String          @unique
   supplierId  String
-  status      OrderStatus     @default(DRAFT)
+  status      OrderStatus     @default(IN_PROGRESS)
   totalAmount Decimal         @db.Decimal(10, 2)
   issuedAt    DateTime?
   createdAt   DateTime        @default(now())
@@ -258,14 +258,14 @@ model AuditLog {
 }
 
 enum RequestStatus {
-  DRAFT
+  IN_PROGRESS
   PENDING
   APPROVED
   REJECTED
 }
 
 enum OrderStatus {
-  DRAFT
+  IN_PROGRESS
   SENT
   PARTIAL
   COMPLETED

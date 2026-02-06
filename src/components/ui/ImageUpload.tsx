@@ -12,6 +12,7 @@ interface ImageUploadProps {
 export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUploadProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,6 +22,10 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
         // Reset
         setError(null);
         setLoading(true);
+
+        // Create local preview immediately
+        const objectUrl = URL.createObjectURL(file);
+        setPreviewUrl(objectUrl);
 
         try {
             // Validate size (5MB)
@@ -33,6 +38,7 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Failed to upload image');
+            setPreviewUrl(null); // Clear preview on error
         } finally {
             setLoading(false);
             // Reset input so same file can be selected again
@@ -44,7 +50,10 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
 
     const handleRemove = () => {
         onChange('');
+        setPreviewUrl(null);
     };
+
+    const displayUrl = previewUrl || value;
 
     return (
         <div className="space-y-3">
@@ -65,13 +74,17 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
                 </div>
             )}
 
-            {value ? (
+            {displayUrl ? (
                 <div className="relative inline-block group">
-                    <div className="relative overflow-hidden rounded-xl border-2 border-gray-100 shadow-sm">
+                    <div className="relative overflow-hidden rounded-xl border-2 border-gray-100 shadow-sm h-32 w-32 bg-gray-50">
                         <img
-                            src={value}
+                            src={displayUrl}
                             alt="Uploaded"
-                            className="h-32 w-32 object-cover transition-transform group-hover:scale-105"
+                            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                            onError={(e) => {
+                                // Fallback for broken images
+                                (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=Image&background=random`;
+                            }}
                         />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                     </div>
@@ -85,7 +98,7 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
                     </button>
 
                     {loading && (
-                        <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl backdrop-blur-sm z-20">
+                        <div className="absolute inset-0 bg-white/60 flex items-center justify-center rounded-xl backdrop-blur-[1px] z-20">
                             <Loader2 className="h-8 w-8 animate-spin text-primary-600" />
                         </div>
                     )}
