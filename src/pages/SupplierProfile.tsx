@@ -328,6 +328,246 @@ export default function SupplierProfile() {
                                 </p>
                             </div>
                         </TabsContent>
+
+                        <TabsContent value="orders" className="pt-6">
+                            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                                    <h3 className="font-semibold text-gray-900">Purchase Orders History</h3>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" size="sm">Export CSV</Button>
+                                        <Button variant="outline" size="sm">Filter</Button>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
+                                            <tr>
+                                                <th className="px-6 py-3">Order ID</th>
+                                                <th className="px-6 py-3">Date</th>
+                                                <th className="px-6 py-3">Items</th>
+                                                <th className="px-6 py-3">Amount</th>
+                                                <th className="px-6 py-3">Status</th>
+                                                <th className="px-6 py-3 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {supplier.requests && supplier.requests.length > 0 ? (
+                                                supplier.requests.map((req) => (
+                                                    <tr key={req.id} className="hover:bg-gray-50">
+                                                        <td className="px-6 py-4 font-medium text-primary-600">#{req.id.slice(0, 8)}</td>
+                                                        <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                                        <td className="px-6 py-4 text-gray-500">{req.items?.length || 1} items</td>
+                                                        <td className="px-6 py-4 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                                    req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                                        'bg-red-100 text-red-800'
+                                                                }`}>
+                                                                {req.status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <Button variant="ghost" size="sm">View</Button>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            ) : (
+                                                <tr>
+                                                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                                                        No purchase orders found.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="compliance" className="pt-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm h-fit">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="font-semibold text-gray-900">Active Documents</h3>
+                                        <Button variant="outline" size="sm">+ Upload New</Button>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-red-50 text-red-600 rounded-lg group-hover:bg-red-100 transition-colors">
+                                                    <FileText className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">W-9 Tax Form</p>
+                                                    <p className="text-xs text-gray-500">Updated: Oct 1, 2023</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Valid</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                                    <Shield className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">Liability Insurance Certificate</p>
+                                                    <p className="text-xs text-gray-500">Expires: Feb 18, 2026</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-md font-medium">Expiring Soon</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-100 transition-colors">
+                                                    <FileText className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-medium text-gray-900">MSA (Master Service Agreement)</p>
+                                                    <p className="text-xs text-gray-500">Signed: Jan 15, 2023</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Active</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                                        <h3 className="font-semibold text-gray-900 mb-4">Compliance Status</h3>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="text-gray-600">Onboarding Completion</span>
+                                                    <span className="font-medium">100%</span>
+                                                </div>
+                                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-green-500 w-full"></div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div className="flex justify-between text-sm mb-1">
+                                                    <span className="text-gray-600">Document Validity</span>
+                                                    <span className="font-medium">66%</span>
+                                                </div>
+                                                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-yellow-500 w-2/3"></div>
+                                                </div>
+                                                <p className="text-xs text-yellow-600 mt-1">⚠️ 1 Document expiring soon</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                                        <h3 className="font-semibold text-gray-900 mb-4">Certifications</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">ISO 9001</span>
+                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">SOC 2 Type II</span>
+                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">GDPR Compliant</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="performance" className="pt-6">
+                            {/* Reusing Stats for Context */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                <StatCard
+                                    title="ON-TIME DELIVERY"
+                                    value="94%"
+                                    trend={{ value: '+2%', isPositive: true }}
+                                    color="blue"
+                                />
+                                <StatCard
+                                    title="QUALITY RATING"
+                                    value="4.8/5"
+                                    color="purple"
+                                />
+                                <StatCard
+                                    title="RESPONSE TIME"
+                                    value="< 2h"
+                                    color="green"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                                    <h3 className="font-semibold text-gray-900 mb-6">Performance Metrics</h3>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-sm font-medium text-gray-700">Delivery Speed</span>
+                                                <span className="text-sm font-bold text-gray-900">Excellent</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                                <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: '90%' }}></div>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Consistently delivers ahead of schedule.</p>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-sm font-medium text-gray-700">Product Quality</span>
+                                                <span className="text-sm font-bold text-gray-900">High</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: '95%' }}></div>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Defect rate is below 0.5%.</p>
+                                        </div>
+
+                                        <div>
+                                            <div className="flex justify-between items-end mb-2">
+                                                <span className="text-sm font-medium text-gray-700">Communication</span>
+                                                <span className="text-sm font-bold text-gray-900">Average</span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 rounded-full h-2.5">
+                                                <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: '70%' }}></div>
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">Response times can be slow for custom requests.</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                                    <h3 className="font-semibold text-gray-900 mb-6">Feedback History</h3>
+                                    <div className="space-y-4">
+                                        <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs text-blue-700 font-bold">JD</div>
+                                                    <span className="text-sm font-medium">John Doe</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500">2 weeks ago</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600">"Great experience with the last bulk order. Packaging was secure and delivery was fast."</p>
+                                            <div className="mt-2 flex text-yellow-400 text-xs">★★★★★</div>
+                                        </div>
+
+                                        <div className="p-4 bg-gray-50 rounded-lg">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-bold">AS</div>
+                                                    <span className="text-sm font-medium">Alice Smith</span>
+                                                </div>
+                                                <span className="text-xs text-gray-500">1 month ago</span>
+                                            </div>
+                                            <p className="text-sm text-gray-600">"Quality is good, but invoice reconciliation took longer than expected due to a discrepancy."</p>
+                                            <div className="mt-2 flex text-yellow-400 text-xs">★★★★☆</div>
+                                        </div>
+                                    </div>
+                                    <Button variant="outline" className="w-full mt-4">Load More Reviews</Button>
+                                </div>
+                            </div>
+                        </TabsContent>
                     </Tabs>
                 </div>
             </div>
