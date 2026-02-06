@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/dashboard/StatCard';
 import { BudgetTracker } from '../components/dashboard/BudgetTracker';
 import { RequestBreakdown } from '../components/dashboard/RequestBreakdown';
-import { StrategicSourcing } from '../components/dashboard/StrategicSourcing';
 import { Button } from '../components/ui/Button';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
@@ -93,7 +92,6 @@ export default function Dashboard() {
                 {/* Right Column: Breakdown & Sourcing */}
                 <div className="space-y-6">
                     <RequestBreakdown metrics={metrics || undefined} />
-                    <StrategicSourcing />
                 </div>
             </div>
 
