@@ -435,4 +435,48 @@ export const createSupplierInteraction = async (req: Request, res: Response) => 
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+// Add Document
+const addDocumentSchema = z.object({
+    title: z.string().min(1),
+    type: z.string().min(1),
+    url: z.string().url(),
+    expiryDate: z.string().optional(), // ISO string
+});
 
+export const addSupplierDocument = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const validatedData = addDocumentSchema.parse(req.body);
+
+        // Determine status
+        let status = 'Valid';
+        if (validatedData.expiryDate) {
+            const expiry = new Date(validatedData.expiryDate);
+            const now = new Date();
+            const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+            if (daysUntilExpiry < 0) status = 'Expired';
+            else if (daysUntilExpiry < 30) status = 'Expiring Soon';
+        }
+
+        const document = await prisma.supplierDocument.create({
+            data: {
+                supplierId: id,
+                title: validatedData.title,
+                type: validatedData.type,
+                url: validatedData.url,
+                expiryDate: validatedData.expiryDate ? new Date(validatedData.expiryDate) : null,
+                status
+            }
+        });
+
+        Logger.info(`Document added for supplier ${id}: ${document.title}`);
+        res.status(201).json(document);
+    } catch (error: any) {
+        Logger.error(error);
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: (error as any).errors });
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};

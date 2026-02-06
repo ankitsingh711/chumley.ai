@@ -175,7 +175,7 @@ export default function ApprovalWorkflow() {
                         className="min-w-[200px]"
                     />
 
-                    <Button onClick={handleSave} disabled={loading} className="bg-primary-700 hover:bg-primary-600">
+                    <Button onClick={handleSave} disabled={loading} className="bg-primary-700 hover:bg-primary-600 whitespace-nowrap shrink-0">
                         {loading ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}
                     </Button>
                 </div>

@@ -10,6 +10,7 @@ import { suppliersApi } from '../services/suppliers.service';
 import type { Supplier, InteractionLog } from '../types/api';
 import { EditSupplierModal } from '../components/suppliers/EditSupplierModal';
 import { MessageSupplierModal } from '../components/suppliers/MessageSupplierModal';
+import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
 
 export default function SupplierProfile() {
     const { id } = useParams<{ id: string }>();
@@ -17,6 +18,7 @@ export default function SupplierProfile() {
     const [isLoading, setIsLoading] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
     const [showMessageModal, setShowMessageModal] = useState(false);
+    const [isAddDocumentOpen, setIsAddDocumentOpen] = useState(false);
     const [interactions, setInteractions] = useState<InteractionLog[]>([]);
     const [showAddLog, setShowAddLog] = useState(false);
     const [newLog, setNewLog] = useState({ title: '', description: '', eventType: 'meeting', date: '' });
@@ -398,7 +400,7 @@ export default function SupplierProfile() {
                                 <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm h-fit">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="font-semibold text-gray-900">Active Documents</h3>
-                                        <Button variant="outline" size="sm">+ Upload New</Button>
+                                        <Button variant="outline" size="sm" onClick={() => setIsAddDocumentOpen(true)}>+ Upload New</Button>
                                     </div>
                                     <div className="space-y-4">
                                         {supplier.documents && supplier.documents.length > 0 ? (
@@ -587,6 +589,16 @@ export default function SupplierProfile() {
                         supplierName={supplier.name}
                         isOpen={showMessageModal}
                         onClose={() => setShowMessageModal(false)}
+                    />
+                    <AddDocumentModal
+                        isOpen={isAddDocumentOpen}
+                        onClose={() => setIsAddDocumentOpen(false)}
+                        supplierId={supplier.id}
+                        onSuccess={async () => {
+                            // Refresh supplier to see new document
+                            const data = await suppliersApi.getDetails(supplier.id);
+                            setSupplier(data);
+                        }}
                     />
                 </>
             )}

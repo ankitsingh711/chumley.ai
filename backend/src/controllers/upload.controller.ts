@@ -14,12 +14,20 @@ const storage = multer.diskStorage({
     }
 });
 
-// Filter for images
 const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
-    if (file.mimetype.startsWith('image/')) {
+    const allowedTypes = [
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
-        cb(new Error('Only images are allowed'));
+        cb(new Error('Invalid file type. Only images and documents (PDF, DOC) are allowed.'));
     }
 };
 

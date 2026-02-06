@@ -10,7 +10,8 @@ import {
     getSupplierMessages,
     sendSupplierMessage,
     getSupplierInteractions,
-    createSupplierInteraction
+    createSupplierInteraction,
+    addSupplierDocument
 } from '../controllers/supplier.controller';
 import { authenticate } from '../middleware/auth.middleware';
 
@@ -29,6 +30,7 @@ router.put('/:id', updateSupplier);
 router.put('/:id/details', updateSupplierDetails);
 router.post('/:id/messages', sendSupplierMessage);
 router.post('/:id/interactions', createSupplierInteraction);
+router.post('/:id/documents', addSupplierDocument);
 router.delete('/:id', deleteSupplier);
 
 export default router;

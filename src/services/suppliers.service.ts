@@ -8,6 +8,8 @@ import type {
     CreateMessageInput,
     InteractionLog,
     CreateInteractionInput,
+    AddDocumentInput,
+    SupplierDocument,
 } from '../types/api';
 
 export const suppliersApi = {
@@ -62,6 +64,11 @@ export const suppliersApi = {
 
     createInteraction: async (id: string, data: CreateInteractionInput): Promise<InteractionLog> => {
         const response = await apiClient.post<InteractionLog>(`/suppliers/${id}/interactions`, data);
+        return response.data;
+    },
+
+    addDocument: async (id: string, data: AddDocumentInput): Promise<SupplierDocument> => {
+        const response = await apiClient.post<SupplierDocument>(`/suppliers/${id}/documents`, data);
         return response.data;
     },
 };

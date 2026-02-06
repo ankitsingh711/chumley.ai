@@ -306,6 +306,13 @@ export interface CreateInteractionInput {
     eventDate: string;
 }
 
+export interface AddDocumentInput {
+    title: string;
+    type: string;
+    url: string;
+    expiryDate?: string;
+}
+
 export interface UpdateUserInput {
     name?: string;
     email?: string;

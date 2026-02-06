@@ -2,12 +2,16 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send } from 'lucide-react';
 import { ChatMessage } from './ChatMessage';
 import { LogoWithText } from '../ui/Logo';
+import { chatApi } from '../../services/chat.service';
+
 
 interface Message {
     id: string;
     text: string;
     sender: 'user' | 'bot';
     timestamp: Date;
+    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary';
+    data?: any;
 }
 
 interface ChatbotProps {
@@ -45,6 +49,10 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         }
     }, [messages, isOpen]);
 
+
+
+    // ... (keep interface Message but upgrade it)
+
     const handleSend = async (text: string = inputValue) => {
         if (!text.trim()) return;
 
@@ -59,33 +67,30 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         setInputValue('');
         setIsTyping(true);
 
-        // Simulate AI Response
-        setTimeout(() => {
-            let replyText = "I'm not sure about that, but I can help with requests, orders, and contracts.";
-            const lowerText = text.toLowerCase();
-
-            if (lowerText.includes('request') || lowerText.includes('approval')) {
-                replyText = "You can view the status of your purchase requests on the 'Requests' page. Would you like me to take you there?";
-            } else if (lowerText.includes('contract')) {
-                replyText = "Contracts can be managed under the 'Strategic Sourcing' section. You can check expiring contracts there.";
-            } else if (lowerText.includes('budget')) {
-                replyText = "Your department's budget utilization is currently 45%. You have $50,000 remaining for this quarter.";
-            } else if (lowerText.includes('supplier')) {
-                replyText = "You can search for approved suppliers in the directory. Need help onboarding a new one?";
-            } else if (lowerText.includes('password')) {
-                replyText = "To reset your password, go to Settings > Security. Or I can send a reset link to your email.";
-            }
+        try {
+            const response = await chatApi.sendMessage(text);
 
             const botMsg: Message = {
                 id: (Date.now() + 1).toString(),
-                text: replyText,
+                text: response.text,
                 sender: 'bot',
                 timestamp: new Date(),
+                type: response.type,
+                data: response.data
             };
 
             setMessages(prev => [...prev, botMsg]);
+        } catch (error) {
+            const errorMsg: Message = {
+                id: (Date.now() + 1).toString(),
+                text: "Sorry, I'm having trouble connecting to the server. Please try again later.",
+                sender: 'bot',
+                timestamp: new Date(),
+            };
+            setMessages(prev => [...prev, errorMsg]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     if (!isOpen) return null;
