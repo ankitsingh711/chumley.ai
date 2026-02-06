@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Settings, CheckCircle, XCircle, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
+import { useAuth } from '../contexts/AuthContext';
 import { UserRole, type User } from '../types/api';
 
 export default function UserPermissions() {
@@ -15,9 +16,13 @@ export default function UserPermissions() {
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
 
+    const { user: currentUser, isLoading: authLoading } = useAuth();
+
     useEffect(() => {
-        fetchUsers();
-    }, []);
+        if (!authLoading) {
+            fetchUsers();
+        }
+    }, [currentUser, authLoading]);
 
     useEffect(() => {
         if (selectedUser) {
@@ -28,9 +33,38 @@ export default function UserPermissions() {
     const fetchUsers = async () => {
         try {
             const data = await usersApi.getAll();
-            setUsers(data);
-            if (data.length > 0 && !selectedUser) {
-                setSelectedUser(data[0]);
+
+            // RBAC Filtering
+            let accessibleUsers = data;
+
+            if (currentUser?.role === UserRole.SYSTEM_ADMIN) {
+                // Admin sees everyone
+                accessibleUsers = data;
+            } else if (currentUser?.role === UserRole.MANAGER || currentUser?.role === UserRole.SENIOR_MANAGER) {
+                // Managers see only their department
+                if (currentUser.department) {
+                    const currentDeptId = typeof currentUser.department === 'string'
+                        ? currentUser.department
+                        : currentUser.department.id;
+
+                    accessibleUsers = data.filter(u => {
+                        const userDeptId = typeof u.department === 'string'
+                            ? u.department
+                            : u.department?.id;
+                        return userDeptId === currentDeptId;
+                    });
+                } else {
+                    // Fallback if manager has no department assigned
+                    accessibleUsers = [];
+                }
+            } else {
+                // Members shouldn't see anyone (or maybe just themselves)
+                accessibleUsers = data.filter(u => u.id === currentUser?.id);
+            }
+
+            setUsers(accessibleUsers);
+            if (accessibleUsers.length > 0 && !selectedUser) {
+                setSelectedUser(accessibleUsers[0]);
             }
         } catch (error) {
             console.error('Failed to fetch users:', error);
