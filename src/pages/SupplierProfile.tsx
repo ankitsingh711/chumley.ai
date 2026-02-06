@@ -360,8 +360,8 @@ export default function SupplierProfile() {
                                                         <td className="px-6 py-4 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
                                                         <td className="px-6 py-4">
                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                                                                    req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                                                                        'bg-red-100 text-red-800'
+                                                                req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                                                                    'bg-red-100 text-red-800'
                                                                 }`}>
                                                                 {req.status}
                                                             </span>
@@ -392,50 +392,36 @@ export default function SupplierProfile() {
                                         <Button variant="outline" size="sm">+ Upload New</Button>
                                     </div>
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-red-50 text-red-600 rounded-lg group-hover:bg-red-100 transition-colors">
-                                                    <FileText className="h-6 w-6" />
+                                        {supplier.documents && supplier.documents.length > 0 ? (
+                                            supplier.documents.map((doc) => (
+                                                <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className={`p-3 rounded-lg transition-colors group-hover:bg-opacity-80 ${doc.type === 'Tax' ? 'bg-red-50 text-red-600' :
+                                                                doc.type === 'Insurance' ? 'bg-blue-50 text-blue-600' :
+                                                                    'bg-purple-50 text-purple-600'
+                                                            }`}>
+                                                            {doc.type === 'Insurance' ? <Shield className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-gray-900">{doc.title}</p>
+                                                            <p className="text-xs text-gray-500">
+                                                                {doc.expiryDate ? `Expires: ${new Date(doc.expiryDate).toLocaleDateString()}` : 'No Expiry'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <span className={`inline-block px-2 py-1 text-xs rounded-md font-medium ${doc.status === 'Valid' ? 'bg-green-100 text-green-700' :
+                                                                doc.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
+                                                            }`}>
+                                                            {doc.status}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">W-9 Tax Form</p>
-                                                    <p className="text-xs text-gray-500">Updated: Oct 1, 2023</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Valid</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                                    <Shield className="h-6 w-6" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">Liability Insurance Certificate</p>
-                                                    <p className="text-xs text-gray-500">Expires: Feb 18, 2026</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-md font-medium">Expiring Soon</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-100 transition-colors">
-                                                    <FileText className="h-6 w-6" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">MSA (Master Service Agreement)</p>
-                                                    <p className="text-xs text-gray-500">Signed: Jan 15, 2023</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="inline-block px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Active</span>
-                                            </div>
-                                        </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-gray-500 text-center py-4">No documents found.</p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -455,12 +441,13 @@ export default function SupplierProfile() {
                                             <div>
                                                 <div className="flex justify-between text-sm mb-1">
                                                     <span className="text-gray-600">Document Validity</span>
-                                                    <span className="font-medium">66%</span>
+                                                    <span className="font-medium">
+                                                        {supplier.documents ? Math.round((supplier.documents.filter(d => d.status === 'Valid').length / supplier.documents.length) * 100) : 0}%
+                                                    </span>
                                                 </div>
                                                 <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-yellow-500 w-2/3"></div>
+                                                    <div className="h-full bg-yellow-500" style={{ width: `${supplier.documents ? (supplier.documents.filter(d => d.status === 'Valid').length / supplier.documents.length) * 100 : 0}%` }}></div>
                                                 </div>
-                                                <p className="text-xs text-yellow-600 mt-1">⚠️ 1 Document expiring soon</p>
                                             </div>
                                         </div>
                                     </div>
@@ -468,9 +455,12 @@ export default function SupplierProfile() {
                                     <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                                         <h3 className="font-semibold text-gray-900 mb-4">Certifications</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">ISO 9001</span>
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">SOC 2 Type II</span>
-                                            <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">GDPR Compliant</span>
+                                            {supplier.documents?.filter(d => d.type === 'Certification').map(cert => (
+                                                <span key={cert.id} className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">{cert.title}</span>
+                                            ))}
+                                            {!supplier.documents?.some(d => d.type === 'Certification') && (
+                                                <span className="text-xs text-gray-500">No certifications listed</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -482,18 +472,20 @@ export default function SupplierProfile() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                 <StatCard
                                     title="ON-TIME DELIVERY"
-                                    value="94%"
-                                    trend={{ value: '+2%', isPositive: true }}
+                                    value={supplier.details?.deliveryDelayAverage !== undefined
+                                        ? (supplier.details.deliveryDelayAverage <= 0 ? '100%' : '90%') // Simple logic for demo, real calculation could vary
+                                        : 'N/A'}
+                                    trend={{ value: supplier.details?.deliveryDelayAverage !== undefined && supplier.details.deliveryDelayAverage < 0 ? 'Ahead' : 'On Track', isPositive: true }}
                                     color="blue"
                                 />
                                 <StatCard
                                     title="QUALITY RATING"
-                                    value="4.8/5"
+                                    value={supplier.details?.qualityScore ? `${(supplier.details.qualityScore / 20).toFixed(1)}/5` : 'N/A'}
                                     color="purple"
                                 />
                                 <StatCard
-                                    title="RESPONSE TIME"
-                                    value="< 2h"
+                                    title="COMMUNICATION"
+                                    value={supplier.details?.communicationScore ? `${supplier.details.communicationScore}%` : 'N/A'}
                                     color="green"
                                 />
                             </div>
@@ -504,35 +496,32 @@ export default function SupplierProfile() {
                                     <div className="space-y-6">
                                         <div>
                                             <div className="flex justify-between items-end mb-2">
-                                                <span className="text-sm font-medium text-gray-700">Delivery Speed</span>
-                                                <span className="text-sm font-bold text-gray-900">Excellent</span>
+                                                <span className="text-sm font-medium text-gray-700">Delivery Delay Avg</span>
+                                                <span className="text-sm font-bold text-gray-900">{supplier.details?.deliveryDelayAverage !== undefined ? Math.abs(supplier.details.deliveryDelayAverage) : 0} Days {supplier.details?.deliveryDelayAverage && supplier.details.deliveryDelayAverage < 0 ? 'Early' : 'Late'}</span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: '90%' }}></div>
+                                                <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: '95%' }}></div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">Consistently delivers ahead of schedule.</p>
                                         </div>
 
                                         <div>
                                             <div className="flex justify-between items-end mb-2">
                                                 <span className="text-sm font-medium text-gray-700">Product Quality</span>
-                                                <span className="text-sm font-bold text-gray-900">High</span>
+                                                <span className="text-sm font-bold text-gray-900">{supplier.details?.qualityScore || 0}%</span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: '95%' }}></div>
+                                                <div className="bg-purple-600 h-2.5 rounded-full" style={{ width: `${supplier.details?.qualityScore || 0}%` }}></div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">Defect rate is below 0.5%.</p>
                                         </div>
 
                                         <div>
                                             <div className="flex justify-between items-end mb-2">
                                                 <span className="text-sm font-medium text-gray-700">Communication</span>
-                                                <span className="text-sm font-bold text-gray-900">Average</span>
+                                                <span className="text-sm font-bold text-gray-900">{supplier.details?.communicationScore || 0}%</span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: '70%' }}></div>
+                                                <div className="bg-yellow-500 h-2.5 rounded-full" style={{ width: `${supplier.details?.communicationScore || 0}%` }}></div>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">Response times can be slow for custom requests.</p>
                                         </div>
                                     </div>
                                 </div>

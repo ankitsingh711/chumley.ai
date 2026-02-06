@@ -105,6 +105,20 @@ export const createRequest = async (req: Request, res: Response) => {
             });
         }
 
+        // Log interaction if supplier is involved
+        if (request.supplierId) {
+            await prisma.interactionLog.create({
+                data: {
+                    supplierId: request.supplierId,
+                    userId: requesterId,
+                    eventType: 'request_created',
+                    title: 'Purchase Request Created',
+                    description: `Request #${request.id.slice(0, 8)} created for ${validatedData.items.length} items. Total: $${totalAmount.toLocaleString()}`,
+                    eventDate: new Date(),
+                }
+            });
+        }
+
         res.status(201).json(request);
     } catch (error: any) {
         Logger.error(error);

@@ -176,6 +176,7 @@ export const getSupplierDetails = async (req: Request, res: Response) => {
             where: { id },
             include: {
                 details: true,
+                documents: true,
                 orders: true,
                 requests: {
                     where: { status: { not: RequestStatus.IN_PROGRESS } },
@@ -338,6 +339,18 @@ export const sendSupplierMessage = async (req: Request, res: Response) => {
                         email: true,
                     }
                 }
+            }
+        });
+
+        // Log interaction for timeline
+        await prisma.interactionLog.create({
+            data: {
+                supplierId: id,
+                userId,
+                eventType: 'message_sent',
+                title: 'Message Sent',
+                description: `Subject: ${validatedData.subject || 'No Subject'}`,
+                eventDate: new Date(),
             }
         });
 

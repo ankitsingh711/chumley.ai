@@ -100,6 +100,7 @@ model Supplier {
   updatedAt    DateTime          @updatedAt
   interactions InteractionLog[]
   messages     Message[]
+  documents    SupplierDocument[]
   orders       PurchaseOrder[]
   requests     PurchaseRequest[]
   contracts    Contract[]
@@ -120,9 +121,30 @@ model SupplierDetails {
   internalNotes String?  @db.Text
   rating        Decimal? @db.Decimal(3, 2)
   reviewCount   Int?     @default(0)
+  
+  // Performance Metrics
+  deliveryDelayAverage Int?     @default(0) // in days
+  qualityScore         Int?     @default(100) // 0-100
+  communicationScore   Int?     @default(100) // 0-100
+  
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+}
+
+model SupplierDocument {
+  id           String   @id @default(uuid())
+  supplierId   String
+  title        String
+  type         String   // e.g., 'Tax', 'Insurance', 'Contract', 'Certification'
+  url          String
+  expiryDate   DateTime?
+  status       String   // 'Valid', 'Expiring Soon', 'Expired'
+  uploadDate   DateTime @default(now())
+  
+  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  
+  @@index([supplierId])
 }
 
 model Message {

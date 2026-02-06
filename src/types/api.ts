@@ -75,6 +75,7 @@ export interface Supplier {
     orders?: PurchaseOrder[];
     details?: SupplierDetails;
     messages?: Message[];
+    documents?: SupplierDocument[];
     interactions?: InteractionLog[];
 }
 
@@ -92,35 +93,24 @@ export interface SupplierDetails {
     internalNotes?: string;
     rating?: number;
     reviewCount?: number;
+    // Metrics
+    deliveryDelayAverage?: number;
+    qualityScore?: number;
+    communicationScore?: number;
+
     createdAt: string;
     updatedAt: string;
 }
 
-export interface Contract {
+export interface SupplierDocument {
     id: string;
-    contractNumber: string;
-    title: string;
     supplierId: string;
-    supplier?: Supplier;
-    ownerId: string;
-    owner?: User;
-    status: ContractStatus;
-    startDate: string;
-    endDate: string;
-    renewalDate?: string;
-    autoRenew: boolean;
-    noticePeriodDays: number;
-    totalValue: number;
-    currency: string;
-    paymentTerms?: string;
-    documentUrl?: string;
-    documentName?: string;
-    description?: string;
-    terms?: string;
-    notes?: string;
-    createdAt: string;
-    updatedAt: string;
-    daysUntilExpiry?: number;
+    title: string;
+    type: string;
+    url: string;
+    expiryDate: string | null;
+    status: string;
+    uploadDate: string;
 }
 
 export interface Message {

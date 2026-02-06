@@ -50,6 +50,19 @@ export const createOrder = async (req: Request, res: Response) => {
         });
 
         Logger.info(`Purchase Order created: ${order.id} for Request ${request.id}`);
+
+        // Log interaction
+        await prisma.interactionLog.create({
+            data: {
+                supplierId: validatedData.supplierId,
+                userId: request.requesterId, // Use requester ID as the context user, or could be approver
+                eventType: 'order_created',
+                title: 'Purchase Order Issued',
+                description: `Order #${order.id.slice(0, 8)} issued for Request #${request.id.slice(0, 8)}. Amount: $${Number(order.totalAmount).toLocaleString()}`,
+                eventDate: new Date(),
+            }
+        });
+
         res.status(201).json(order);
     } catch (error: any) {
         Logger.error(error);
