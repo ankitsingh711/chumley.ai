@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
 import { Plus, FileText, Calendar, DollarSign, Building2, X } from 'lucide-react';
+import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
 import { contractsApi } from '../services/contracts.service';
 import { suppliersApi } from '../services/suppliers.service';
@@ -259,20 +261,15 @@ export default function Contracts() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Supplier <span className="text-red-500">*</span>
                                 </label>
-                                <select
-                                    required
+                                <Select
                                     value={formData.supplierId}
-                                    onChange={(e) => setFormData({ ...formData, supplierId: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                >
-                                    <option value="">Select a supplier</option>
-                                    {suppliers.length === 0 && (
-                                        <option value="" disabled>No suppliers available - Please add suppliers first</option>
-                                    )}
-                                    {suppliers.map(s => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, supplierId: val })}
+                                    options={[
+                                        { value: '', label: 'Select a supplier' },
+                                        ...suppliers.map(s => ({ value: s.id, label: s.name }))
+                                    ]}
+                                    className="w-full"
+                                />
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
@@ -280,24 +277,22 @@ export default function Contracts() {
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         Start Date <span className="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        type="date"
-                                        required
+                                    <DatePicker
                                         value={formData.startDate}
-                                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                        onChange={(val) => setFormData({ ...formData, startDate: val })}
+                                        className="w-full"
+                                        placeholder="Start Date"
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
                                         End Date <span className="text-red-500">*</span>
                                     </label>
-                                    <input
-                                        type="date"
-                                        required
+                                    <DatePicker
                                         value={formData.endDate}
-                                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                        onChange={(val) => setFormData({ ...formData, endDate: val })}
+                                        className="w-full"
+                                        placeholder="End Date"
                                     />
                                 </div>
                             </div>

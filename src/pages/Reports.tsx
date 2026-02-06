@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, Calendar, Filter, X } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { reportsApi } from '../services/reports.service';
@@ -156,18 +157,20 @@ export default function Reports() {
                                 <div className="border-t pt-4">
                                     <p className="text-xs text-gray-500 mb-2">Custom Range</p>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <input
-                                            type="date"
-                                            value={dateRange.start}
-                                            onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                                            className="text-sm border border-gray-300 rounded px-2 py-1"
-                                        />
-                                        <input
-                                            type="date"
-                                            value={dateRange.end}
-                                            onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                                            className="text-sm border border-gray-300 rounded px-2 py-1"
-                                        />
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <DatePicker
+                                                value={dateRange.start}
+                                                onChange={(val) => setDateRange({ ...dateRange, start: val })}
+                                                placeholder="Start Date"
+                                                className="text-sm"
+                                            />
+                                            <DatePicker
+                                                value={dateRange.end}
+                                                onChange={(val) => setDateRange({ ...dateRange, end: val })}
+                                                placeholder="End Date"
+                                                className="text-sm"
+                                            />
+                                        </div>
                                     </div>
                                     <Button
                                         onClick={applyCustomDateRange}

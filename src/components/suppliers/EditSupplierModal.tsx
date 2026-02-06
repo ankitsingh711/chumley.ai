@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { suppliersApi } from '../../services/suppliers.service';
 import { ImageUpload } from '../ui/ImageUpload';
+import { Select } from '../ui/Select';
 import type { Supplier, UpdateSupplierDetailsInput } from '../../types/api';
 
 interface EditSupplierModalProps {
@@ -107,30 +108,23 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Category <span className="text-red-500">*</span>
                                 </label>
-                                <select
+                                <Select
                                     value={formData.category}
-                                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    required
-                                >
-                                    {categories.map(cat => (
-                                        <option key={cat} value={cat}>{cat}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, category: val })}
+                                    options={categories.map(cat => ({ value: cat, label: cat }))}
+                                    className="w-full"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Status
                                 </label>
-                                <select
+                                <Select
                                     value={formData.status}
-                                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                >
-                                    {statuses.map(status => (
-                                        <option key={status} value={status}>{status}</option>
-                                    ))}
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, status: val })}
+                                    options={statuses.map(status => ({ value: status, label: status }))}
+                                    className="w-full"
+                                />
                             </div>
                         </div>
                         <div className="mt-4">
@@ -248,32 +242,34 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Payment Terms
                                 </label>
-                                <select
+                                <Select
                                     value={formData.paymentTerms}
-                                    onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                >
-                                    <option value="Net 15">Net 15</option>
-                                    <option value="Net 30">Net 30</option>
-                                    <option value="Net 45">Net 45</option>
-                                    <option value="Net 60">Net 60</option>
-                                    <option value="Due on Receipt">Due on Receipt</option>
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, paymentTerms: val })}
+                                    options={[
+                                        { value: 'Net 15', label: 'Net 15' },
+                                        { value: 'Net 30', label: 'Net 30' },
+                                        { value: 'Net 45', label: 'Net 45' },
+                                        { value: 'Net 60', label: 'Net 60' },
+                                        { value: 'Due on Receipt', label: 'Due on Receipt' },
+                                    ]}
+                                    className="w-full"
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">
                                     Payment Method
                                 </label>
-                                <select
+                                <Select
                                     value={formData.paymentMethod}
-                                    onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                >
-                                    <option value="Wire Transfer">Wire Transfer</option>
-                                    <option value="ACH">ACH</option>
-                                    <option value="Check">Check</option>
-                                    <option value="Credit Card">Credit Card</option>
-                                </select>
+                                    onChange={(val) => setFormData({ ...formData, paymentMethod: val })}
+                                    options={[
+                                        { value: 'Wire Transfer', label: 'Wire Transfer' },
+                                        { value: 'ACH', label: 'ACH' },
+                                        { value: 'Check', label: 'Check' },
+                                        { value: 'Credit Card', label: 'Credit Card' },
+                                    ]}
+                                    className="w-full"
+                                />
                             </div>
                         </div>
                     </div>

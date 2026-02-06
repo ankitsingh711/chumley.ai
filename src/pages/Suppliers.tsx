@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { SupplierCard, type Supplier as CardSupplier } from '../components/suppliers/SupplierCard';
 import { suppliersApi } from '../services/suppliers.service';
 import { ImageUpload } from '../components/ui/ImageUpload';
+import { Select } from '../components/ui/Select';
 
 interface AddSupplierForm {
     name: string;
@@ -270,30 +271,25 @@ export default function Suppliers() {
                                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                                         Category <span className="text-red-500">*</span>
                                                     </label>
-                                                    <select
+                                                    <Select
                                                         value={formData.category}
-                                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                                        className={`w-full rounded-xl border ${errors.category ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all bg-white`}
-                                                    >
-                                                        {categories.map(cat => (
-                                                            <option key={cat} value={cat}>{cat}</option>
-                                                        ))}
-                                                    </select>
+                                                        onChange={(val) => setFormData({ ...formData, category: val })}
+                                                        options={categories.map(cat => ({ value: cat, label: cat }))}
+                                                        error={errors.category}
+                                                        placeholder="Select Category"
+                                                    />
                                                 </div>
 
                                                 <div>
                                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                                                         Status
                                                     </label>
-                                                    <select
+                                                    <Select
                                                         value={formData.status}
-                                                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                                                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all bg-white"
-                                                    >
-                                                        {statuses.map(status => (
-                                                            <option key={status} value={status}>{status}</option>
-                                                        ))}
-                                                    </select>
+                                                        onChange={(val) => setFormData({ ...formData, status: val })}
+                                                        options={statuses.map(status => ({ value: status, label: status }))}
+                                                        placeholder="Select Status"
+                                                    />
                                                 </div>
                                             </div>
 

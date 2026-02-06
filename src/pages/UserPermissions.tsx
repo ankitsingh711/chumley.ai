@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Search, Settings, CheckCircle, XCircle, X } from 'lucide-react';
+import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
 import { useAuth } from '../contexts/AuthContext';
@@ -217,16 +218,17 @@ export default function UserPermissions() {
                             <div className="flex items-end gap-3">
                                 <div className="text-right">
                                     <p className="text-xs text-gray-500">ASSIGN ROLE</p>
-                                    <select
+                                    <Select
                                         value={roleValue}
-                                        onChange={(e) => setRoleValue(e.target.value as UserRole)}
-                                        className="mt-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-primary-500 focus:outline-none"
-                                    >
-                                        <option value={UserRole.MEMBER}>Team Member</option>
-                                        <option value={UserRole.MANAGER}>Manager</option>
-                                        <option value={UserRole.SENIOR_MANAGER}>Senior Manager</option>
-                                        <option value={UserRole.SYSTEM_ADMIN}>Administrator</option>
-                                    </select>
+                                        onChange={(val) => setRoleValue(val as UserRole)}
+                                        options={[
+                                            { value: UserRole.MEMBER, label: 'Team Member' },
+                                            { value: UserRole.MANAGER, label: 'Manager' },
+                                            { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
+                                            { value: UserRole.SYSTEM_ADMIN, label: 'Administrator' },
+                                        ]}
+                                        className="mt-1 min-w-[200px]"
+                                    />
                                 </div>
                                 <Button
                                     onClick={handleSaveChanges}

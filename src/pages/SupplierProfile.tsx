@@ -1,6 +1,8 @@
 import { MapPin, CreditCard, Shield, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
+import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
@@ -17,7 +19,7 @@ export default function SupplierProfile() {
     const [showMessageModal, setShowMessageModal] = useState(false);
     const [interactions, setInteractions] = useState<InteractionLog[]>([]);
     const [showAddLog, setShowAddLog] = useState(false);
-    const [newLog, setNewLog] = useState({ title: '', description: '', eventType: 'meeting' });
+    const [newLog, setNewLog] = useState({ title: '', description: '', eventType: 'meeting', date: '' });
 
     useEffect(() => {
         const fetchSupplier = async () => {
@@ -262,24 +264,31 @@ export default function SupplierProfile() {
                                                     className="w-full rounded border px-3 py-2 text-sm resize-none"
                                                     rows={2}
                                                 />
-                                                <select
+                                                <Select
                                                     value={newLog.eventType}
-                                                    onChange={(e) => setNewLog({ ...newLog, eventType: e.target.value })}
-                                                    className="w-full rounded border px-3 py-2 text-sm"
-                                                >
-                                                    <option value="meeting">Meeting</option>
-                                                    <option value="call">Call</option>
-                                                    <option value="email">Email</option>
-                                                    <option value="contract">Contract</option>
-                                                    <option value="other">Other</option>
-                                                </select>
+                                                    onChange={(val) => setNewLog({ ...newLog, eventType: val })}
+                                                    options={[
+                                                        { value: 'meeting', label: 'Meeting' },
+                                                        { value: 'call', label: 'Call' },
+                                                        { value: 'email', label: 'Email' },
+                                                        { value: 'contract', label: 'Contract' },
+                                                        { value: 'other', label: 'Other' },
+                                                    ]}
+                                                    placeholder="Select type..."
+                                                    className="w-full"
+                                                />
+                                                <DatePicker
+                                                    value={newLog.date}
+                                                    onChange={(val) => setNewLog({ ...newLog, date: val })}
+                                                    placeholder="Event Date (optional)"
+                                                />
                                                 <div className="flex gap-2">
                                                     <Button
                                                         variant="secondary"
                                                         className="flex-1 text-xs h-8"
                                                         onClick={() => {
                                                             setShowAddLog(false);
-                                                            setNewLog({ title: '', description: '', eventType: 'meeting' });
+                                                            setNewLog({ title: '', description: '', eventType: 'meeting', date: '' });
                                                         }}
                                                     >
                                                         Cancel
@@ -291,11 +300,11 @@ export default function SupplierProfile() {
                                                             try {
                                                                 const created = await suppliersApi.createInteraction(id, {
                                                                     ...newLog,
-                                                                    eventDate: new Date().toISOString(),
+                                                                    eventDate: newLog.date ? new Date(newLog.date).toISOString() : new Date().toISOString(),
                                                                 });
                                                                 setInteractions([created, ...interactions]);
                                                                 setShowAddLog(false);
-                                                                setNewLog({ title: '', description: '', eventType: 'meeting' });
+                                                                setNewLog({ title: '', description: '', eventType: 'meeting', date: '' });
                                                             } catch (error) {
                                                                 console.error('Failed to add log:', error);
                                                             }
@@ -397,8 +406,8 @@ export default function SupplierProfile() {
                                                 <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg hover:border-primary-200 transition-colors cursor-pointer group">
                                                     <div className="flex items-center gap-4">
                                                         <div className={`p-3 rounded-lg transition-colors group-hover:bg-opacity-80 ${doc.type === 'Tax' ? 'bg-red-50 text-red-600' :
-                                                                doc.type === 'Insurance' ? 'bg-blue-50 text-blue-600' :
-                                                                    'bg-purple-50 text-purple-600'
+                                                            doc.type === 'Insurance' ? 'bg-blue-50 text-blue-600' :
+                                                                'bg-purple-50 text-purple-600'
                                                             }`}>
                                                             {doc.type === 'Insurance' ? <Shield className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
                                                         </div>
@@ -411,8 +420,8 @@ export default function SupplierProfile() {
                                                     </div>
                                                     <div className="text-right">
                                                         <span className={`inline-block px-2 py-1 text-xs rounded-md font-medium ${doc.status === 'Valid' ? 'bg-green-100 text-green-700' :
-                                                                doc.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-red-100 text-red-700'
+                                                            doc.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-red-100 text-red-700'
                                                             }`}>
                                                             {doc.status}
                                                         </span>

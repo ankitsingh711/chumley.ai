@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, ArrowRight, Save, AlertCircle, Building2, Globe } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/Select';
 import { departmentsApi, type Department } from '../services/departments.service';
 
 interface WorkflowStep {
@@ -160,18 +161,19 @@ export default function ApprovalWorkflow() {
                     <h1 className="text-2xl font-bold text-gray-900">Approval Workflows</h1>
                     <p className="text-sm text-gray-500">Configure how purchase requests are routed and approved.</p>
                 </div>
+
+
                 <div className="flex items-center gap-3">
-                    <select
+                    <Select
                         value={selectedDepartmentId || ''}
-                        onChange={(e) => setSelectedDepartmentId(e.target.value || null)}
+                        onChange={(val) => setSelectedDepartmentId(val || null)}
+                        options={[
+                            { value: '', label: 'Global Default' },
+                            ...departments.map(dept => ({ value: dept.id, label: dept.name }))
+                        ]}
                         disabled={loadingDepts}
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none min-w-[200px] disabled:bg-gray-100 disabled:text-gray-400"
-                    >
-                        <option value="">Global Default</option>
-                        {departments.map(dept => (
-                            <option key={dept.id} value={dept.id}>{dept.name}</option>
-                        ))}
-                    </select>
+                        className="min-w-[200px]"
+                    />
 
                     <Button onClick={handleSave} disabled={loading} className="bg-primary-700 hover:bg-primary-600">
                         {loading ? 'Saving...' : <><Save className="mr-2 h-4 w-4" /> Save Changes</>}

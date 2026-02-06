@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
-import { Plus, Trash2, MapPin, Calendar, Building2, Wallet } from 'lucide-react';
+import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
+import { Plus, Trash2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
@@ -161,19 +163,16 @@ export default function CreateRequest() {
                         <div className="grid grid-cols-1 gap-6">
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier / Vendor</label>
-                                <div className="relative">
-                                    <select
-                                        value={selectedSupplierId}
-                                        onChange={(e) => setSelectedSupplierId(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm outline-none focus:border-primary-500"
-                                    >
-                                        <option value="">Select a supplier...</option>
-                                        {suppliers.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name} ({s.category})</option>
-                                        ))}
-                                    </select>
-                                    <Building2 className="absolute right-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
-                                </div>
+                                <Select
+                                    value={selectedSupplierId}
+                                    onChange={setSelectedSupplierId}
+                                    options={[
+                                        { value: '', label: 'Select a supplier...' },
+                                        ...suppliers.map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
+                                    ]}
+                                    placeholder="Select a supplier..."
+                                    className="w-full"
+                                />
                             </div>
 
                             <div>
@@ -185,160 +184,110 @@ export default function CreateRequest() {
                                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
                                 />
                             </div>
-                        </div>
-                    </div>
 
-                    {/* Item Details */}
-                    <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                        <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">2</span>
-                                Item Details
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-primary-600 hover:text-primary-700 hover:bg-primary-50"
-                                onClick={addItem}
-                            >
-                                <Plus className="h-4 w-4 mr-1" /> Add Row
-                            </Button>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium min-w-[200px]">Item Description</th>
-                                        <th className="px-4 py-3 font-medium w-24">Qty</th>
-                                        <th className="px-4 py-3 font-medium w-32">Unit Price</th>
-                                        <th className="px-4 py-3 font-medium w-32">Total</th>
-                                        <th className="px-4 py-3 font-medium w-12"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {items.map((item, index) => (
-                                        <tr key={index}>
-                                            <td className="px-4 py-3">
-                                                <input
-                                                    type="text"
-                                                    value={item.description}
-                                                    onChange={(e) => updateItem(index, 'description', e.target.value)}
-                                                    placeholder="Item name..."
-                                                    className="w-full bg-transparent outline-none placeholder:text-gray-400"
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <input
-                                                    type="number"
-                                                    value={item.quantity}
-                                                    onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 1)}
-                                                    min="1"
-                                                    className="w-full bg-gray-50 rounded border-none px-2 py-1 text-center"
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="relative">
-                                                    <span className="absolute left-2 top-1 text-gray-400">$</span>
-                                                    <input
-                                                        type="number"
-                                                        value={item.unitPrice}
-                                                        onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="w-full bg-gray-50 rounded border-none pl-5 py-1"
-                                                    />
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 font-bold text-gray-900">
-                                                ${(item.quantity * item.unitPrice).toFixed(2)}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => removeItem(index)}
-                                                    disabled={items.length === 1}
-                                                    className="disabled:opacity-30 p-1 hover:bg-red-50 rounded text-gray-300 hover:text-red-500 transition-colors"
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    <tr className="bg-gray-50 font-bold">
-                                        <td colSpan={3} className="px-6 py-4 text-right">Grand Total:</td>
-                                        <td className="px-6 py-4 text-primary-700">${calculateTotal().toFixed(2)}</td>
-                                        <td></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Right Column: Meta Info */}
-                <div className="space-y-6">
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <h3 className="flex items-center gap-2 font-semibold text-gray-900 mb-4">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">3</span>
-                            Budget & Shipping
-                        </h3>
-
-                        <div className="space-y-4">
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
                                     Budget Category <span className="text-red-500">*</span>
                                 </label>
-                                <div className="relative">
-                                    <select
-                                        value={budgetCategory}
-                                        onChange={(e) => setBudgetCategory(e.target.value)}
-                                        className="w-full appearance-none rounded-lg border-2 border-gray-200 bg-white px-4 py-3 pr-10 text-sm font-medium text-gray-900 outline-none transition-all hover:border-gray-300 focus:border-primary-500 focus:ring-2 focus:ring-primary-100 cursor-pointer"
-                                        required
-                                    >
-                                        <option value="" className="text-gray-500">Select Department...</option>
-                                        {departments.map(dept => (
-                                            <option
-                                                key={dept.id}
-                                                value={dept.name}
-                                                className="py-2 text-gray-900"
-                                            >
-                                                {dept.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <Wallet className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                                </div>
-                                {departments.length === 0 && (
-                                    <p className="mt-1 text-xs text-gray-500">Loading departments...</p>
-                                )}
+                                <Select
+                                    value={budgetCategory}
+                                    onChange={setBudgetCategory}
+                                    options={[
+                                        { value: '', label: 'Select Department...' },
+                                        ...departments.map(dept => ({ value: dept.name, label: dept.name }))
+                                    ]}
+                                    placeholder="Select Department..."
+                                    error={departments.length === 0 ? 'Loading departments...' : undefined}
+                                />
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Delivery Location</label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={deliveryLocation}
-                                        onChange={(e) => setDeliveryLocation(e.target.value)}
-                                        placeholder="e.g. HQ - Receiving Dock"
-                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
-                                    />
-                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Delivery Location</label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={deliveryLocation}
+                                            onChange={(e) => setDeliveryLocation(e.target.value)}
+                                            placeholder="e.g. HQ - Receiving Dock"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
+                                        />
+                                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                                    </div>
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Expected Delivery</label>
-                                <div className="relative">
-                                    <input
-                                        type="date"
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Expected Delivery</label>
+                                    <DatePicker
                                         value={expectedDeliveryDate}
-                                        onChange={(e) => setExpectedDeliveryDate(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
+                                        onChange={setExpectedDeliveryDate}
+                                        placeholder="Select date"
                                     />
-                                    <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Request Items */}
+                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">2</span>
+                                Request Items
+                            </h3>
+                            <Button size="sm" variant="ghost" className="text-primary-600" onClick={addItem}>
+                                <Plus className="mr-1 h-3 w-3" /> Add Row
+                            </Button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {items.map((item, index) => (
+                                <div key={index} className="flex gap-3 items-start group">
+                                    <div className="flex-1">
+                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>}
+                                        <input
+                                            type="text"
+                                            value={item.description}
+                                            onChange={(e) => updateItem(index, 'description', e.target.value)}
+                                            placeholder="Item name or description"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500"
+                                        />
+                                    </div>
+                                    <div className="w-20">
+                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Qty</label>}
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={item.quantity}
+                                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-center"
+                                        />
+                                    </div>
+                                    <div className="w-32">
+                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Unit Price ($)</label>}
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            value={item.unitPrice}
+                                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-right"
+                                        />
+                                    </div>
+                                    <div className="w-8 flex items-end justify-center pt-8">
+                                        <button
+                                            onClick={() => removeItem(index)}
+                                            className="p-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            title="Remove item"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                            <p className="text-sm font-medium text-gray-600">Total: <span className="text-gray-900 text-lg ml-2">${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
                         </div>
                     </div>
 
@@ -346,6 +295,40 @@ export default function CreateRequest() {
                         <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Helpful Tip</h4>
                         <p className="text-xs text-blue-700 leading-relaxed">
                             For capital equipment over $5,000, please ensure you have attached the necessary 3 competitive quotes in the "Files" section (coming soon).
+                        </p>
+                    </div>
+                </div>
+
+                {/* Right Column: Order Summary */}
+                <div className="space-y-6">
+                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm sticky top-6">
+                        <h3 className="font-semibold text-gray-900 mb-4">Request Summary</h3>
+
+                        <div className="space-y-3 text-sm border-b border-gray-100 pb-4 mb-4">
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Subtotal</span>
+                                <span className="font-medium text-gray-900">${calculateTotal().toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Shipping Estimate</span>
+                                <span className="font-medium text-gray-900">$0.00</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-500">Tax Estimate (8.25%)</span>
+                                <span className="font-medium text-gray-900">${(calculateTotal() * 0.0825).toFixed(2)}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-between items-center mb-6">
+                            <span className="text-base font-bold text-gray-900">Total</span>
+                            <span className="text-xl font-bold text-primary-600">${(calculateTotal() * 1.0825).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+
+                        <Button className="w-full bg-primary-700 hover:bg-primary-600" onClick={handleSubmit} disabled={loading}>
+                            {loading ? 'Submitting...' : 'Submit Request'}
+                        </Button>
+                        <p className="text-xs text-gray-500 text-center mt-3">
+                            Requires approval from {budgetCategory ? 'Department Head' : 'Manager'}
                         </p>
                     </div>
                 </div>

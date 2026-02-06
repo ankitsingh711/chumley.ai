@@ -178,6 +178,25 @@ export interface PurchaseOrder {
     updatedAt: string;
 }
 
+export interface Contract {
+    id: string;
+    title: string;
+    contractNumber?: string;
+    supplierId: string;
+    supplier?: Supplier;
+    startDate: string;
+    endDate: string;
+    totalValue: number;
+    currency: string;
+    paymentTerms?: string;
+    autoRenew: boolean;
+    description?: string;
+    status: ContractStatus;
+    daysUntilExpiry?: number;
+    createdAt: string;
+    updatedAt: string;
+}
+
 export interface AuditLog {
     id: string;
     userId: string;
@@ -227,6 +246,18 @@ export interface CreateOrderInput {
     requestId: string;
     supplierId: string;
     totalAmount: number;
+}
+
+export interface CreateContractInput {
+    title: string;
+    supplierId: string;
+    startDate: string;
+    endDate: string;
+    totalValue: number;
+    paymentTerms?: string;
+    autoRenew: boolean;
+    description?: string;
+    status: ContractStatus;
 }
 
 export interface UpdateOrderStatusInput {
