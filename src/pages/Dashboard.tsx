@@ -139,7 +139,7 @@ export default function Dashboard() {
                                                     request.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
                                                         'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                {request.status}
+                                                {request.status.replace(/_/g, ' ')}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

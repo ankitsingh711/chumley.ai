@@ -185,7 +185,7 @@ export default function SupplierProfile() {
                                                             req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
                                                                 'bg-red-100 text-red-700'
                                                             }`}>
-                                                            {req.status}
+                                                            {req.status.replace(/_/g, ' ')}
                                                         </span>
                                                     </div>
                                                 ))
@@ -420,7 +420,7 @@ export default function SupplierProfile() {
                                                                 req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                                                                     'bg-red-100 text-red-800'
                                                                 }`}>
-                                                                {req.status}
+                                                                {req.status.replace(/_/g, ' ')}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
