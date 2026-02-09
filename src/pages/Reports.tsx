@@ -51,7 +51,7 @@ export default function Reports() {
                 req.requester?.name || 'Unknown',
                 req.requester?.department || 'N/A',
                 req.totalAmount,
-                req.status
+                req.status.replace(/_/g, ' ')
             ]);
 
             const csvContent = [
@@ -157,20 +157,18 @@ export default function Reports() {
                                 <div className="border-t pt-4">
                                     <p className="text-xs text-gray-500 mb-2">Custom Range</p>
                                     <div className="grid grid-cols-2 gap-2">
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <DatePicker
-                                                value={dateRange.start}
-                                                onChange={(val) => setDateRange({ ...dateRange, start: val })}
-                                                placeholder="Start Date"
-                                                className="text-sm"
-                                            />
-                                            <DatePicker
-                                                value={dateRange.end}
-                                                onChange={(val) => setDateRange({ ...dateRange, end: val })}
-                                                placeholder="End Date"
-                                                className="text-sm"
-                                            />
-                                        </div>
+                                        <DatePicker
+                                            value={dateRange.start}
+                                            onChange={(val) => setDateRange({ ...dateRange, start: val })}
+                                            placeholder="Start Date"
+                                            className="text-sm w-full"
+                                        />
+                                        <DatePicker
+                                            value={dateRange.end}
+                                            onChange={(val) => setDateRange({ ...dateRange, end: val })}
+                                            placeholder="End Date"
+                                            className="text-sm w-full"
+                                        />
                                     </div>
                                     <Button
                                         onClick={applyCustomDateRange}
@@ -300,9 +298,10 @@ export default function Reports() {
                                 <td className="px-6 py-3">
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                         req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
-                                            'bg-red-100 text-red-700'
+                                            req.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-red-100 text-red-700'
                                         }`}>
-                                        {req.status}
+                                        {req.status.replace(/_/g, ' ')}
                                     </span>
                                 </td>
                             </tr>

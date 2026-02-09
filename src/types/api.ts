@@ -160,6 +160,8 @@ export interface PurchaseRequest {
     approver?: User;
     supplierId?: string;
     supplier?: Supplier;
+    categoryId?: string;
+    category?: { id: string; name: string };
     budgetCategory?: string;
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
@@ -229,6 +231,7 @@ export interface CreateRequestInput {
     reason?: string;
     supplierId?: string;
     budgetCategory?: string;
+    categoryId?: string;
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
     items: {

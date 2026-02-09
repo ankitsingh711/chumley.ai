@@ -26,5 +26,7 @@ import chatRoutes from './chat.routes';
 router.use('/chat', chatRoutes);
 import uploadRoutes from './upload.routes';
 router.use('/upload', uploadRoutes);
+import categoryRoutes from './category.routes';
+router.use('/categories', categoryRoutes);
 
 export default router;

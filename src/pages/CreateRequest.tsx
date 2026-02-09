@@ -8,12 +8,16 @@ import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { CreateRequestInput, Supplier } from '../types/api';
+import { CategorySelector } from '../components/CategorySelector';
 
 interface ItemRow {
     description: string;
+
     quantity: number;
     unitPrice: number;
 }
+
+
 
 export default function CreateRequest() {
     const navigate = useNavigate();
@@ -21,7 +25,8 @@ export default function CreateRequest() {
     // Form State
     const [reason, setReason] = useState('');
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
-    const [budgetCategory, setBudgetCategory] = useState('');
+    const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState('');
     const [deliveryLocation, setDeliveryLocation] = useState('');
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [items, setItems] = useState<ItemRow[]>([
@@ -92,8 +97,13 @@ export default function CreateRequest() {
             return;
         }
 
-        if (!budgetCategory) {
-            setError('Please select a budget category');
+        if (!selectedDepartmentId) {
+            setError('Please select a department');
+            return;
+        }
+
+        if (!selectedCategoryId) {
+            setError('Please select a spending category');
             return;
         }
 
@@ -102,7 +112,8 @@ export default function CreateRequest() {
             const data: CreateRequestInput = {
                 reason: reason || undefined,
                 supplierId: selectedSupplierId,
-                budgetCategory,
+                budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
+                categoryId: selectedCategoryId,
                 deliveryLocation,
                 expectedDeliveryDate: expectedDeliveryDate || undefined,
                 items: validItems,
@@ -187,17 +198,31 @@ export default function CreateRequest() {
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                                    Budget Category <span className="text-red-500">*</span>
+                                    Department <span className="text-red-500">*</span>
                                 </label>
                                 <Select
-                                    value={budgetCategory}
-                                    onChange={setBudgetCategory}
+                                    value={selectedDepartmentId}
+                                    onChange={(val) => {
+                                        setSelectedDepartmentId(val);
+                                        setSelectedCategoryId(''); // Reset category when department changes
+                                    }}
                                     options={[
                                         { value: '', label: 'Select Department...' },
-                                        ...departments.map(dept => ({ value: dept.name, label: dept.name }))
+                                        ...departments.map(dept => ({ value: dept.id, label: dept.name }))
                                     ]}
                                     placeholder="Select Department..."
                                     error={departments.length === 0 ? 'Loading departments...' : undefined}
+                                />
+                            </div>
+
+                            <div>
+                                <CategorySelector
+                                    label="Spending Category"
+                                    value={selectedCategoryId}
+                                    onChange={setSelectedCategoryId}
+                                    departmentId={selectedDepartmentId}
+                                    disabled={!selectedDepartmentId}
+                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
                                 />
                             </div>
 
@@ -328,7 +353,7 @@ export default function CreateRequest() {
                             {loading ? 'Submitting...' : 'Submit Request'}
                         </Button>
                         <p className="text-xs text-gray-500 text-center mt-3">
-                            Requires approval from {budgetCategory ? 'Department Head' : 'Manager'}
+                            Requires approval from {selectedDepartmentId ? 'Department Head' : 'Manager'}
                         </p>
                     </div>
                 </div>

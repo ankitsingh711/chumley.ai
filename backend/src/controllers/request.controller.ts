@@ -17,7 +17,8 @@ const itemSchema = z.object({
 const createRequestSchema = z.object({
     reason: z.string().optional(),
     supplierId: z.string().uuid().optional(),
-    budgetCategory: z.string().optional(),
+    budgetCategory: z.string().optional(), // Used as Department Name (Legacy)
+    categoryId: z.string().uuid().optional(), // Hierarchical Category ID
     deliveryLocation: z.string().optional(),
     expectedDeliveryDate: z.string().transform((str) => new Date(str)).optional(),
     items: z.array(itemSchema).min(1),
@@ -47,6 +48,7 @@ export const createRequest = async (req: Request, res: Response) => {
                 // New fields
                 supplierId: validatedData.supplierId,
                 budgetCategory: validatedData.budgetCategory,
+                categoryId: validatedData.categoryId,
                 deliveryLocation: validatedData.deliveryLocation,
                 expectedDeliveryDate: validatedData.expectedDeliveryDate,
                 items: {
