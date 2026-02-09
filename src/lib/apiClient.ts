@@ -32,10 +32,16 @@ class ApiClient {
             (response) => response,
             (error) => {
                 if (error.response?.status === 401) {
-                    // Token expired or invalid
-                    localStorage.removeItem('authToken');
-                    localStorage.removeItem('currentUser');
-                    window.location.href = '/login';
+                    // Don't redirect if we're on the login/register endpoints
+                    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
+                                          error.config?.url?.includes('/auth/register');
+                    
+                    if (!isAuthEndpoint) {
+                        // Token expired or invalid
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('currentUser');
+                        window.location.href = '/login';
+                    }
                 }
                 return Promise.reject(error);
             }
