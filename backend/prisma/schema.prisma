@@ -71,6 +71,8 @@ model User {
   
   @@index([departmentId])
   @@index([managerId])
+  
+  reviews            Review[]
 }
 
 model UserDepartmentRole {
@@ -105,6 +107,7 @@ model Supplier {
   requests     PurchaseRequest[]
   contracts    Contract[]
   details      SupplierDetails?
+  reviews      Review[]
 }
 
 model SupplierDetails {
@@ -342,4 +345,19 @@ model Contract {
   @@index([ownerId])
   @@index([status])
   @@index([endDate])
+}
+
+model Review {
+  id          String   @id @default(uuid())
+  supplierId  String
+  userId      String
+  rating      Int      // 1-5
+  comment     String   @db.Text
+  createdAt   DateTime @default(now())
+  
+  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([supplierId])
+  @@index([userId])
 }

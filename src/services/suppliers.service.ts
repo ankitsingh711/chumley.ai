@@ -10,6 +10,7 @@ import type {
     CreateInteractionInput,
     AddDocumentInput,
     SupplierDocument,
+    Review,
 } from '../types/api';
 
 export const suppliersApi = {
@@ -69,6 +70,16 @@ export const suppliersApi = {
 
     addDocument: async (id: string, data: AddDocumentInput): Promise<SupplierDocument> => {
         const response = await apiClient.post<SupplierDocument>(`/suppliers/${id}/documents`, data);
+        return response.data;
+    },
+
+    getReviews: async (id: string, page = 1, limit = 5): Promise<{ data: Review[]; meta: any }> => {
+        const response = await apiClient.get<{ data: Review[]; meta: any }>(`/suppliers/${id}/reviews?page=${page}&limit=${limit}`);
+        return response.data;
+    },
+
+    addReview: async (id: string, data: { rating: number; comment: string }): Promise<Review> => {
+        const response = await apiClient.post<Review>(`/suppliers/${id}/reviews`, data);
         return response.data;
     },
 };

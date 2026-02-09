@@ -30,7 +30,10 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
         paymentTerms: supplier.details?.paymentTerms || 'Net 30',
         paymentMethod: supplier.details?.paymentMethod || 'Wire Transfer',
         internalNotes: supplier.details?.internalNotes || '',
-        logoUrl: supplier.logoUrl || ''
+        logoUrl: supplier.logoUrl || '',
+        deliveryDelayAverage: supplier.details?.deliveryDelayAverage ?? 0,
+        qualityScore: supplier.details?.qualityScore ?? 100,
+        communicationScore: supplier.details?.communicationScore ?? 100
     });
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -269,6 +272,51 @@ export function EditSupplierModal({ supplier, isOpen, onClose, onSuccess }: Edit
                                         { value: 'Credit Card', label: 'Credit Card' },
                                     ]}
                                     className="w-full"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Performance Metrics */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-gray-900 mb-4">Performance Metrics</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Delivery Delay (Days)
+                                </label>
+                                <input
+                                    type="number"
+                                    value={formData.deliveryDelayAverage}
+                                    onChange={(e) => setFormData({ ...formData, deliveryDelayAverage: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                />
+                                <p className="text-xs text-gray-400 mt-1">Negative = Early, Positive = Late</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Quality Score (0-100)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={formData.qualityScore}
+                                    onChange={(e) => setFormData({ ...formData, qualityScore: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Comm. Score (0-100)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={formData.communicationScore}
+                                    onChange={(e) => setFormData({ ...formData, communicationScore: parseInt(e.target.value) || 0 })}
+                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
                                 />
                             </div>
                         </div>

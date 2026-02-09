@@ -7,10 +7,11 @@ import { StatCard } from '../components/dashboard/StatCard';
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { suppliersApi } from '../services/suppliers.service';
-import type { Supplier, InteractionLog } from '../types/api';
+import type { Supplier, InteractionLog, Review } from '../types/api';
 import { EditSupplierModal } from '../components/suppliers/EditSupplierModal';
 import { MessageSupplierModal } from '../components/suppliers/MessageSupplierModal';
 import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
+import { WriteReviewModal } from '../components/suppliers/WriteReviewModal';
 
 export default function SupplierProfile() {
     const { id } = useParams<{ id: string }>();
@@ -22,6 +23,32 @@ export default function SupplierProfile() {
     const [interactions, setInteractions] = useState<InteractionLog[]>([]);
     const [showAddLog, setShowAddLog] = useState(false);
     const [newLog, setNewLog] = useState({ title: '', description: '', eventType: 'meeting', date: '' });
+
+    // Reviews State
+    const [reviews, setReviews] = useState<Review[]>([]);
+    const [reviewsPage, setReviewsPage] = useState(1);
+    const [reviewsTotal, setReviewsTotal] = useState(0);
+    const [loadingReviews, setLoadingReviews] = useState(false);
+    const [showReviewModal, setShowReviewModal] = useState(false);
+
+    const fetchReviews = async (pageNum = 1, append = false) => {
+        if (!id) return;
+        try {
+            setLoadingReviews(true);
+            const { data, meta } = await suppliersApi.getReviews(id, pageNum);
+            if (append) {
+                setReviews(prev => [...prev, ...data]);
+            } else {
+                setReviews(data);
+            }
+            setReviewsTotal(meta.total);
+            setReviewsPage(pageNum);
+        } catch (error) {
+            console.error('Failed to fetch reviews:', error);
+        } finally {
+            setLoadingReviews(false);
+        }
+    };
 
     useEffect(() => {
         const fetchSupplier = async () => {
@@ -35,6 +62,9 @@ export default function SupplierProfile() {
                 // Fetch interactions
                 const interactionData = await suppliersApi.getInteractions(id);
                 setInteractions(interactionData);
+
+                // Fetch reviews
+                fetchReviews(1, false);
             } catch (error) {
                 console.error('Failed to fetch supplier:', error);
             } finally {
@@ -68,9 +98,25 @@ export default function SupplierProfile() {
             <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
                 <div className="flex items-start justify-between">
                     <div className="flex gap-4">
-                        <div className="h-16 w-16 rounded-lg bg-primary-900 flex items-center justify-center text-white text-2xl font-bold">
-                            {initials}
-                        </div>
+                        {supplier.logoUrl ? (
+                            <div className="h-16 w-16 rounded-lg bg-white border border-gray-100 flex items-center justify-center overflow-hidden">
+                                <img
+                                    src={supplier.logoUrl}
+                                    alt={supplier.name}
+                                    className="h-full w-full object-contain p-1"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                        (e.target as HTMLImageElement).parentElement!.classList.add('hidden');
+                                        // You might want to show the fallback here, but simpler is to just hide
+                                        // or handled via state ideally. For now, rely on valid URL.
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <div className="h-16 w-16 rounded-lg bg-primary-900 flex items-center justify-center text-white text-2xl font-bold">
+                                {initials}
+                            </div>
+                        )}
                         <div>
                             <div className="flex items-center gap-2">
                                 <h1 className="text-xl font-bold text-gray-900">{supplier.name}</h1>
@@ -81,7 +127,7 @@ export default function SupplierProfile() {
                             <p className="text-sm text-gray-500">{supplier.category} | ID: {supplier.id.slice(0, 8)}</p>
                             <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
                                 <div className="flex items-center gap-1">
-                                    <span className="text-yellow-500">★ 4.8</span> (24 Reviews)
+                                    <span className="text-yellow-500">★ {supplier.details?.rating ? Number(supplier.details.rating).toFixed(1) : '0.0'}</span> ({supplier.details?.reviewCount || 0} Reviews)
                                 </div>
                                 <div className="flex items-center gap-1">
                                     <MapPin className="h-3 w-3" /> Austin, TX
@@ -482,11 +528,16 @@ export default function SupplierProfile() {
                             {/* Reusing Stats for Context */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                 <StatCard
-                                    title="ON-TIME DELIVERY"
+                                    title="AVG DELIVERY DELAY"
                                     value={supplier.details?.deliveryDelayAverage !== undefined
-                                        ? (supplier.details.deliveryDelayAverage <= 0 ? '100%' : '90%') // Simple logic for demo, real calculation could vary
+                                        ? `${Math.abs(supplier.details.deliveryDelayAverage)} Days ${supplier.details.deliveryDelayAverage === 0 ? '' : (supplier.details.deliveryDelayAverage < 0 ? 'Early' : 'Late')}`
                                         : 'N/A'}
-                                    trend={{ value: supplier.details?.deliveryDelayAverage !== undefined && supplier.details.deliveryDelayAverage < 0 ? 'Ahead' : 'On Track', isPositive: true }}
+                                    trend={{
+                                        value: supplier.details?.deliveryDelayAverage !== undefined
+                                            ? (supplier.details.deliveryDelayAverage < 0 ? 'Ahead of Schedule' : (supplier.details.deliveryDelayAverage === 0 ? 'On Time' : 'Behind Schedule'))
+                                            : 'N/A',
+                                        isPositive: supplier.details?.deliveryDelayAverage !== undefined ? supplier.details.deliveryDelayAverage <= 0 : true
+                                    }}
                                     color="blue"
                                 />
                                 <StatCard
@@ -538,33 +589,45 @@ export default function SupplierProfile() {
                                 </div>
 
                                 <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                                    <h3 className="font-semibold text-gray-900 mb-6">Feedback History</h3>
-                                    <div className="space-y-4">
-                                        <div className="p-4 bg-gray-50 rounded-lg">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs text-blue-700 font-bold">JD</div>
-                                                    <span className="text-sm font-medium">John Doe</span>
-                                                </div>
-                                                <span className="text-xs text-gray-500">2 weeks ago</span>
-                                            </div>
-                                            <p className="text-sm text-gray-600">"Great experience with the last bulk order. Packaging was secure and delivery was fast."</p>
-                                            <div className="mt-2 flex text-yellow-400 text-xs">★★★★★</div>
-                                        </div>
-
-                                        <div className="p-4 bg-gray-50 rounded-lg">
-                                            <div className="flex justify-between items-start mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center text-xs text-green-700 font-bold">AS</div>
-                                                    <span className="text-sm font-medium">Alice Smith</span>
-                                                </div>
-                                                <span className="text-xs text-gray-500">1 month ago</span>
-                                            </div>
-                                            <p className="text-sm text-gray-600">"Quality is good, but invoice reconciliation took longer than expected due to a discrepancy."</p>
-                                            <div className="mt-2 flex text-yellow-400 text-xs">★★★★☆</div>
-                                        </div>
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="font-semibold text-gray-900">Feedback History</h3>
+                                        <Button variant="outline" size="sm" onClick={() => setShowReviewModal(true)}>Write a Review</Button>
                                     </div>
-                                    <Button variant="outline" className="w-full mt-4">Load More Reviews</Button>
+                                    <div className="space-y-4">
+                                        {reviews.length > 0 ? (
+                                            reviews.map((review) => (
+                                                <div key={review.id} className="p-4 bg-gray-50 rounded-lg">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center text-xs text-blue-700 font-bold">
+                                                                {review.user?.name ? review.user.name.charAt(0).toUpperCase() : 'U'}
+                                                            </div>
+                                                            <span className="text-sm font-medium">{review.user?.name || 'Unknown User'}</span>
+                                                        </div>
+                                                        <span className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-600">{review.comment}</p>
+                                                    <div className="mt-2 flex gap-0.5">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <span key={i} className={`text-xs ${i < review.rating ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-gray-500 text-center py-4">No reviews yet.</p>
+                                        )}
+                                    </div>
+                                    {reviews.length < reviewsTotal && (
+                                        <Button
+                                            variant="outline"
+                                            className="w-full mt-4"
+                                            onClick={() => fetchReviews(reviewsPage + 1, true)}
+                                            disabled={loadingReviews}
+                                        >
+                                            {loadingReviews ? 'Loading...' : 'Load More Reviews'}
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                         </TabsContent>
@@ -598,6 +661,16 @@ export default function SupplierProfile() {
                             // Refresh supplier to see new document
                             const data = await suppliersApi.getDetails(supplier.id);
                             setSupplier(data);
+                        }}
+                    />
+                    <WriteReviewModal
+                        isOpen={showReviewModal}
+                        onClose={() => setShowReviewModal(false)}
+                        supplierId={supplier.id}
+                        onSuccess={() => {
+                            fetchReviews(1, false);
+                            // Also refresh supplier details to update rating
+                            suppliersApi.getDetails(supplier.id).then(setSupplier);
                         }}
                     />
                 </>

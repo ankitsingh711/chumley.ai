@@ -229,6 +229,9 @@ const updateSupplierDetailsSchema = z.object({
     paymentTerms: z.string().optional(),
     paymentMethod: z.string().optional(),
     internalNotes: z.string().optional(),
+    deliveryDelayAverage: z.number().optional(),
+    qualityScore: z.number().optional(),
+    communicationScore: z.number().optional(),
 });
 
 export const updateSupplierDetails = async (req: Request, res: Response) => {
@@ -477,6 +480,93 @@ export const addSupplierDocument = async (req: Request, res: Response) => {
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: (error as any).errors });
         }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+const addReviewSchema = z.object({
+    rating: z.number().min(1).max(5),
+    comment: z.string().min(1),
+});
+
+export const addSupplierReview = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const validatedData = addReviewSchema.parse(req.body);
+        const userId = req.user!.id;
+
+        const review = await prisma.review.create({
+            data: {
+                supplierId: id,
+                userId,
+                rating: validatedData.rating,
+                comment: validatedData.comment,
+            },
+            include: { user: { select: { id: true, name: true } } }
+        });
+
+        const aggregations = await prisma.review.aggregate({
+            where: { supplierId: id },
+            _avg: { rating: true },
+            _count: { _all: true },
+        });
+
+        const newRating = aggregations._avg.rating || 0;
+        const newCount = aggregations._count._all || 0;
+
+        await prisma.supplierDetails.upsert({
+            where: { supplierId: id },
+            create: {
+                supplierId: id,
+                rating: newRating,
+                reviewCount: newCount,
+            },
+            update: {
+                rating: newRating,
+                reviewCount: newCount,
+            },
+        });
+
+        Logger.info(`Review added for supplier ${id} by user ${userId}`);
+        res.status(201).json(review);
+    } catch (error: any) {
+        Logger.error(error);
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: (error as any).errors });
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const getSupplierReviews = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 5;
+        const skip = (page - 1) * limit;
+
+        const [reviews, total] = await Promise.all([
+            prisma.review.findMany({
+                where: { supplierId: id },
+                include: { user: { select: { id: true, name: true } } },
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+            }),
+            prisma.review.count({ where: { supplierId: id } }),
+        ]);
+
+        res.json({
+            data: reviews,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit),
+            }
+        });
+    } catch (error) {
+        Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };

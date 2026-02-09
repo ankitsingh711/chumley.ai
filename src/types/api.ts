@@ -113,6 +113,16 @@ export interface SupplierDocument {
     uploadDate: string;
 }
 
+export interface Review {
+    id: string;
+    supplierId: string;
+    userId: string;
+    user?: { id: string; name: string };
+    rating: number;
+    comment: string;
+    createdAt: string;
+}
+
 export interface Message {
     id: string;
     supplierId: string;
@@ -294,6 +304,9 @@ export interface UpdateSupplierDetailsInput {
     paymentMethod?: string;
     internalNotes?: string;
     logoUrl?: string;
+    deliveryDelayAverage?: number;
+    qualityScore?: number;
+    communicationScore?: number;
 }
 
 export interface CreateMessageInput {
