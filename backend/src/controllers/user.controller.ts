@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
-import Logger from '../utils/logger';
 import bcrypt from 'bcryptjs';
+import Logger from '../utils/logger';
+import { sendInvitationEmail } from '../utils/email';
 
 const prisma = new PrismaClient();
 
@@ -70,7 +71,7 @@ export const updateUser = async (req: Request, res: Response) => {
             },
         });
 
-        Logger.info(`User updated: ${user.email}`);
+        Logger.info(`User updated: ${user.email} `);
         res.json(user);
     } catch (error: any) {
         Logger.error(error);
@@ -90,7 +91,7 @@ export const deleteUser = async (req: Request, res: Response) => {
         await prisma.user.delete({
             where: { id },
         });
-        Logger.info(`User deleted: ${id}`);
+        Logger.info(`User deleted: ${id} `);
         res.status(204).send();
     } catch (error: any) {
         Logger.error(error);
@@ -149,15 +150,26 @@ export const inviteUser = async (req: Request, res: Response) => {
             },
         });
 
-        Logger.info(`User invited: ${user.email}`);
+        Logger.info(`User invited: ${user.email} `);
 
         // Construct invitation link
         const inviteLink = `${process.env.FRONTEND_URL}/onboarding?token=${invitationToken}`;
 
+        // Send invitation email
+        const emailSent = await sendInvitationEmail({
+            to: user.email,
+            name: user.name,
+            inviteLink,
+            role: user.role,
+            companyName: process.env.COMPANY_NAME || 'Chumley AI',
+            invitedBy: 'Your administrator',
+        });
+
         res.status(201).json({
             message: 'User invited successfully',
             user,
-            inviteLink
+            inviteLink,
+            emailSent,
         });
     } catch (error: any) {
         Logger.error(error);

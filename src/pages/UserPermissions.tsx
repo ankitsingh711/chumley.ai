@@ -147,15 +147,18 @@ export default function UserPermissions() {
     };
 
     const getStatusBadgeClass = (status?: string) => {
-        switch (status) {
+        // Default to ACTIVE if status is missing (legacy users or default)
+        const normalizedStatus = status || 'ACTIVE';
+
+        switch (normalizedStatus) {
             case 'ACTIVE':
-                return 'bg-green-100 text-green-700';
+                return 'bg-green-100 text-green-700 border-green-200';
             case 'PENDING':
-                return 'bg-yellow-100 text-yellow-700';
+                return 'bg-yellow-100 text-yellow-700 border-yellow-200';
             case 'SUSPENDED':
-                return 'bg-red-100 text-red-700';
+                return 'bg-red-100 text-red-700 border-red-200';
             default:
-                return 'bg-gray-100 text-gray-600';
+                return 'bg-gray-100 text-gray-600 border-gray-200';
         }
     };
 
@@ -239,11 +242,9 @@ export default function UserPermissions() {
                                     <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
                                         {user.role === 'SYSTEM_ADMIN' ? 'ADMIN' : user.role === 'SENIOR_MANAGER' ? 'SR. MGR' : user.role}
                                     </span>
-                                    {user.status && (
-                                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(user.status)}`}>
-                                            {user.status}
-                                        </span>
-                                    )}
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium border ${getStatusBadgeClass(user.status)}`}>
+                                        {user.status || 'ACTIVE'}
+                                    </span>
                                 </div>
                             </div>
                         ))}
