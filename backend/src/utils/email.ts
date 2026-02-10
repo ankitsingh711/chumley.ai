@@ -65,9 +65,9 @@ export const sendInvitationEmail = async ({
         };
 
         const mailOptions = {
-            from: process.env.EMAIL_FROM || `"${process.env.APP_NAME || 'ProcurementPlatform'}" <${process.env.EMAIL_USER}>`,
+            from: process.env.EMAIL_FROM || `"Chumley AI" <${process.env.EMAIL_USER}>`,
             to,
-            subject: `You're invited to join ${companyName} on ProcurementPlatform`,
+            subject: `You're invited to join ${companyName}`,
             html: `
                 <!DOCTYPE html>
                 <html>
@@ -108,12 +108,12 @@ export const sendInvitationEmail = async ({
                             gap: 8px;
                             font-size: 18px;
                             font-weight: 600;
-                            color: #0f766e;
+                            color: #3d6fc2;
                         }
                         .logo-icon {
                             width: 32px;
                             height: 32px;
-                            background: #0f766e;
+                            background: #3d6fc2;
                             border-radius: 6px;
                             display: flex;
                             align-items: center;
@@ -122,8 +122,8 @@ export const sendInvitationEmail = async ({
                             font-weight: bold;
                         }
                         .badge {
-                            background: #f0fdfa;
-                            color: #0f766e;
+                            background: #eff6ff;
+                            color: #3d6fc2;
                             padding: 4px 12px;
                             border-radius: 12px;
                             font-size: 11px;
@@ -155,14 +155,14 @@ export const sendInvitationEmail = async ({
                             font-weight: 600;
                         }
                         .role-box {
-                            background: #f0fdfa;
-                            border: 1px solid #99f6e4;
+                            background: #eff6ff;
+                            border: 1px solid #bfdbfe;
                             border-radius: 8px;
                             padding: 20px;
                             margin: 24px 0;
                         }
                         .role-label {
-                            color: #0f766e;
+                            color: #3d6fc2;
                             font-size: 11px;
                             font-weight: 700;
                             text-transform: uppercase;
@@ -190,7 +190,7 @@ export const sendInvitationEmail = async ({
                         .button { 
                             display: inline-block;
                             padding: 14px 32px;
-                            background: #0f766e;
+                            background: #3d6fc2;
                             color: white !important;
                             text-decoration: none;
                             border-radius: 8px;
@@ -199,7 +199,7 @@ export const sendInvitationEmail = async ({
                             transition: background 0.2s;
                         }
                         .button:hover {
-                            background: #0d6d63;
+                            background: #2a559e;
                         }
                         .expiry-note {
                             text-align: center;
@@ -227,7 +227,7 @@ export const sendInvitationEmail = async ({
                             margin-bottom: 8px;
                         }
                         .security-link {
-                            color: #0f766e;
+                            color: #3d6fc2;
                             text-decoration: none;
                             font-size: 13px;
                             font-weight: 500;
@@ -259,15 +259,15 @@ export const sendInvitationEmail = async ({
                         <div class="header">
                             <div class="logo-row">
                                 <div class="logo">
-                                    <div class="logo-icon">P</div>
-                                    ProcurementPlatform
+                                    <div class="logo-icon">C</div>
+                                    Chumley AI
                                 </div>
                                 <div class="badge">OFFICIAL INVITATION</div>
                             </div>
                         </div>
                         
                         <div class="content">
-                            <h1>Join ${companyName} on ProcurementPlatform</h1>
+                            <h1>Join ${companyName}</h1>
                             
                             <p class="greeting">Hello ${name},</p>
                             
@@ -279,7 +279,7 @@ export const sendInvitationEmail = async ({
                             <div class="role-box">
                                 <div class="role-label">
                                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#0f766e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#3d6fc2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                     </svg>
                                     YOUR ASSIGNED ROLE
                                 </div>
@@ -304,17 +304,17 @@ export const sendInvitationEmail = async ({
                                 Secure Invitation
                             </div>
                             <p class="security-text">This is a verified invitation from your organization's administrator.</p>
-                            <a href="${process.env.FRONTEND_URL || 'https://your-domain.com'}/security" class="security-link">Security Center →</a>
+                            <a href="${process.env.FRONTEND_URL}/security" class="security-link">Security Center →</a>
                         </div>
                         
                         <div class="footer">
                             <div class="footer-links">
-                                <a href="${process.env.FRONTEND_URL || 'https://your-domain.com'}/privacy">Privacy Policy</a>
-                                <a href="${process.env.FRONTEND_URL || 'https://your-domain.com'}/terms">Terms of Service</a>
-                                <a href="${process.env.FRONTEND_URL || 'https://your-domain.com'}/support">Contact Support</a>
+                                <a href="${process.env.FRONTEND_URL}/privacy">Privacy Policy</a>
+                                <a href="${process.env.FRONTEND_URL}/terms">Terms of Service</a>
+                                <a href="${process.env.FRONTEND_URL}/support">Contact Support</a>
                             </div>
                             <p class="footer-text">
-                                © ${new Date().getFullYear()} ProcurementPlatform Inc. ${process.env.COMPANY_ADDRESS || '123 Enterprise Way, Suite 600, San Francisco, CA'}.<br>
+                                © ${new Date().getFullYear()} Chumley AI Inc. ${process.env.COMPANY_ADDRESS || '123 Enterprise Way, Suite 600, San Francisco, CA'}.<br>
                                 You received this because an administrator invited you.
                             </p>
                         </div>
@@ -325,7 +325,7 @@ export const sendInvitationEmail = async ({
             text: `
 Hello ${name},
 
-${invitedBy} has invited you to join the ${companyName} procurement team on ProcurementPlatform.
+${invitedBy} has invited you to join the ${companyName} procurement team.
 
 YOUR ASSIGNED ROLE: ${getRoleDisplayName(role)}
 ${getRoleDescription(role)}
@@ -338,7 +338,7 @@ This link is valid for 24 hours.
 SECURE INVITATION
 This is a verified invitation from your organization's administrator.
 
-© ${new Date().getFullYear()} ProcurementPlatform Inc. You received this because an administrator invited you.
+© ${new Date().getFullYear()} Chumley AI Inc. You received this because an administrator invited you.
             `.trim(),
         };
 

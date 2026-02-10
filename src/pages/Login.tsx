@@ -85,7 +85,7 @@ export default function Login() {
                 </div>
 
                 <div className="relative z-10 mt-12 text-xs text-white/40">
-                    © 2024 Chumley AI Inc. All rights reserved.
+                    © {new Date().getFullYear()} Chumley AI Inc. All rights reserved.
                 </div>
             </div>
 

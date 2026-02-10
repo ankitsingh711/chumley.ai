@@ -57,7 +57,7 @@ model User {
   password          String
   name              String
   role              UserRole          @default(MEMBER)
-  status            UserStatus        @default(ACTIVE)
+  status            UserStatus        @default(PENDING)
   invitationToken   String?           @unique
   invitationExpires DateTime?
   departmentId      String?

@@ -17,7 +17,7 @@ export default function Onboarding() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [formData, setFormData] = useState({
-        name: 'Alex Rivera',
+        name: '',
         password: '',
         title: ''
     });
@@ -79,7 +79,7 @@ export default function Onboarding() {
 
                 <div className="p-10">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">Welcome to Acme Corp</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Welcome to Chumley AI</h2>
                         <p className="text-gray-500 mt-2 text-sm">Hi there, let's get your account ready in seconds.</p>
                     </div>
 
@@ -99,6 +99,7 @@ export default function Onboarding() {
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                     className="w-full rounded-lg border border-gray-200 py-3 pl-4 pr-10 text-sm focus:border-[#1f4b55] focus:ring-1 focus:ring-[#1f4b55] outline-none"
                                     required
+                                    placeholder="Enter your full name"
                                 />
                                 <User className="absolute right-3.5 top-3.5 h-4 w-4 text-gray-400" />
                             </div>
@@ -155,7 +156,7 @@ export default function Onboarding() {
                     </form>
 
                     <p className="text-[10px] text-center text-gray-400 mt-6 leading-relaxed">
-                        By completing setup, you agree to Acme Corp's <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>.
+                        By completing setup, you agree to Chumley AI's <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>.
                     </p>
 
                     {/* Skeleton Loaders at bottom mimicking image */}

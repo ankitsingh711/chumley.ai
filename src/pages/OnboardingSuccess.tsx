@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, PlayCircle, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, PlayCircle, CheckCircle2, User } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { LogoWithText } from '../components/ui/Logo';
 
@@ -16,7 +16,7 @@ export default function OnboardingSuccess() {
                     </div>
                     {/* User Avatar */}
                     <div className="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center border border-gray-100">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" alt="Avatar" className="h-6 w-6" />
+                        <User className="h-5 w-5 text-yellow-600" />
                     </div>
                 </div>
 
@@ -34,7 +34,7 @@ export default function OnboardingSuccess() {
                     </div>
 
                     <div className="text-center max-w-md mx-auto space-y-4">
-                        <h1 className="text-3xl font-bold text-gray-900">You're all set, Alex!</h1>
+                        <h1 className="text-3xl font-bold text-gray-900">You're all set!</h1>
                         <p className="text-gray-500 leading-relaxed">
                             Your procurement workspace is ready. You've successfully laid the foundation for effortless spend management.
                         </p>
