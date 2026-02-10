@@ -12,6 +12,15 @@ export const categoryService = {
     },
 
     /**
+     * Get all categories (flat list)
+     */
+    async getAllCategories(departmentId?: string): Promise<Category[]> {
+        const params = departmentId ? { departmentId } : {};
+        const response = await apiClient.get<Category[]>('/categories', { params });
+        return response.data;
+    },
+
+    /**
      * Get all categories by department (flat list)
      */
     async getCategoriesByDepartment(departmentId: string): Promise<Category[]> {

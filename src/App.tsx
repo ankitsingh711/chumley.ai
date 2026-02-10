@@ -17,6 +17,7 @@ import Onboarding from './pages/Onboarding';
 import OnboardingSuccess from './pages/OnboardingSuccess';
 import GoogleCallback from './pages/GoogleCallback';
 import Contracts from './pages/Contracts';
+import Catalog from './pages/Catalog';
 import DepartmentBudgets from './pages/DepartmentBudgets';
 import ApprovalWorkflow from './pages/ApprovalWorkflow';
 
@@ -47,8 +48,10 @@ function App() {
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/suppliers/:id" element={<SupplierProfile />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/reports" element={<Reports />} />
               <Route path="/budgets" element={<DepartmentBudgets />} />
               <Route path="/contracts" element={<Contracts />} />
+              <Route path="/catalog" element={<Catalog />} />
               <Route path="/settings" element={<UserPermissions />} />
               <Route path="/settings/approval-workflows" element={<ApprovalWorkflow />} />
             </Route>

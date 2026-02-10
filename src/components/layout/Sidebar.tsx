@@ -6,7 +6,10 @@ import {
     Users,
     BarChart3,
     Settings,
-    LogOut
+    LogOut,
+    Package,
+    FileSignature,
+    Wallet
 } from 'lucide-react';
 import { LogoIcon } from '../ui/Logo';
 import { cn } from '../../lib/utils';
@@ -16,7 +19,10 @@ const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: FileText, label: 'Requests', path: '/requests' },
     { icon: ShoppingCart, label: 'Orders', path: '/orders' },
+    { icon: Package, label: 'Catalog', path: '/catalog' },
     { icon: Users, label: 'Suppliers', path: '/suppliers' },
+    { icon: FileSignature, label: 'Contracts', path: '/contracts' },
+    { icon: Wallet, label: 'Budgets', path: '/budgets' },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
 ];
 
