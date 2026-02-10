@@ -87,10 +87,9 @@ export function Select({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -4, scale: 0.98 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-50 mt-2 w-full min-w-[200px] overflow-hidden rounded-xl border border-gray-700 bg-gray-800 shadow-xl text-white py-1"
+                        className="absolute z-50 mt-2 w-full min-w-[200px] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl ring-1 ring-black/5 py-1"
                     >
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar">
-                            {/* Optional Header style from screenshot if needed, but generic list is safer */}
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
                             {options.map((option) => (
                                 <div
                                     key={option.value}
@@ -99,13 +98,15 @@ export function Select({
                                         setIsOpen(false);
                                     }}
                                     className={cn(
-                                        "relative flex cursor-pointer select-none items-center px-3 py-2.5 text-sm outline-none transition-colors hover:bg-gray-700 data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
-                                        option.value === value && "bg-gray-700 font-medium"
+                                        "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none transition-colors",
+                                        option.value === value
+                                            ? "bg-primary-50 text-primary-900 font-medium"
+                                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                                     )}
                                 >
                                     <span className="flex-1 truncate">{option.label}</span>
                                     {option.value === value && (
-                                        <Check className="h-4 w-4 text-primary-400 ml-2" />
+                                        <Check className="h-4 w-4 text-primary-600 ml-2" />
                                     )}
                                 </div>
                             ))}

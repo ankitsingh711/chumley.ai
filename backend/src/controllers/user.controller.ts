@@ -11,6 +11,7 @@ const updateUserSchema = z.object({
     name: z.string().min(2).optional(),
     departmentId: z.string().optional(),
     status: z.enum(['PENDING', 'ACTIVE', 'SUSPENDED']).optional(),
+    role: z.enum(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER', 'MEMBER']).optional(),
 });
 
 export const getUsers = async (req: Request, res: Response) => {
