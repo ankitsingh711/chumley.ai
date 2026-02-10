@@ -20,4 +20,9 @@ export const usersApi = {
     delete: async (id: string): Promise<void> => {
         await apiClient.delete(`/users/${id}`);
     },
+
+    invite: async (data: { email: string; name: string; role: string; departmentId?: string }): Promise<any> => {
+        const response = await apiClient.post('/users/invite', data);
+        return response.data;
+    },
 };

@@ -14,6 +14,12 @@ enum UserRole {
   MEMBER
 }
 
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
 model Department {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -46,17 +52,20 @@ model SpendingCategory {
 }
 
 model User {
-  id           String            @id @default(uuid())
-  email        String            @unique
-  password     String
-  name         String
-  role         UserRole          @default(MEMBER)
-  departmentId String?
-  managerId    String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id                String            @id @default(uuid())
+  email             String            @unique
+  password          String
+  name              String
+  role              UserRole          @default(MEMBER)
+  status            UserStatus        @default(ACTIVE)
+  invitationToken   String?           @unique
+  invitationExpires DateTime?
+  departmentId      String?
+  managerId         String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
   
-  department         Department?          @relation(fields: [departmentId], references: [id])
+  department        Department?          @relation(fields: [departmentId], references: [id])
   manager            User?                @relation("ManagerReportee", fields: [managerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
   reportees          User[]               @relation("ManagerReportee")
   additionalRoles    UserDepartmentRole[]

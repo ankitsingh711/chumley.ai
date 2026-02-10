@@ -8,6 +8,14 @@ export const UserRole = {
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
+export const UserStatus = {
+    PENDING: 'PENDING',
+    ACTIVE: 'ACTIVE',
+    SUSPENDED: 'SUSPENDED',
+} as const;
+
+export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
+
 export interface Department {
     id: string;
     name: string;
@@ -50,6 +58,7 @@ export interface User {
     email: string;
     name: string;
     role: UserRole;
+    status?: UserStatus;
     departmentId?: string;
     department?: Department | string; // Handle both object (from relations) and potential string legacy
     createdAt: string;

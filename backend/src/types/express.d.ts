@@ -4,6 +4,7 @@ declare global {
             id: string;
             email: string;
             name: string;
+            role: string;
         }
 
         interface Request {

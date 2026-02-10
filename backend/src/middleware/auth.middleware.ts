@@ -7,6 +7,7 @@ export interface AuthRequest extends Request {
         id: string;
         email: string;
         name: string;
+        role: string;
     };
 }
 
@@ -32,4 +33,16 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 };
 
-// Authorization function removed - all authenticated users have full access
+export const authorize = (roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+        }
+
+        next();
+    };
+};

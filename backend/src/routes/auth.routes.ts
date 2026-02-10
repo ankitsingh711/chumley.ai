@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { register, login, googleAuthCallback } from '../controllers/auth.controller';
+import { register, login, googleAuthCallback, acceptInvite } from '../controllers/auth.controller';
 import passport from '../config/passport';
 
 const router = Router();
 
 router.post('/register', register);
 router.post('/login', login);
+router.post('/accept-invite', acceptInvite);
 
 // Google OAuth routes
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));

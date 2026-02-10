@@ -14,6 +14,9 @@ export default function UserPermissions() {
     const [searchQuery, setSearchQuery] = useState('');
     const [roleValue, setRoleValue] = useState<UserRole>();
     const [showModal, setShowModal] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+    const [inviteData, setInviteData] = useState({ name: '', email: '', role: UserRole.MEMBER as UserRole });
+    const [inviting, setInviting] = useState(false);
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
 
@@ -98,6 +101,27 @@ export default function UserPermissions() {
         }
     };
 
+    const handleInviteUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setInviting(true);
+        try {
+            await usersApi.invite(inviteData);
+            setModalType('success');
+            setModalMessage(`Successfully invited ${inviteData.name}. Need credentials? Check server logs or use 'Welcome123!' (Demo)`);
+            setShowInviteModal(false);
+            setInviteData({ name: '', email: '', role: UserRole.MEMBER });
+            fetchUsers();
+            setShowModal(true);
+        } catch (error: any) {
+            console.error('Failed to invite user:', error);
+            setModalType('error');
+            setModalMessage(error.response?.data?.error || 'Failed to invite user.');
+            setShowModal(true);
+        } finally {
+            setInviting(false);
+        }
+    };
+
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -110,11 +134,26 @@ export default function UserPermissions() {
     const getRoleBadgeClass = (role: string) => {
         switch (role) {
             case 'ADMIN':
-                return 'bg-primary-600 text-white';
+            case 'SYSTEM_ADMIN':
+                return 'bg-purple-100 text-purple-700';
             case 'MANAGER':
-                return 'bg-blue-500 text-white';
-            case 'APPROVER':
-                return 'bg-purple-500 text-white';
+            case 'SENIOR_MANAGER':
+                return 'bg-blue-100 text-blue-700';
+            case 'MEMBER':
+                return 'bg-gray-100 text-gray-700';
+            default:
+                return 'bg-gray-100 text-gray-600';
+        }
+    };
+
+    const getStatusBadgeClass = (status?: string) => {
+        switch (status) {
+            case 'ACTIVE':
+                return 'bg-green-100 text-green-700';
+            case 'PENDING':
+                return 'bg-yellow-100 text-yellow-700';
+            case 'SUSPENDED':
+                return 'bg-red-100 text-red-700';
             default:
                 return 'bg-gray-100 text-gray-600';
         }
@@ -159,7 +198,13 @@ export default function UserPermissions() {
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm h-fit">
                     <div className="flex items-center justify-between mb-4">
                         <h2 className="font-semibold text-gray-900">Organization</h2>
-                        <Button variant="ghost" size="icon" className="h-6 w-6"><Settings className="h-4 w-4" /></Button>
+                        <div className="flex gap-2">
+                            {(currentUser?.role === UserRole.SYSTEM_ADMIN || currentUser?.role === UserRole.SENIOR_MANAGER) && (
+                                <Button size="sm" onClick={() => setShowInviteModal(true)} className="bg-primary-600 hover:bg-primary-700 text-white h-7 text-xs px-2">
+                                    + Invite
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="relative mb-4">
@@ -190,9 +235,16 @@ export default function UserPermissions() {
                                     <p className="truncate text-sm font-medium text-gray-900">{user.name}</p>
                                     <p className="truncate text-xs text-gray-500">{getDepartmentName(user.department) || user.email}</p>
                                 </div>
-                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
-                                    {user.role}
-                                </span>
+                                <div className="flex flex-col items-end gap-1">
+                                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getRoleBadgeClass(user.role)}`}>
+                                        {user.role === 'SYSTEM_ADMIN' ? 'ADMIN' : user.role === 'SENIOR_MANAGER' ? 'SR. MGR' : user.role}
+                                    </span>
+                                    {user.status && (
+                                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${getStatusBadgeClass(user.status)}`}>
+                                            {user.status}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -257,6 +309,12 @@ export default function UserPermissions() {
                                     <p className="text-sm font-medium text-gray-900">{selectedUser.role}</p>
                                 </div>
                                 <div>
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(selectedUser.status)} ring-gray-500/10 mt-1`}>
+                                        {selectedUser.status || 'ACTIVE'}
+                                    </span>
+                                </div>
+                                <div>
                                     <p className="text-xs text-gray-500">User ID</p>
                                     <p className="text-sm font-mono text-gray-600">{selectedUser.id}</p>
                                 </div>
@@ -310,6 +368,74 @@ export default function UserPermissions() {
                                 )}
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Invite User Modal */}
+            {showInviteModal && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowInviteModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <h3 className="text-lg font-bold text-gray-900 mb-4">Invite New User</h3>
+                        <form onSubmit={handleInviteUser} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={inviteData.name}
+                                    onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                                <input
+                                    type="email"
+                                    required
+                                    value={inviteData.email}
+                                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                                <Select
+                                    value={inviteData.role}
+                                    onChange={(val) => setInviteData({ ...inviteData, role: val as UserRole })}
+                                    options={[
+                                        { value: UserRole.MEMBER, label: 'Team Member' },
+                                        { value: UserRole.MANAGER, label: 'Manager' },
+                                        { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
+                                        { value: UserRole.SYSTEM_ADMIN, label: 'Administrator' },
+                                    ]}
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => setShowInviteModal(false)}
+                                    className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    disabled={inviting}
+                                    className="bg-primary-600 hover:bg-primary-700 text-white"
+                                >
+                                    {inviting ? 'Sending...' : 'Send Invitation'}
+                                </Button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

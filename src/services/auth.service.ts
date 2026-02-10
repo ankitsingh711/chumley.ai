@@ -11,4 +11,9 @@ export const authApi = {
         const response = await apiClient.post<AuthResponse>('/auth/register', data);
         return response.data;
     },
+
+    acceptInvite: async (data: { token: string; name: string; password: string; jobTitle?: string }): Promise<AuthResponse> => {
+        const response = await apiClient.post<AuthResponse>('/auth/accept-invite', data);
+        return response.data;
+    },
 };
