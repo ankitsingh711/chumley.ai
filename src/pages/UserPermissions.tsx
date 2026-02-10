@@ -3,6 +3,7 @@ import { Search, Settings, CheckCircle, XCircle, X } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
+import { departmentsApi } from '../services/departments.service';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole, type User } from '../types/api';
 
@@ -15,18 +16,42 @@ export default function UserPermissions() {
     const [roleValue, setRoleValue] = useState<UserRole>();
     const [showModal, setShowModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
-    const [inviteData, setInviteData] = useState({ name: '', email: '', role: UserRole.MEMBER as UserRole });
+    const [inviteData, setInviteData] = useState<{
+        name: string;
+        email: string;
+        role: UserRole;
+        departmentId?: string;
+    }>({
+        name: '',
+        email: '',
+        role: UserRole.MEMBER,
+        departmentId: ''
+    });
     const [inviting, setInviting] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deleting, setDeleting] = useState(false);
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
 
     const { user: currentUser, isLoading: authLoading } = useAuth();
 
+    const [departments, setDepartments] = useState<any[]>([]);
+
     useEffect(() => {
         if (!authLoading) {
             fetchUsers();
+            fetchDepartments();
         }
     }, [currentUser, authLoading]);
+
+    const fetchDepartments = async () => {
+        try {
+            const data = await departmentsApi.getAll();
+            setDepartments(data);
+        } catch (error) {
+            console.error('Failed to fetch departments:', error);
+        }
+    };
 
     useEffect(() => {
         if (selectedUser) {
@@ -107,9 +132,9 @@ export default function UserPermissions() {
         try {
             await usersApi.invite(inviteData);
             setModalType('success');
-            setModalMessage(`Successfully invited ${inviteData.name}. Need credentials? Check server logs or use 'Welcome123!' (Demo)`);
+            setModalMessage(`Successfully invited ${inviteData.name}. An email has been sent to ${inviteData.email} with instructions to set up their account.`);
             setShowInviteModal(false);
-            setInviteData({ name: '', email: '', role: UserRole.MEMBER });
+            setInviteData({ name: '', email: '', role: UserRole.MEMBER, departmentId: '' });
             fetchUsers();
             setShowModal(true);
         } catch (error: any) {
@@ -119,6 +144,32 @@ export default function UserPermissions() {
             setShowModal(true);
         } finally {
             setInviting(false);
+        }
+    };
+
+    const handleDeleteUser = async () => {
+        if (!selectedUser) return;
+
+        setDeleting(true);
+        try {
+            await usersApi.delete(selectedUser.id);
+            setModalType('success');
+            setModalMessage(`Successfully deleted user ${selectedUser.name}.`);
+            setShowDeleteModal(false);
+
+            // Remove from list
+            const updatedUsers = users.filter(u => u.id !== selectedUser.id);
+            setUsers(updatedUsers);
+            setSelectedUser(updatedUsers.length > 0 ? updatedUsers[0] : null);
+
+            setShowModal(true);
+        } catch (error) {
+            console.error('Failed to delete user:', error);
+            setModalType('error');
+            setModalMessage('Failed to delete user. Please try again.');
+            setShowModal(true);
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -369,6 +420,69 @@ export default function UserPermissions() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Danger Zone - Only for Admins */}
+                        {currentUser?.role === UserRole.SYSTEM_ADMIN && selectedUser.id !== currentUser.id && (
+                            <div className="py-6 border-t border-gray-100">
+                                <h3 className="font-semibold text-red-600 mb-4">Danger Zone</h3>
+                                <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-medium text-red-900">Delete User</h4>
+                                        <p className="text-sm text-red-700 mt-1">
+                                            Permanently remove this user and all of their data. This action cannot be undone.
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => setShowDeleteModal(true)}
+                                        className="border-red-200 text-red-600 hover:bg-red-100 hover:text-red-700 hover:border-red-300"
+                                    >
+                                        Delete User
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+                    onClick={() => setShowDeleteModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-4 mb-4">
+                            <div className="flex-shrink-0 text-red-500 bg-red-100 rounded-full p-2">
+                                <XCircle className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-gray-900">Delete User?</h3>
+                                <p className="text-sm text-gray-600 mt-2">
+                                    Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 mt-6">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowDeleteModal(false)}
+                                className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleDeleteUser}
+                                disabled={deleting}
+                                className="bg-red-600 hover:bg-red-700 text-white"
+                            >
+                                {deleting ? 'Deleting...' : 'Delete User'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -403,6 +517,18 @@ export default function UserPermissions() {
                                     value={inviteData.email}
                                     onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
                                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                                <Select
+                                    value={inviteData.departmentId}
+                                    onChange={(val) => setInviteData({ ...inviteData, departmentId: val })}
+                                    options={[
+                                        { value: '', label: 'Select Department...' },
+                                        ...departments.map(d => ({ value: d.id, label: d.name }))
+                                    ]}
+                                    className="w-full"
                                 />
                             </div>
                             <div>

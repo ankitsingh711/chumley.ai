@@ -20,6 +20,7 @@ export const getUsers = async (req: Request, res: Response) => {
                 email: true,
                 name: true,
                 department: true,
+                status: true,
                 createdAt: true,
             },
         });
@@ -40,6 +41,7 @@ export const getUserById = async (req: Request, res: Response) => {
                 email: true,
                 name: true,
                 department: true,
+                status: true,
                 createdAt: true,
             },
         });
