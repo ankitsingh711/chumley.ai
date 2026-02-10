@@ -7,17 +7,20 @@ export function Logo({ className = "h-8 w-8" }: { className?: string }) {
             className={className}
         >
             <path
-                d="M16 2L4 9V23L16 30L28 23V9L16 2Z"
-                className="fill-primary-600"
+                d="M26 10L16 4.5L6 10V22L16 27.5L26 22"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="3"
                 strokeLinecap="round"
                 strokeLinejoin="round"
+                className="text-primary-600"
             />
+            <circle cx="16" cy="16" r="4" className="fill-primary-600" />
             <path
-                d="M16 12L10 16L16 20L22 16L16 12Z"
-                fill="currentColor"
-                className="text-white"
+                d="M16 4.5V10"
+                stroke="currentColor"
+                strokeWidth="3"
+                strokeLinecap="round"
+                className="text-primary-600/50"
             />
         </svg>
     );
@@ -32,16 +35,13 @@ export function LogoIcon({ className = "h-2/3 w-2/3" }: { className?: string }) 
             className={className}
         >
             <path
-                d="M12 2L3 7V17L12 22L21 17V7L12 2Z"
+                d="M20 7.5L12 3L4 7.5V16.5L12 21L20 16.5"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="2.5"
                 strokeLinecap="round"
                 strokeLinejoin="round"
             />
-            <path
-                d="M12 8L8 11L12 14L16 11L12 8Z"
-                fill="currentColor"
-            />
+            <circle cx="12" cy="12" r="3" fill="currentColor" />
         </svg>
     );
 }
