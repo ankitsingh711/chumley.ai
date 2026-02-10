@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '../ui/Button';
 import { X, Upload, FileText, Loader2 } from 'lucide-react';
 import { Select } from '../ui/Select';
@@ -64,9 +65,9 @@ export function AddDocumentModal({ isOpen, onClose, supplierId, onSuccess }: Add
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
+    return createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
                 <div className="flex items-center justify-between p-6 border-b border-gray-100">
                     <h2 className="text-lg font-semibold text-gray-900">Upload Document</h2>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -155,6 +156,7 @@ export function AddDocumentModal({ isOpen, onClose, supplierId, onSuccess }: Add
                     </div>
                 </form>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

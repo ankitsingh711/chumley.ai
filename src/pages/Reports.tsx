@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Download, Calendar, Filter, X } from 'lucide-react';
+import { Download, Calendar, Filter, X, Check } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -7,15 +7,18 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import type { KPIMetrics, MonthlySpendData, PurchaseRequest } from '../types/api';
+import { RequestStatus } from '../types/api';
 
 export default function Reports() {
     const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
     const [spendData, setSpendData] = useState<MonthlySpendData[]>([]);
-    const [requests, setRequests] = useState<PurchaseRequest[]>([]);
+    const [allRequests, setAllRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [activeDateRange, setActiveDateRange] = useState<{ start?: string, end?: string }>({});
+    const [transactionFilter, setTransactionFilter] = useState('ALL');
+    const [showTransactionFilter, setShowTransactionFilter] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -31,7 +34,7 @@ export default function Reports() {
             ]);
             setMetrics(kpiData);
             setSpendData(monthlyData);
-            setRequests(requestsData.slice(0, 10));
+            setAllRequests(requestsData);
         } catch (error) {
             console.error('Failed to load reports data:', error);
         } finally {
@@ -274,8 +277,36 @@ export default function Reports() {
             <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
                 <div className="p-4 border-b border-gray-100 flex items-center justify-between">
                     <h3 className="font-semibold text-gray-900">Recent Transactions</h3>
-                    <div className="flex gap-2">
-                        <Button variant="ghost" size="sm"><Filter className="h-3 w-3 mr-1" /> Filter</Button>
+                    <div className="flex gap-2 relative">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowTransactionFilter(!showTransactionFilter)}
+                            className={transactionFilter !== 'ALL' ? 'bg-gray-100 text-primary-600' : ''}
+                        >
+                            <Filter className="h-3 w-3 mr-1" />
+                            {transactionFilter === 'ALL' ? 'Filter' : transactionFilter.replace(/_/g, ' ')}
+                        </Button>
+
+                        {showTransactionFilter && (
+                            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                                {['ALL', ...Object.values(RequestStatus)].map((status) => (
+                                    <button
+                                        key={status}
+                                        onClick={() => {
+                                            setTransactionFilter(status);
+                                            setShowTransactionFilter(false);
+                                        }}
+                                        className="w-full px-4 py-2 text-sm text-left hover:bg-gray-50 flex items-center justify-between"
+                                    >
+                                        <span className={status === transactionFilter ? 'font-medium text-primary-600' : 'text-gray-700'}>
+                                            {status === 'ALL' ? 'All Transactions' : status.replace(/_/g, ' ')}
+                                        </span>
+                                        {status === transactionFilter && <Check className="h-3 w-3 text-primary-600" />}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
                 <table className="w-full text-left text-sm">
@@ -289,23 +320,26 @@ export default function Reports() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-sm">
-                        {requests.map(req => (
-                            <tr key={req.id}>
-                                <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
-                                <td className="px-6 py-3 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
-                                <td className="px-6 py-3 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
-                                <td className="px-6 py-3">
-                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                        req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
-                                            req.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-red-100 text-red-700'
-                                        }`}>
-                                        {req.status.replace(/_/g, ' ')}
-                                    </span>
-                                </td>
-                            </tr>
-                        ))}
+                        {allRequests
+                            .filter(req => transactionFilter === 'ALL' || req.status === transactionFilter)
+                            .slice(0, 10)
+                            .map(req => (
+                                <tr key={req.id}>
+                                    <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
+                                    <td className="px-6 py-3 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                    <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
+                                    <td className="px-6 py-3 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
+                                    <td className="px-6 py-3">
+                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
+                                            req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
+                                                req.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-red-100 text-red-700'
+                                            }`}>
+                                            {req.status.replace(/_/g, ' ')}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
                     </tbody>
                 </table>
             </div>
