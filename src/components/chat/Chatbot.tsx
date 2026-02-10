@@ -10,7 +10,7 @@ interface Message {
     text: string;
     sender: 'user' | 'bot';
     timestamp: Date;
-    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary';
+    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
     data?: any;
 }
 

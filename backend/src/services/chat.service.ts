@@ -5,12 +5,44 @@ const prisma = new PrismaClient();
 interface ChatResponse {
     text: string;
     data?: any;
-    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary';
+    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
 }
 
 export class ChatService {
     async processMessage(userId: string, text: string): Promise<ChatResponse> {
         const lowerText = text.toLowerCase();
+
+        // Intent: SPECIFIC_REQUEST (e.g., "Request #c38a911b")
+        const requestIdMatch = text.match(/#([a-fA-F0-9]{4,})/);
+        if (requestIdMatch) {
+            const shortId = requestIdMatch[1];
+            // Find request where ID starts with the short ID
+            // Since we can't do startsWith easily on ID with findUnique, we use findFirst
+            const request = await prisma.purchaseRequest.findFirst({
+                where: {
+                    id: { startsWith: shortId },
+                    // Ensure user can only see their own requests or if they are admin/approver (simplified here to requester for safety)
+                    OR: [
+                        { requesterId: userId },
+                        { approverId: userId }
+                    ]
+                },
+                include: { requester: true, items: true }
+            });
+
+            if (request) {
+                return {
+                    text: `Here are the details for Request #${request.id.slice(0, 8)}:`,
+                    type: 'request_detail',
+                    data: request
+                };
+            } else {
+                return {
+                    text: `I couldn't find a request with ID #${shortId} that you have access to.`,
+                    type: 'text'
+                };
+            }
+        }
 
         // Intent: GREETING
         if (lowerText.match(/^(hi|hello|hey|greetings)/)) {
