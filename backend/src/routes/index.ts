@@ -28,5 +28,7 @@ import uploadRoutes from './upload.routes';
 router.use('/upload', uploadRoutes);
 import categoryRoutes from './category.routes';
 router.use('/categories', categoryRoutes);
+import notificationRoutes from './notification.routes';
+router.use('/notifications', notificationRoutes);
 
 export default router;

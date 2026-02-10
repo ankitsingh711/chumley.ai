@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PrismaClient, OrderStatus, RequestStatus } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
+import budgetMonitorService from '../services/budget-monitor.service';
 
 const prisma = new PrismaClient();
 
@@ -21,6 +22,13 @@ export const createOrder = async (req: Request, res: Response) => {
         // Check if request exists and is approved
         const request = await prisma.purchaseRequest.findUnique({
             where: { id: validatedData.requestId },
+            include: {
+                requester: {
+                    include: {
+                        department: true,
+                    },
+                },
+            },
         });
 
         if (!request) {
@@ -62,6 +70,13 @@ export const createOrder = async (req: Request, res: Response) => {
                 eventDate: new Date(),
             }
         });
+
+        // Check budget thresholds after order creation
+        if (request.requester?.department) {
+            const department = request.requester.department;
+            budgetMonitorService.checkDepartmentThreshold(department.id, department.name)
+                .catch(err => Logger.error('Failed to check budget threshold:', err));
+        }
 
         res.status(201).json(order);
     } catch (error: any) {

@@ -14,22 +14,32 @@ import {
 import { LogoIcon } from '../ui/Logo';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
+import { UserRole } from '../../types/api';
 
 const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/' },
     { icon: FileText, label: 'Requests', path: '/requests' },
     { icon: ShoppingCart, label: 'Orders', path: '/orders' },
-    { icon: Package, label: 'Catalog', path: '/catalog' },
+    { icon: Package, label: 'Catalog', path: '/catalog', adminOnly: true },
     { icon: Users, label: 'Suppliers', path: '/suppliers' },
-    { icon: FileSignature, label: 'Contracts', path: '/contracts' },
-    { icon: Wallet, label: 'Budgets', path: '/budgets' },
+    { icon: FileSignature, label: 'Contracts', path: '/contracts', adminOnly: true },
+    { icon: Wallet, label: 'Budgets', path: '/budgets', adminOnly: true },
     { icon: BarChart3, label: 'Reports', path: '/reports' },
 ];
 
 export function Sidebar() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
+
+    // Filter menu items based on user role
+    const visibleNavItems = navItems.filter(item => {
+        // If item is admin-only, check if user is System Admin
+        if (item.adminOnly) {
+            return user?.role === UserRole.SYSTEM_ADMIN;
+        }
+        return true;
+    });
 
     const handleLogout = () => {
         logout();
@@ -49,7 +59,7 @@ export function Sidebar() {
             </div>
 
             <nav className="flex-1 space-y-1 px-4">
-                {navItems.map((item) => {
+                {visibleNavItems.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
                     return (
                         <Link

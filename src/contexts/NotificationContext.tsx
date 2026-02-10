@@ -1,19 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { requestsApi } from '../services/requests.service';
-
-const SPENDING_THRESHOLD = 1000;
-
-export interface Notification {
-    id: string;
-    type: 'request_created' | 'request_approved' | 'request_rejected' | 'order_created' | 'spending_threshold';
-    title: string;
-    message: string;
-    userId: string;
-    createdAt: Date;
-    read: boolean;
-    metadata?: Record<string, any>;
-}
+import { notificationsApi, type Notification } from '../services/notification.service';
 
 interface NotificationContextType {
     notifications: Notification[];
@@ -28,83 +15,70 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [hasCheckedThreshold, setHasCheckedThreshold] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     useEffect(() => {
         if (!user) {
             setNotifications([]);
-            setHasCheckedThreshold(false);
+            setUnreadCount(0);
             return;
         }
 
-        const checkSpendingThreshold = async () => {
-            try {
-                const requests = await requestsApi.getAll();
+        // Load notifications on mount
+        loadNotifications();
 
-                // Filter requests created by current user with APPROVED or PENDING status
-                const userRequests = requests.filter(
-                    req => req.requesterId === user.id &&
-                        (req.status === 'APPROVED' || req.status === 'PENDING')
-                );
-
-                // Calculate total spending
-                const totalSpending = userRequests.reduce(
-                    (sum, req) => sum + Number(req.totalAmount),
-                    0
-                );
-
-                // Check if threshold is reached and notification hasn't been created
-                if (totalSpending >= SPENDING_THRESHOLD && !hasCheckedThreshold) {
-                    const thresholdNotification: Notification = {
-                        id: `threshold-${Date.now()}`,
-                        type: 'spending_threshold',
-                        title: 'Spending Threshold Reached',
-                        message: `Your total spending has reached $${totalSpending.toLocaleString()}, exceeding the $${SPENDING_THRESHOLD.toLocaleString()} threshold.`,
-                        userId: user.id,
-                        createdAt: new Date(),
-                        read: false,
-                        metadata: { totalSpending, threshold: SPENDING_THRESHOLD },
-                    };
-
-                    setNotifications((prev) => [thresholdNotification, ...prev]);
-                    setHasCheckedThreshold(true);
-                } else if (totalSpending < SPENDING_THRESHOLD) {
-                    // Reset if spending goes below threshold
-                    setHasCheckedThreshold(false);
-                    // Remove any existing threshold notifications
-                    setNotifications((prev) =>
-                        prev.filter(n => n.type !== 'spending_threshold')
-                    );
-                }
-            } catch (error) {
-                console.error('Failed to check spending threshold:', error);
-            }
-        };
-
-        // Check threshold on mount and periodically
-        checkSpendingThreshold();
-        const interval = setInterval(checkSpendingThreshold, 30000); // Check every 30 seconds
+        // Poll for new notifications every 30 seconds
+        const interval = setInterval(loadNotifications, 30000);
 
         return () => {
             clearInterval(interval);
         };
-    }, [user, hasCheckedThreshold]);
+    }, [user]);
 
-    const markAsRead = (id: string) => {
-        setNotifications((prev) =>
-            prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
-        );
+    const loadNotifications = async () => {
+        try {
+            const data = await notificationsApi.getAll();
+            setNotifications(data);
+            setUnreadCount(data.filter(n => !n.read).length);
+        } catch (error) {
+            console.error('Failed to load notifications:', error);
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })));
+    const markAsRead = async (id: string) => {
+        try {
+            await notificationsApi.markAsRead(id);
+            setNotifications((prev) =>
+                prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif))
+            );
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
     };
 
-    const clearNotification = (id: string) => {
-        setNotifications((prev) => prev.filter((notif) => notif.id !== id));
+    const markAllAsRead = async () => {
+        try {
+            await notificationsApi.markAllAsRead();
+            setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Failed to mark all as read:', error);
+        }
     };
 
-    const unreadCount = notifications.filter((n) => !n.read).length;
+    const clearNotification = async (id: string) => {
+        try {
+            await notificationsApi.delete(id);
+            setNotifications((prev) => prev.filter((notif) => notif.id !== id));
+            const wasUnread = notifications.find(n => n.id === id && !n.read);
+            if (wasUnread) {
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            }
+        } catch (error) {
+            console.error('Failed to delete notification:', error);
+        }
+    };
 
     return (
         <NotificationContext.Provider
@@ -128,3 +102,6 @@ export const useNotifications = () => {
     }
     return context;
 };
+
+// Export Notification type for use in components
+export type { Notification };

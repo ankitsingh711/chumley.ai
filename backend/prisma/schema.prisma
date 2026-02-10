@@ -20,6 +20,16 @@ enum UserStatus {
   SUSPENDED
 }
 
+enum NotificationType {
+  BUDGET_WARNING
+  BUDGET_CRITICAL
+  BUDGET_EXCEEDED
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  CONTRACT_EXPIRING
+  SYSTEM_ALERT
+}
+
 model Department {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -77,6 +87,7 @@ model User {
   requests           PurchaseRequest[]
   approvalHistory    ApprovalHistory[]
   contracts          Contract[]
+  notifications      Notification[]
   
   @@index([departmentId])
   @@index([managerId])
@@ -369,4 +380,20 @@ model Review {
   
   @@index([supplierId])
   @@index([userId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  metadata  Json?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, read])
+  @@index([createdAt])
 }

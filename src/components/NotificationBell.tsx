@@ -32,6 +32,14 @@ export default function NotificationBell() {
                 return '📦';
             case 'spending_threshold':
                 return '💰';
+            case 'BUDGET_WARNING':
+                return '⚠️';
+            case 'BUDGET_CRITICAL':
+                return '🚨';
+            case 'BUDGET_EXCEEDED':
+                return '🔥';
+            case 'CONTRACT_EXPIRING':
+                return '📄';
             default:
                 return '🔔';
         }

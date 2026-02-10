@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 import { Layout } from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import SupplierProfile from './pages/SupplierProfile';
@@ -48,10 +49,9 @@ function App() {
               <Route path="/suppliers" element={<Suppliers />} />
               <Route path="/suppliers/:id" element={<SupplierProfile />} />
               <Route path="/reports" element={<Reports />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/budgets" element={<DepartmentBudgets />} />
-              <Route path="/contracts" element={<Contracts />} />
-              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/budgets" element={<AdminRoute><DepartmentBudgets /></AdminRoute>} />
+              <Route path="/contracts" element={<AdminRoute><Contracts /></AdminRoute>} />
+              <Route path="/catalog" element={<AdminRoute><Catalog /></AdminRoute>} />
               <Route path="/settings" element={<UserPermissions />} />
               <Route path="/settings/approval-workflows" element={<ApprovalWorkflow />} />
             </Route>
