@@ -248,3 +248,47 @@ export const deleteRequest = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+export const addAttachment = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const { filename, fileUrl, fileSize, mimeType } = req.body;
+
+        const request = await prisma.purchaseRequest.findUnique({ where: { id } });
+        if (!request) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        const attachment = await prisma.attachment.create({
+            data: {
+                requestId: id,
+                filename,
+                fileUrl,
+                fileSize,
+                mimeType,
+            },
+        });
+
+        // Log interaction only if supplier is involved
+        if (request.supplierId) {
+            await prisma.interactionLog.create({
+                data: {
+                    supplierId: request.supplierId,
+                    userId: req.user!.id,
+                    eventType: 'document_uploaded',
+                    title: 'Document Uploaded',
+                    description: `Document "${filename}" attached to Request #${request.id.slice(0, 8)}`,
+                    eventDate: new Date(),
+                }
+            });
+        }
+
+        // Let's just create attachment and return it.
+        // We can add audit log if needed.
+
+        res.status(201).json(attachment);
+    } catch (error) {
+        Logger.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};

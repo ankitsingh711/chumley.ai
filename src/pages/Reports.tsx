@@ -195,7 +195,7 @@ export default function Reports() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
                     title="Total Spend YTD"
-                    value={`$${metrics?.totalSpend.toLocaleString()}`}
+                    value={`$${(metrics?.totalSpend ?? 0).toLocaleString()}`}
                     trend={{ value: '+12.4%', isPositive: true, label: 'vs last year' }}
                     color="primary"
                 />

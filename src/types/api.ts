@@ -175,6 +175,17 @@ export interface PurchaseRequest {
     budgetCategory?: string;
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
+    attachments?: Attachment[];
+}
+
+export interface Attachment {
+    id: string;
+    requestId: string;
+    filename: string;
+    fileUrl: string;
+    fileSize: number;
+    mimeType: string;
+    uploadedAt: string;
 }
 
 export interface PurchaseOrder {

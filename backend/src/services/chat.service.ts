@@ -27,7 +27,7 @@ export class ChatService {
                         { approverId: userId }
                     ]
                 },
-                include: { requester: true, items: true }
+                include: { requester: true, items: true, attachments: true }
             });
 
             if (request) {
@@ -42,6 +42,29 @@ export class ChatService {
                     type: 'text'
                 };
             }
+        }
+
+        // Intent: GENERIC_UPLOAD (e.g. "I want to upload a document")
+        if (lowerText.includes('upload') || lowerText.includes('attach') || lowerText.includes('document')) {
+            const recentRequests = await prisma.purchaseRequest.findMany({
+                where: { requesterId: userId },
+                orderBy: { createdAt: 'desc' },
+                take: 5,
+                include: { requester: true }
+            });
+
+            if (recentRequests.length === 0) {
+                return {
+                    text: "You don't have any active purchase requests to upload documents to.",
+                    type: 'text'
+                };
+            }
+
+            return {
+                text: "To upload a document, please select a request from the list below, or specify the ID (e.g., 'upload to #123'):",
+                type: 'requests_list',
+                data: recentRequests
+            };
         }
 
         // Intent: GREETING

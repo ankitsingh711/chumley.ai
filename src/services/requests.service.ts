@@ -3,6 +3,7 @@ import type {
     PurchaseRequest,
     CreateRequestInput,
     UpdateRequestStatusInput,
+    Attachment,
 } from '../types/api';
 
 export const requestsApi = {
@@ -34,5 +35,10 @@ export const requestsApi = {
 
     delete: async (id: string): Promise<void> => {
         await apiClient.delete(`/requests/${id}`);
+    },
+
+    addAttachment: async (requestId: string, attachment: { filename: string; fileUrl: string; fileSize: number; mimeType: string }) => {
+        const response = await apiClient.post<Attachment>(`/requests/${requestId}/attachments`, attachment);
+        return response.data;
     },
 };

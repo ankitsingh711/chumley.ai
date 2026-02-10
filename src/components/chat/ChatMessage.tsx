@@ -1,4 +1,8 @@
-import { Bot, User as UserIcon } from 'lucide-react';
+import { useState, useRef } from 'react';
+import { Bot, User as UserIcon, Upload, Loader2, Paperclip } from 'lucide-react';
+import { uploadApi } from '../../services/upload.service';
+import { requestsApi } from '../../services/requests.service';
+import type { Attachment } from '../../types/api';
 import { format } from 'date-fns';
 
 export interface ChatMessageProps {
@@ -13,7 +17,35 @@ export interface ChatMessageProps {
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
+    const [requestData, setRequestData] = useState(message.data);
+    const [uploading, setUploading] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const isBot = message.sender === 'bot';
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setUploading(true);
+        try {
+            const url = await uploadApi.uploadImage(file);
+            const attachment = await requestsApi.addAttachment(requestData.id, {
+                filename: file.name,
+                fileUrl: url,
+                fileSize: file.size,
+                mimeType: file.type
+            });
+
+            setRequestData((prev: any) => ({
+                ...prev,
+                attachments: [...(prev.attachments || []), attachment]
+            }));
+        } catch (error) {
+            console.error('Upload failed', error);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const renderContent = () => {
         switch (message.type) {
@@ -80,7 +112,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 );
 
             case 'request_detail':
-                const request = message.data;
+                const request = requestData;
                 return (
                     <div className="mt-3 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                         <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 flex justify-between items-center">
@@ -119,7 +151,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                             )}
 
                             {request.items && request.items.length > 0 && (
-                                <div>
+                                <div className="mb-3">
                                     <p className="text-xs font-medium text-gray-500 mb-2">Items</p>
                                     <div className="space-y-2">
                                         {request.items.map((item: any) => (
@@ -137,6 +169,48 @@ export function ChatMessage({ message }: ChatMessageProps) {
                                     </div>
                                 </div>
                             )}
+
+                            {/* Attachments Section */}
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="text-xs font-medium text-gray-500">Documents</p>
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploading}
+                                        className="text-[10px] flex items-center text-primary-600 hover:text-primary-700 font-medium"
+                                    >
+                                        {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                                        {uploading ? 'Uploading...' : 'Upload'}
+                                    </button>
+                                    <input
+                                        type="file"
+                                        ref={fileInputRef}
+                                        className="hidden"
+                                        onChange={handleFileUpload}
+                                    />
+                                </div>
+
+                                {request.attachments && request.attachments.length > 0 ? (
+                                    <div className="space-y-1">
+                                        {request.attachments.map((att: Attachment) => (
+                                            <a
+                                                key={att.id}
+                                                href={att.fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors group"
+                                            >
+                                                <Paperclip className="h-3 w-3 text-gray-400 group-hover:text-primary-500 mr-2" />
+                                                <span className="text-xs text-gray-700 truncate flex-1">{att.filename}</span>
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-2 bg-gray-50 rounded border border-dashed border-gray-200">
+                                        <p className="text-[10px] text-gray-400">No documents attached</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
                 );
