@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
 import { departmentsApi } from '../services/departments.service';
 import { useAuth } from '../contexts/AuthContext';
-import { UserRole, type User } from '../types/api';
+import { UserRole, UserStatus, type User } from '../types/api';
 
 export default function UserPermissions() {
     const [users, setUsers] = useState<User[]>([]);
@@ -144,6 +144,28 @@ export default function UserPermissions() {
             setShowModal(true);
         } finally {
             setInviting(false);
+        }
+    };
+
+    const handleUpdateStatus = async (newStatus: UserStatus) => {
+        if (!selectedUser) return;
+
+        try {
+            const updatedUser = await usersApi.update(selectedUser.id, { status: newStatus });
+
+            // Update lists
+            const updatedList = users.map(u => u.id === selectedUser.id ? updatedUser : u);
+            setUsers(updatedList);
+            setSelectedUser(updatedUser);
+
+            setModalType('success');
+            setModalMessage(`User ${newStatus === UserStatus.ACTIVE ? 'activated' : 'suspended'} successfully.`);
+            setShowModal(true);
+        } catch (error) {
+            console.error('Failed to update user status:', error);
+            setModalType('error');
+            setModalMessage('Failed to update status. Please try again.');
+            setShowModal(true);
         }
     };
 
@@ -421,10 +443,35 @@ export default function UserPermissions() {
                             </div>
                         </div>
 
-                        {/* Danger Zone - Only for Admins */}
+                        {/* Actions - Only for Admins */}
                         {currentUser?.role === UserRole.SYSTEM_ADMIN && selectedUser.id !== currentUser.id && (
-                            <div className="py-6 border-t border-gray-100">
-                                <h3 className="font-semibold text-red-600 mb-4">Danger Zone</h3>
+                            <div className="py-6 border-t border-gray-100 space-y-6">
+                                {/* Suspend/Activate User */}
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 flex items-center justify-between">
+                                    <div>
+                                        <h4 className="font-medium text-gray-900">
+                                            {selectedUser.status === UserStatus.SUSPENDED ? 'Activate User' : 'Suspend User'}
+                                        </h4>
+                                        <p className="text-sm text-gray-500 mt-1">
+                                            {selectedUser.status === UserStatus.SUSPENDED
+                                                ? 'Restore access for this user.'
+                                                : 'Temporarily disable access for this user.'}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => handleUpdateStatus(
+                                            selectedUser.status === UserStatus.SUSPENDED ? UserStatus.ACTIVE : UserStatus.SUSPENDED
+                                        )}
+                                        className={selectedUser.status === UserStatus.SUSPENDED
+                                            ? "border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300"
+                                            : "border-orange-200 text-orange-700 hover:bg-orange-50 hover:border-orange-300"}
+                                    >
+                                        {selectedUser.status === UserStatus.SUSPENDED ? 'Activate User' : 'Suspend User'}
+                                    </Button>
+                                </div>
+
+                                {/* Danger Zone */}
                                 <div className="rounded-lg border border-red-200 bg-red-50 p-4 flex items-center justify-between">
                                     <div>
                                         <h4 className="font-medium text-red-900">Delete User</h4>

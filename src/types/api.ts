@@ -354,6 +354,7 @@ export interface UpdateUserInput {
     email?: string;
     department?: string;
     role?: string;
+    status?: UserStatus;
 }
 
 export interface KPIMetrics {

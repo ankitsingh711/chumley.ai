@@ -10,6 +10,7 @@ const prisma = new PrismaClient();
 const updateUserSchema = z.object({
     name: z.string().min(2).optional(),
     departmentId: z.string().optional(),
+    status: z.enum(['PENDING', 'ACTIVE', 'SUSPENDED']).optional(),
 });
 
 export const getUsers = async (req: Request, res: Response) => {
@@ -70,6 +71,7 @@ export const updateUser = async (req: Request, res: Response) => {
                 email: true,
                 name: true,
                 department: true,
+                status: true,
             },
         });
 
