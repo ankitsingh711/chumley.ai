@@ -67,8 +67,9 @@ export default function UserPermissions() {
             let accessibleUsers = data;
 
             if (currentUser?.role === UserRole.SYSTEM_ADMIN) {
-                // Admin sees everyone
-                accessibleUsers = data;
+                // Admin sees everyone EXCEPT other System Admins (to keep main admin hidden/protected)
+                // accessibleUsers = data;
+                accessibleUsers = data.filter(u => u.role !== UserRole.SYSTEM_ADMIN);
             } else if (currentUser?.role === UserRole.MANAGER || currentUser?.role === UserRole.SENIOR_MANAGER) {
                 // Managers see only their department
                 if (currentUser.department) {
@@ -351,7 +352,6 @@ export default function UserPermissions() {
                                             { value: UserRole.MEMBER, label: 'Team Member' },
                                             { value: UserRole.MANAGER, label: 'Manager' },
                                             { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
-                                            { value: UserRole.SYSTEM_ADMIN, label: 'Administrator' },
                                         ]}
                                         className="mt-1 min-w-[200px]"
                                     />
@@ -387,10 +387,6 @@ export default function UserPermissions() {
                                     <span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset ${getStatusBadgeClass(selectedUser.status)} ring-gray-500/10 mt-1`}>
                                         {selectedUser.status || 'ACTIVE'}
                                     </span>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">User ID</p>
-                                    <p className="text-sm font-mono text-gray-600">{selectedUser.id}</p>
                                 </div>
                             </div>
                         </div>
@@ -512,6 +508,40 @@ export default function UserPermissions() {
                                 <p className="text-sm text-gray-600 mt-2">
                                     Are you sure you want to delete <strong>{selectedUser?.name}</strong>? This action cannot be undone.
                                 </p>
+
+                                <div className="mt-4 bg-red-50 border border-red-100 rounded-lg p-3">
+                                    <p className="text-xs font-semibold text-red-800 uppercase mb-2">
+                                        Impact of deleting this {selectedUser?.role?.replace('_', ' ')}:
+                                    </p>
+                                    <ul className="text-xs text-red-700 space-y-1 list-disc pl-4">
+                                        {selectedUser?.role === UserRole.MANAGER && (
+                                            <>
+                                                <li>Pending approvals assigned to them will be orphaned.</li>
+                                                <li>Team members will need reassignment.</li>
+                                                <li>Historical approval records remain.</li>
+                                            </>
+                                        )}
+                                        {selectedUser?.role === UserRole.SENIOR_MANAGER && (
+                                            <>
+                                                <li>Department budget oversight will be removed.</li>
+                                                <li>Supplier management access will be revoked.</li>
+                                                <li>Pending high-value approvals may stall.</li>
+                                            </>
+                                        )}
+                                        {selectedUser?.role === UserRole.MEMBER && (
+                                            <>
+                                                <li>Their active purchase requests will be cancelled.</li>
+                                                <li>Access to create new requests will be revoked immediately.</li>
+                                            </>
+                                        )}
+                                        {selectedUser?.role === UserRole.SYSTEM_ADMIN && (
+                                            <>
+                                                <li>Full system administrative access will be lost.</li>
+                                                <li>Critical system configurations may be inaccessible if they are the sole owner.</li>
+                                            </>
+                                        )}
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 mt-6">
@@ -587,7 +617,6 @@ export default function UserPermissions() {
                                         { value: UserRole.MEMBER, label: 'Team Member' },
                                         { value: UserRole.MANAGER, label: 'Manager' },
                                         { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
-                                        { value: UserRole.SYSTEM_ADMIN, label: 'Administrator' },
                                     ]}
                                     className="w-full"
                                 />
