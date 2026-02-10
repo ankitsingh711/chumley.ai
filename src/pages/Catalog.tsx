@@ -25,6 +25,9 @@ export default function Catalog() {
         parentId: ''
     });
 
+    // Delete State
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -100,10 +103,15 @@ export default function Catalog() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this category?')) return;
+    const handleDeleteClick = (id: string) => {
+        setDeletingId(id);
+    };
+
+    const confirmDelete = async () => {
+        if (!deletingId) return;
         try {
-            await categoryService.deleteCategory(id);
+            await categoryService.deleteCategory(deletingId);
+            setDeletingId(null);
             await loadData();
         } catch (error) {
             console.error('Failed to delete category:', error);
@@ -187,7 +195,7 @@ export default function Catalog() {
                                         <Edit2 className="h-4 w-4" />
                                     </button>
                                     <button
-                                        onClick={() => handleDelete(category.id)}
+                                        onClick={() => handleDeleteClick(category.id)}
                                         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                     >
                                         <Trash2 className="h-4 w-4" />
@@ -286,6 +294,40 @@ export default function Catalog() {
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Delete Confirmation Modal */}
+            {deletingId && createPortal(
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={() => setDeletingId(null)}>
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="p-6 text-center">
+                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4 text-red-600">
+                                <Trash2 className="h-6 w-6" />
+                            </div>
+                            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Category?</h3>
+                            <p className="text-sm text-gray-600 mb-6">
+                                Are you sure you want to delete this category? This action cannot be undone.
+                            </p>
+
+                            <div className="flex gap-3 justify-center">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setDeletingId(null)}
+                                    className="w-32"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={confirmDelete}
+                                    className="w-32 bg-red-600 hover:bg-red-700 text-white"
+                                >
+                                    Delete
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 </div>,
                 document.body

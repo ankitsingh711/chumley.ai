@@ -7,6 +7,8 @@ import { departmentsApi, type Department } from '../services/departments.service
 import { reportsApi } from '../services/reports.service';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/api';
 
 interface DepartmentBudget extends Department {
     spent: number;
@@ -31,6 +33,7 @@ const COLORS = [
 
 export default function DepartmentBudgets() {
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const [departments, setDepartments] = useState<DepartmentBudget[]>([]);
     const [loading, setLoading] = useState(true);
     const [totalStats, setTotalStats] = useState({
@@ -44,6 +47,27 @@ export default function DepartmentBudgets() {
     const [editValue, setEditValue] = useState('');
     const [saving, setSaving] = useState(false);
 
+    // Check if current user can edit a department's budget
+    const canEditBudget = (dept: DepartmentBudget): boolean => {
+        if (!currentUser) return false;
+
+        // System Admin can edit all budgets
+        if (currentUser.role === UserRole.SYSTEM_ADMIN) {
+            return true;
+        }
+
+        // Senior Manager can edit their own department's budget
+        if (currentUser.role === UserRole.SENIOR_MANAGER) {
+            const userDeptId = typeof currentUser.department === 'string'
+                ? currentUser.department
+                : currentUser.department?.id;
+            return userDeptId === dept.id;
+        }
+
+        // Other roles cannot edit budgets
+        return false;
+    };
+
     useEffect(() => {
         loadData();
     }, []);
@@ -51,17 +75,20 @@ export default function DepartmentBudgets() {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [depts] = await Promise.all([
+            const [depts, kpiData] = await Promise.all([
                 departmentsApi.getAll(),
-                reportsApi.getMonthlySpend()
+                reportsApi.getKPIs()
             ]);
+
+            // Get department spend from KPI endpoint
+            const departmentSpendMap = kpiData.departmentSpend || {};
 
             const processedDepts = depts.map((dept) => {
                 // Use actual budget from DB or default to 0
                 const budget = dept.budget && Number(dept.budget) > 0 ? Number(dept.budget) : 0;
 
-                // Use real spending data from backend if available, otherwise 0
-                const spent = (dept as any).metrics?.totalSpent || 0;
+                // Use real spending data from KPI endpoint
+                const spent = departmentSpendMap[dept.name] || 0;
 
                 return {
                     ...dept,
@@ -198,13 +225,15 @@ export default function DepartmentBudgets() {
                                                     <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 font-medium">
                                                         {dept.metrics.userCount} Members
                                                     </span>
-                                                    <button
-                                                        onClick={() => handleEditClick(dept)}
-                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
-                                                        title="Edit Budget"
-                                                    >
-                                                        <Edit2 className="h-3 w-3" />
-                                                    </button>
+                                                    {canEditBudget(dept) && (
+                                                        <button
+                                                            onClick={() => handleEditClick(dept)}
+                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
+                                                            title="Edit Budget"
+                                                        >
+                                                            <Edit2 className="h-3 w-3" />
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-gray-500 mt-0.5">{dept.description || 'General Operations'}</p>
                                             </div>
