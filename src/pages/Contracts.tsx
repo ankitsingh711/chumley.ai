@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Calendar, DollarSign, Building2, X } from 'lucide-react';
+import { Plus, FileText, Calendar, DollarSign, Building2, X, Loader2 } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
@@ -97,13 +97,7 @@ export default function Contracts() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        );
-    }
+
 
     return (
         <div className="space-y-6">
@@ -156,64 +150,67 @@ export default function Contracts() {
 
             {/* Contracts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredContracts.map((contract) => (
-                    <div
-                        key={contract.id}
-                        className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                        onClick={() => {/* Future: navigate to contract details */ }}
-                    >
-                        {/* Status Badge */}
-                        <div className="flex items-center justify-between mb-4">
-                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeColor(contract.status)}`}>
-                                {contract.status.replace('_', ' ')}
-                            </span>
-                            <span className="text-xs text-gray-500">{contract.contractNumber}</span>
-                        </div>
-
-                        {/* Contract Title */}
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{contract.title}</h3>
-
-                        {/* Supplier */}
-                        <div className="flex items-center gap-2 mb-4">
-                            <Building2 className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">{contract.supplier?.name || 'Unknown Supplier'}</span>
-                        </div>
-
-                        {/* Details */}
-                        <div className="space-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-500 flex items-center gap-1">
-                                    <Calendar className="h-3.5 w-3.5" /> End Date
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                    {new Date(contract.endDate).toLocaleDateString()}
-                                </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <span className="text-gray-500 flex items-center gap-1">
-                                    <DollarSign className="h-3.5 w-3.5" /> Value
-                                </span>
-                                <span className="font-medium text-gray-900">
-                                    {contract.currency} {contract.totalValue.toLocaleString()}
-                                </span>
-                            </div>
-                            {contract.daysUntilExpiry !== undefined && contract.daysUntilExpiry > 0 && (
-                                <div className="flex items-center justify-between">
-                                    <span className="text-gray-500">Days Until Expiry</span>
-                                    <span className="font-medium text-orange-600">{contract.daysUntilExpiry}</span>
-                                </div>
-                            )}
-                        </div>
+                {loading ? (
+                    <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
+                        <Loader2 className="h-12 w-12 animate-spin" />
                     </div>
-                ))}
-
-                {/* Empty State */}
-                {filteredContracts.length === 0 && (
+                ) : filteredContracts.length === 0 ? (
                     <div className="col-span-full text-center py-12">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />
                         <h3 className="mt-2 text-sm font-medium text-gray-900">No contracts found</h3>
                         <p className="mt-1 text-sm text-gray-500">Get started by creating a new contract.</p>
                     </div>
+                ) : (
+                    filteredContracts.map((contract) => (
+                        <div
+                            key={contract.id}
+                            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow cursor-pointer"
+                            onClick={() => {/* Future: navigate to contract details */ }}
+                        >
+                            {/* Status Badge */}
+                            <div className="flex items-center justify-between mb-4">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getStatusBadgeColor(contract.status)}`}>
+                                    {contract.status.replace('_', ' ')}
+                                </span>
+                                <span className="text-xs text-gray-500">{contract.contractNumber}</span>
+                            </div>
+
+                            {/* Contract Title */}
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{contract.title}</h3>
+
+                            {/* Supplier */}
+                            <div className="flex items-center gap-2 mb-4">
+                                <Building2 className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-600">{contract.supplier?.name || 'Unknown Supplier'}</span>
+                            </div>
+
+                            {/* Details */}
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-500 flex items-center gap-1">
+                                        <Calendar className="h-3.5 w-3.5" /> End Date
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                        {new Date(contract.endDate).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-500 flex items-center gap-1">
+                                        <DollarSign className="h-3.5 w-3.5" /> Value
+                                    </span>
+                                    <span className="font-medium text-gray-900">
+                                        {contract.currency} {contract.totalValue.toLocaleString()}
+                                    </span>
+                                </div>
+                                {contract.daysUntilExpiry !== undefined && contract.daysUntilExpiry > 0 && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-500">Days Until Expiry</span>
+                                        <span className="font-medium text-orange-600">{contract.daysUntilExpiry}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
 

@@ -13,6 +13,10 @@ export interface ChatMessageProps {
         timestamp: Date;
         type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
         data?: any;
+        attachment?: {
+            name: string;
+            url: string;
+        };
     };
 }
 
@@ -28,7 +32,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
 
         setUploading(true);
         try {
-            const url = await uploadApi.uploadImage(file);
+            const url = await uploadApi.uploadFile(file);
             const attachment = await requestsApi.addAttachment(requestData.id, {
                 filename: file.name,
                 fileUrl: url,
@@ -236,6 +240,17 @@ export function ChatMessage({ message }: ChatMessageProps) {
                         }`}
                 >
                     <p className="whitespace-pre-wrap">{message.text}</p>
+                    {message.attachment && (
+                        <a
+                            href={message.attachment.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`flex items-center gap-2 mt-2 p-2 rounded text-xs ${isBot ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                        >
+                            <Paperclip className="h-3 w-3" />
+                            <span className="truncate max-w-[150px]">{message.attachment.name}</span>
+                        </a>
+                    )}
                     {isBot && renderContent()}
                 </div>
                 <span className="mt-1 text-[10px] text-gray-400">

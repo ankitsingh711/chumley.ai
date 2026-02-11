@@ -7,8 +7,12 @@ export interface ChatResponse {
 }
 
 export const chatApi = {
-    sendMessage: async (text: string): Promise<ChatResponse> => {
-        const response = await apiClient.post<ChatResponse>('/chat/message', { text });
+    sendMessage: async (text: string, attachmentUrl?: string, contextAttachmentUrl?: string): Promise<ChatResponse> => {
+        const response = await apiClient.post<ChatResponse>('/chat/message', {
+            text,
+            attachmentUrl,
+            contextAttachmentUrl
+        });
         return response.data;
     }
 };

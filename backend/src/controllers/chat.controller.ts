@@ -4,7 +4,7 @@ import { chatService } from '../services/chat.service';
 export const chatController = {
     async handleMessage(req: Request, res: Response) {
         try {
-            const { text } = req.body;
+            const { text, attachmentUrl, contextAttachmentUrl } = req.body;
             // Assuming auth middleware populates req.user. If not, we might need a fallback or ensure auth is used.
             // For now, let's assume req.user is populated by the auth middleware we observed in other files.
             // If strictly typed, we might need to cast or ensure types.
@@ -16,7 +16,7 @@ export const chatController = {
                 return;
             }
 
-            const response = await chatService.processMessage(userId, text);
+            const response = await chatService.processMessage(userId, text, attachmentUrl, contextAttachmentUrl);
             res.json(response);
         } catch (error) {
             console.error('Chat error:', error);

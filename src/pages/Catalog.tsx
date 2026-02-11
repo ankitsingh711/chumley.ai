@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Package, Plus, Edit2, Trash2, FolderTree, X, Search } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, FolderTree, X, Search, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { categoryService } from '../services/category.service';
@@ -125,13 +125,7 @@ export default function Catalog() {
         return matchesDept && matchesSearch;
     });
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        );
-    }
+
 
     return (
         <div className="space-y-6">
@@ -171,63 +165,67 @@ export default function Catalog() {
 
             {/* Categories List */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCategories.map((category) => {
-                    const deptName = departments.find(d => d.id === category.departmentId)?.name || 'Unknown';
-                    return (
-                        <div key={category.id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600">
-                                        <Package className="h-5 w-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="font-semibold text-gray-900">{category.name}</h3>
-                                        <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded-full mt-1">
-                                            {deptName}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button
-                                        onClick={() => handleOpenModal(category)}
-                                        className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                    >
-                                        <Edit2 className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteClick(category.id)}
-                                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {category.description && (
-                                <p className="mt-3 text-sm text-gray-600 line-clamp-2">
-                                    {category.description}
-                                </p>
-                            )}
-
-                            {/* Metadata footer */}
-                            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                                <span>ID: {category.id.slice(0, 8)}...</span>
-                                {category.parentId && (
-                                    <span className="flex items-center gap-1">
-                                        <FolderTree className="h-3 w-3" /> Sub-category
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
-
-                {filteredCategories.length === 0 && (
+                {loading ? (
+                    <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
+                        <Loader2 className="h-12 w-12 animate-spin" />
+                    </div>
+                ) : filteredCategories.length === 0 ? (
                     <div className="col-span-full py-12 text-center bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
                         <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                         <h3 className="text-gray-900 font-medium">No categories found</h3>
                         <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
                     </div>
+                ) : (
+                    filteredCategories.map((category) => {
+                        const deptName = departments.find(d => d.id === category.departmentId)?.name || 'Unknown';
+                        return (
+                            <div key={category.id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600">
+                                            <Package className="h-5 w-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                                            <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded-full mt-1">
+                                                {deptName}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <button
+                                            onClick={() => handleOpenModal(category)}
+                                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                        >
+                                            <Edit2 className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteClick(category.id)}
+                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {category.description && (
+                                    <p className="mt-3 text-sm text-gray-600 line-clamp-2">
+                                        {category.description}
+                                    </p>
+                                )}
+
+                                {/* Metadata footer */}
+                                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                    <span>ID: {category.id.slice(0, 8)}...</span>
+                                    {category.parentId && (
+                                        <span className="flex items-center gap-1">
+                                            <FolderTree className="h-3 w-3" /> Sub-category
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
                 )}
             </div>
 

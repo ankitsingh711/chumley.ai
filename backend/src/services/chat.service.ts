@@ -9,8 +9,57 @@ interface ChatResponse {
 }
 
 export class ChatService {
-    async processMessage(userId: string, text: string): Promise<ChatResponse> {
+    async processMessage(userId: string, text: string, attachmentUrl?: string, contextAttachmentUrl?: string): Promise<ChatResponse> {
         const lowerText = text.toLowerCase();
+
+        // 1. Handle New Attachment Uploads
+        if (attachmentUrl) {
+            // In a real system, we would trigger an async job to process/embed the document here.
+            // For now, we simulate an analysis response.
+            return {
+                text: "I've received your document. I'm analyzing it now... \n\n(Simulation) Analysis complete. This appears to be a standard invoice or contract. You can ask me questions like 'What is the total amount?' or 'Who is the vendor?'.",
+                type: 'text',
+                data: { attachmentUrl } // Return it so frontend can set context
+            };
+        }
+
+        // 2. Handle Questions about Context Document
+        // If we have a context attachment and the user is asking a question (not just a greeting/command)
+        if (contextAttachmentUrl && !lowerText.startsWith('/') && text.length > 5) {
+            // Simple keyword matching to simulate QA
+            if (lowerText.includes('total') || lowerText.includes('amount') || lowerText.includes('cost') || lowerText.includes('price')) {
+                return {
+                    text: "Based on the document, the total amount appears to be **$1,250.00**. \n\n(This is a simulated response based on your document context)",
+                    type: 'text',
+                    data: { attachmentUrl: contextAttachmentUrl } // Maintain context
+                };
+            }
+            if (lowerText.includes('vendor') || lowerText.includes('supplier') || lowerText.includes('who')) {
+                return {
+                    text: "The vendor identified in the document is **Acme Corp Inc.** \n\n(This is a simulated response)",
+                    type: 'text',
+                    data: { attachmentUrl: contextAttachmentUrl }
+                };
+            }
+            if (lowerText.includes('date') || lowerText.includes('when') || lowerText.includes('due')) {
+                return {
+                    text: "The invoice date is **Feb 12, 2026** and it is due on **Mar 14, 2026**. \n\n(This is a simulated response)",
+                    type: 'text',
+                    data: { attachmentUrl: contextAttachmentUrl }
+                };
+            }
+
+            // If explicit "what is this"
+            if (lowerText.includes('what is this') || lowerText.includes('summarize') || lowerText.includes('summary')) {
+                return {
+                    text: "This document looks like a purchase invoice for IT equipment. It includes line items for laptops and monitors. \n\n(This is a simulated summary)",
+                    type: 'text',
+                    data: { attachmentUrl: contextAttachmentUrl }
+                };
+            }
+
+            // Fallthrough if not caught: let it check other intents, but if nothing else matches, generic QA response
+        }
 
         // Intent: SPECIFIC_REQUEST (e.g., "Request #c38a911b")
         const requestIdMatch = text.match(/#([a-fA-F0-9]{4,})/);
@@ -45,7 +94,7 @@ export class ChatService {
         }
 
         // Intent: GENERIC_UPLOAD (e.g. "I want to upload a document")
-        if (lowerText.includes('upload') || lowerText.includes('attach') || lowerText.includes('document')) {
+        if (lowerText.includes('upload') && !lowerText.includes('about')) { // Avoid triggering on "upload about..."
             const recentRequests = await prisma.purchaseRequest.findMany({
                 where: { requesterId: userId },
                 orderBy: { createdAt: 'desc' },
@@ -61,7 +110,7 @@ export class ChatService {
             }
 
             return {
-                text: "To upload a document, please select a request from the list below, or specify the ID (e.g., 'upload to #123'):",
+                text: "To upload a document to a request, please select a request from the list below:",
                 type: 'requests_list',
                 data: recentRequests
             };
@@ -70,7 +119,7 @@ export class ChatService {
         // Intent: GREETING
         if (lowerText.match(/^(hi|hello|hey|greetings)/)) {
             return {
-                text: "Hello! I'm ChumleyBot. I can help you check request status, view contracts, or analyze spend. What do you need?",
+                text: "Hello! I'm ChumleyBot. I can help you check request status, view contracts, analyze spend, or answer questions about uploaded documents.",
                 type: 'text'
             };
         }
@@ -155,14 +204,22 @@ export class ChatService {
         // Intent: HELP
         if (lowerText.includes('help') || lowerText.includes('support')) {
             return {
-                text: "I can help with:\n- Checking your request status\n- Department budget & spend analysis\n- Finding active contracts\n- General FAQs",
+                text: "I can help with:\n- Checking your request status\n- Department budget & spend analysis\n- Finding active contracts\n- Uploading and analyzing documents",
                 type: 'text'
             };
         }
 
-        // Intent: FALLBACK
+        // Intent: FALLBACK with Context Awareness
+        if (contextAttachmentUrl) {
+            return {
+                text: "I'm not sure specifically about that detail in the document. Try asking about the 'total amount', 'vendor', or 'dates'.",
+                type: 'text',
+                data: { attachmentUrl: contextAttachmentUrl }
+            };
+        }
+
         return {
-            text: "I'm not sure I understood that. Try asking about 'my requests', 'budget', or 'contracts'.",
+            text: "I'm not sure I understood that. You can try asking about 'my requests', 'budget', 'contracts', or upload a document.",
             type: 'text'
         };
     }

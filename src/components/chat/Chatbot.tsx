@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send } from 'lucide-react';
+import { X, Send, Paperclip, FileText, Loader2 } from 'lucide-react';
+import { uploadApi } from '../../services/upload.service';
 import { ChatMessage } from './ChatMessage';
 import { LogoWithText } from '../ui/Logo';
 import { chatApi } from '../../services/chat.service';
@@ -12,6 +13,10 @@ interface Message {
     timestamp: Date;
     type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
     data?: any;
+    attachment?: {
+        name: string;
+        url: string;
+    };
 }
 
 interface ChatbotProps {
@@ -37,7 +42,11 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     ]);
     const [inputValue, setInputValue] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [attachment, setAttachment] = useState<{ name: string; url: string } | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [lastContextAttachment, setLastContextAttachment] = useState<string | undefined>(undefined);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,8 +62,28 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
 
     // ... (keep interface Message but upgrade it)
 
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        try {
+            const url = await uploadApi.uploadFile(file);
+            setAttachment({
+                name: file.name,
+                url: url
+            });
+            // Focus back on input
+        } catch (error) {
+            console.error('Failed to upload', error);
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
+
     const handleSend = async (text: string = inputValue) => {
-        if (!text.trim()) return;
+        if (!text.trim() && !attachment) return;
 
         // Add User Message
         const userMsg: Message = {
@@ -62,13 +91,23 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
             text: text,
             sender: 'user',
             timestamp: new Date(),
+            attachment: attachment || undefined
         };
+
+        // Capture current attachment to use in API call
+        const currentAttachment = attachment;
+
         setMessages(prev => [...prev, userMsg]);
         setInputValue('');
+        setAttachment(null);
         setIsTyping(true);
 
         try {
-            const response = await chatApi.sendMessage(text);
+            const response = await chatApi.sendMessage(
+                text,
+                currentAttachment?.url,
+                lastContextAttachment
+            );
 
             const botMsg: Message = {
                 id: (Date.now() + 1).toString(),
@@ -78,6 +117,15 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                 type: response.type,
                 data: response.data
             };
+
+            // If bot returns an attachment in data (simulated), update context
+            if (response.data?.attachmentUrl) {
+                setLastContextAttachment(response.data.attachmentUrl);
+            }
+            // Or if user just uploaded one, set that as context for next turn
+            else if (currentAttachment) {
+                setLastContextAttachment(currentAttachment.url);
+            }
 
             setMessages(prev => [...prev, botMsg]);
         } catch (error) {
@@ -157,22 +205,54 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         e.preventDefault();
                         handleSend();
                     }}
-                    className="relative flex items-center gap-2"
+                    className="relative"
                 >
-                    <input
-                        type="text"
-                        value={inputValue}
-                        onChange={(e) => setInputValue(e.target.value)}
-                        placeholder="Type a message..."
-                        className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400"
-                    />
-                    <button
-                        type="submit"
-                        disabled={!inputValue.trim()}
-                        className="rounded-full bg-primary-600 p-2.5 text-white hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
-                    >
-                        <Send className="h-4 w-4" />
-                    </button>
+                    {/* Attachment Preview */}
+                    {attachment && (
+                        <div className="absolute bottom-full left-0 mb-2 bg-gray-100 rounded-lg p-2 flex items-center gap-2 border border-gray-200 text-xs w-full max-w-[200px]">
+                            <FileText className="h-3 w-3 text-primary-600" />
+                            <span className="truncate flex-1 font-medium">{attachment.name}</span>
+                            <button
+                                type="button"
+                                onClick={() => setAttachment(null)}
+                                className="text-gray-400 hover:text-red-500"
+                            >
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isUploading}
+                            className={`p-2 rounded-full transition-colors ${isUploading ? 'bg-gray-100 text-gray-400' : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-primary-600'}`}
+                        >
+                            {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
+                        </button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            onChange={handleFileSelect}
+                        />
+
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => setInputValue(e.target.value)}
+                            placeholder={attachment ? "Ask a question about this file..." : "Type a message..."}
+                            className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400"
+                        />
+                        <button
+                            type="submit"
+                            disabled={!inputValue.trim() && !attachment}
+                            className="rounded-full bg-primary-600 p-2.5 text-white hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+                        >
+                            <Send className="h-4 w-4" />
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
