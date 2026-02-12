@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus } from '@prisma/client';
+import { PrismaClient, RequestStatus, UserRole } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
@@ -133,8 +133,22 @@ export const createRequest = async (req: Request, res: Response) => {
 
 export const getRequests = async (req: Request, res: Response) => {
     try {
-        // All users can see all requests
+        const user = req.user! as any;
+        // Restrict view for MEMBER, MANAGER, and SENIOR_MANAGER (System Admin sees all)
+        const isRestricted = [UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role);
+
+        const where: any = {};
+        if (isRestricted) {
+            if (user.departmentId) {
+                where.requester = { departmentId: user.departmentId };
+            } else {
+                // If user has no department, they can only see their own requests (fallback)
+                where.requesterId = user.id;
+            }
+        }
+
         const requests = await prisma.purchaseRequest.findMany({
+            where,
             include: {
                 requester: {
                     select: { id: true, name: true, email: true, department: true },
