@@ -18,7 +18,53 @@ const updateSupplierSchema = createSupplierSchema.partial();
 
 export const getSuppliers = async (req: Request, res: Response) => {
     try {
+        const user = req.user;
+        let whereClause = {};
+
+        if (user && user.role !== UserRole.SYSTEM_ADMIN) {
+            // If user has a department, filter by it.
+            // Also include suppliers with NO department (global) if desired, but request implies strict filtering to "their particular department".
+            // Let's check user's department first.
+            // We need to fetch user's full details to get departmentId if not present in token, but express.d.ts suggests it might be minimal.
+            // However, let's assume req.user might have it or fetch if needed.
+            // Actually, the token usually has ID. Let's fetch the user to be sure about departmentId.
+
+            const fullUser = await prisma.user.findUnique({
+                where: { id: user.id },
+                select: { departmentId: true }
+            });
+
+            if (fullUser?.departmentId) {
+                whereClause = {
+                    departments: {
+                        some: {
+                            id: fullUser.departmentId
+                        }
+                    }
+                };
+            } else {
+                // If user has no department, they see nothing? Or global?
+                // Safer to show nothing or just global unassigned.
+                // Let's show nothing or return empty if no department.
+                // Requirement: "user should see their particular department suppliers"
+                if (user.role !== UserRole.SYSTEM_ADMIN) {
+                    // If not admin and no department, maybe just return empty or global
+                    // For now, let's assume strict Departmental Access.
+                    whereClause = {
+                        departments: {
+                            some: {
+                                id: "non-existent-id" // Force empty if no dept
+                            }
+                        }
+                    };
+                    // Actually better:
+                    // whereClause = { departments: { some: { id: fullUser.departmentId } } }; // if null, it might error or return nothing.
+                }
+            }
+        }
+
         const suppliers = await prisma.supplier.findMany({
+            where: whereClause,
             orderBy: { createdAt: 'desc' },
             include: {
                 orders: {
@@ -27,7 +73,8 @@ export const getSuppliers = async (req: Request, res: Response) => {
                         totalAmount: true,
                         createdAt: true,
                     }
-                }
+                },
+                departments: { select: { id: true, name: true } }
             }
         });
 
@@ -114,12 +161,20 @@ export const createSupplier = async (req: Request, res: Response) => {
         const isRestricted = user.role !== UserRole.SYSTEM_ADMIN;
         const status = isRestricted ? 'Review Pending' : 'Active';
 
+        // Fetch full user to get department
+        const fullUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { departmentId: true, role: true, name: true }
+        });
+
         const supplier = await prisma.supplier.create({
             data: {
                 ...validatedData,
                 status,
-                // @ts-ignore
                 requesterId: isRestricted ? user.id : undefined,
+                departments: fullUser?.departmentId ? {
+                    connect: { id: fullUser.departmentId }
+                } : undefined
             },
         });
 
@@ -135,7 +190,6 @@ export const createSupplier = async (req: Request, res: Response) => {
                 await prisma.notification.createMany({
                     data: admins.map(admin => ({
                         userId: admin.id,
-                        // @ts-ignore
                         type: NotificationType.SUPPLIER_REQUEST,
                         title: 'New Supplier Request',
                         message: `${user.name} has requested to add a new supplier: ${supplier.name}`,

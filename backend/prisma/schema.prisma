@@ -47,6 +47,7 @@ model Department {
   users              User[]
   categories         SpendingCategory[]
   additionalUserRoles UserDepartmentRole[]
+  suppliers          Supplier[]
 }
 
 model SpendingCategory {
@@ -139,6 +140,7 @@ model Supplier {
   reviews      Review[]
   requesterId  String?
   requester    User?             @relation("SupplierRequester", fields: [requesterId], references: [id])
+  departments  Department[]
 }
 
 model SupplierDetails {

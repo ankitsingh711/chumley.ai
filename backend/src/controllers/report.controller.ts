@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus, OrderStatus } from '@prisma/client';
+import { PrismaClient, RequestStatus, OrderStatus, UserRole } from '@prisma/client';
 import Logger from '../utils/logger';
 import { startOfMonth, subMonths, format } from 'date-fns';
 
@@ -8,6 +8,7 @@ const prisma = new PrismaClient();
 export const getKPIs = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate } = req.query;
+        const user = req.user as any;
 
         // Build date filter
         const dateFilter: any = {};
@@ -20,44 +21,74 @@ export const getKPIs = async (req: Request, res: Response) => {
             dateFilter.lte = end;
         }
 
-        const whereClause = Object.keys(dateFilter).length > 0
+        // --- RBAC FILTERING LOGIC ---
+        // Base filters
+        let orderDateFilter = Object.keys(dateFilter).length > 0
             ? { createdAt: dateFilter, status: { not: OrderStatus.CANCELLED } }
             : { status: { not: OrderStatus.CANCELLED } };
 
-        const requestWhereClause = Object.keys(dateFilter).length > 0
+        let requestDateFilter = Object.keys(dateFilter).length > 0
             ? { createdAt: dateFilter }
             : {};
 
+        // Role-based logic
+        let orderWhere: any = { ...orderDateFilter };
+        let requestWhere: any = { ...requestDateFilter };
+
+        if (!user || user.role === UserRole.SYSTEM_ADMIN) {
+            // No additional filters for admins
+        } else if (
+            user.role === UserRole.MANAGER ||
+            user.role === UserRole.SENIOR_MANAGER
+        ) {
+            // Filter by Department
+            if (user.departmentId) {
+                // Filter Orders: linked request -> requester -> departmentId
+                orderWhere.request = {
+                    requester: { departmentId: user.departmentId }
+                };
+                // Filter Requests: requester -> departmentId
+                requestWhere.requester = { departmentId: user.departmentId };
+            } else {
+                // Fallback: If manager has no department, show only own
+                orderWhere.request = { requesterId: user.id };
+                requestWhere.requesterId = user.id;
+            }
+        } else {
+            // Members: Show strictly own requests/orders
+            orderWhere.request = { requesterId: user.id };
+            requestWhere.requesterId = user.id;
+        }
+
         const totalSpendResult = await prisma.purchaseOrder.aggregate({
             _sum: { totalAmount: true },
-            where: whereClause,
+            where: orderWhere,
         });
         const totalSpend = totalSpendResult._sum.totalAmount || 0;
 
         const totalRequests = await prisma.purchaseRequest.count({
-            where: requestWhereClause,
+            where: requestWhere,
         });
 
         const pendingRequests = await prisma.purchaseRequest.count({
-            where: { ...requestWhereClause, status: RequestStatus.PENDING },
+            where: { ...requestWhere, status: RequestStatus.PENDING },
         });
 
         const approvedRequests = await prisma.purchaseRequest.count({
-            where: { ...requestWhereClause, status: RequestStatus.APPROVED },
+            where: { ...requestWhere, status: RequestStatus.APPROVED },
         });
 
         const rejectedRequests = await prisma.purchaseRequest.count({
-            where: { ...requestWhereClause, status: RequestStatus.REJECTED },
+            where: { ...requestWhere, status: RequestStatus.REJECTED },
         });
 
         const totalOrders = await prisma.purchaseOrder.count({
-            where: whereClause,
+            where: orderWhere,
         });
 
-        // Calculate spend by department
         // Calculate spend by department/category
         const ordersWithDept = await prisma.purchaseOrder.findMany({
-            where: whereClause,
+            where: orderWhere,
             include: {
                 request: {
                     select: {
@@ -82,7 +113,7 @@ export const getKPIs = async (req: Request, res: Response) => {
         // Calculate average processing time
         const completedRequests = await prisma.purchaseRequest.findMany({
             where: {
-                ...requestWhereClause,
+                ...requestWhere,
                 status: { in: [RequestStatus.APPROVED, RequestStatus.REJECTED] }
             },
             select: {
@@ -119,6 +150,7 @@ export const getKPIs = async (req: Request, res: Response) => {
 export const getMonthlySpend = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate } = req.query;
+        const user = req.user as any;
 
         // Default to last 6 months if no date range provided
         let start = subMonths(new Date(), 6);
@@ -132,11 +164,32 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
             end.setHours(23, 59, 59, 999);
         }
 
+        // --- RBAC FILTERING LOGIC ---
+        let where: any = {
+            createdAt: { gte: start, lte: end },
+            status: { not: OrderStatus.CANCELLED },
+        };
+
+        if (!user || user.role === UserRole.SYSTEM_ADMIN) {
+            // No filters
+        } else if (
+            user.role === UserRole.MANAGER ||
+            user.role === UserRole.SENIOR_MANAGER
+        ) {
+            if (user.departmentId) {
+                where.request = {
+                    requester: { departmentId: user.departmentId }
+                };
+            } else {
+                where.request = { requesterId: user.id };
+            }
+        } else {
+            // Member
+            where.request = { requesterId: user.id };
+        }
+
         const orders = await prisma.purchaseOrder.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                status: { not: OrderStatus.CANCELLED },
-            },
+            where,
             select: {
                 createdAt: true,
                 totalAmount: true,
