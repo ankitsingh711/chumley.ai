@@ -324,8 +324,8 @@ export default function Requests() {
                 </div>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-xl">
                     <div className="flex items-center gap-2">
                         <Button
                             variant="ghost"
@@ -377,7 +377,7 @@ export default function Requests() {
 
                             {/* Filter Dropdown */}
                             {showFilterModal && (
-                                <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-99 p-4">
+                                <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4">
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
@@ -456,112 +456,114 @@ export default function Requests() {
                 </div>
 
                 {filteredRequests.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500">
+                    <div className="p-12 text-center text-gray-500 rounded-b-xl">
                         No requests found. {filter !== 'all' && 'Try changing the filter.'}
                     </div>
                 ) : (
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-white border-b border-gray-100 text-gray-500 uppercase text-xs">
-                            <tr>
-                                <th className="px-6 py-4 font-medium">ID</th>
-                                <th className="px-6 py-4 font-medium">Requester</th>
-                                <th className="px-6 py-4 font-medium">Items</th>
-                                <th className="px-6 py-4 font-medium">Date</th>
-                                <th className="px-6 py-4 font-medium">Amount</th>
-                                <th className="px-6 py-4 font-medium">Status</th>
-                                {!isMember && <th className="px-6 py-4 font-medium">Actions</th>}
-                                <th className="px-6 py-4 font-medium text-right"></th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {filteredRequests.map((req) => (
-                                <tr key={req.id} className="hover:bg-gray-50/50">
-                                    <td className="px-6 py-4 font-medium text-primary-600">
-                                        #{req.id.slice(0, 8)}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
-                                                {req.requester?.name?.charAt(0) || 'U'}
-                                            </div>
-                                            <span className="font-medium text-gray-900">{req.requester?.name || 'Unknown'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-500">{req.items?.length || 0} items</td>
-                                    <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 font-bold text-gray-900">${Number(req.totalAmount).toLocaleString()}</td>
-                                    <td className="px-6 py-4">
-
-                                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
-                                            ${req.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
-                                                req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
-                                                    req.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
-                                                        'bg-gray-100 text-gray-700'}`}>
-                                            {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
-                                        </span>
-                                    </td>
-                                    {/* Action Column */}
-                                    {!isMember && (
-                                        <td className="px-6 py-4">
-                                            {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
-                                                        disabled={updating === req.id}
-                                                        title="Approve"
-                                                    >
-                                                        <Check className="h-4 w-4" />
-                                                    </button>
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
-                                                        disabled={updating === req.id}
-                                                        title="Reject"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
-                                            {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                        onClick={() => handleDelete(req.id)}
-                                                        disabled={updating === req.id}
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {/* Create PO Button for Approved Requests */}
-                                            {req.status === RequestStatus.APPROVED && (
-                                                <button
-                                                    className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                                                    onClick={() => handleCreateOrder(req)}
-                                                    disabled={updating === req.id}
-                                                    title="Create Purchase Order"
-                                                >
-                                                    <ShoppingBag className="h-4 w-4" />
-                                                </button>
-                                            )}
-                                        </td>
-                                    )}
-                                    <td className="px-6 py-4 text-right">
-                                        <button
-                                            onClick={() => handleViewDetails(req)}
-                                            className="p-1 hover:text-primary-600 text-gray-400"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                        </button>
-                                    </td>
+                    <div className="overflow-hidden rounded-b-xl">
+                        <table className="w-full text-left text-sm">
+                            <thead className="bg-white border-b border-gray-100 text-gray-500 uppercase text-xs">
+                                <tr>
+                                    <th className="px-6 py-4 font-medium">ID</th>
+                                    <th className="px-6 py-4 font-medium">Requester</th>
+                                    <th className="px-6 py-4 font-medium">Items</th>
+                                    <th className="px-6 py-4 font-medium">Date</th>
+                                    <th className="px-6 py-4 font-medium">Amount</th>
+                                    <th className="px-6 py-4 font-medium">Status</th>
+                                    {!isMember && <th className="px-6 py-4 font-medium">Actions</th>}
+                                    <th className="px-6 py-4 font-medium text-right"></th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredRequests.map((req) => (
+                                    <tr key={req.id} className="hover:bg-gray-50/50">
+                                        <td className="px-6 py-4 font-medium text-primary-600">
+                                            #{req.id.slice(0, 8)}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
+                                                    {req.requester?.name?.charAt(0) || 'U'}
+                                                </div>
+                                                <span className="font-medium text-gray-900">{req.requester?.name || 'Unknown'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-500">{req.items?.length || 0} items</td>
+                                        <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-900">${Number(req.totalAmount).toLocaleString()}</td>
+                                        <td className="px-6 py-4">
+
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
+                                            ${req.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
+                                                    req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
+                                                        req.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
+                                                            'bg-gray-100 text-gray-700'}`}>
+                                                {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
+                                            </span>
+                                        </td>
+                                        {/* Action Column */}
+                                        {!isMember && (
+                                            <td className="px-6 py-4">
+                                                {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
+                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
+                                                            disabled={updating === req.id}
+                                                            title="Approve"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
+                                                            disabled={updating === req.id}
+                                                            title="Reject"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
+                                                {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                            onClick={() => handleDelete(req.id)}
+                                                            disabled={updating === req.id}
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {/* Create PO Button for Approved Requests */}
+                                                {req.status === RequestStatus.APPROVED && (
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                                                        onClick={() => handleCreateOrder(req)}
+                                                        disabled={updating === req.id}
+                                                        title="Create Purchase Order"
+                                                    >
+                                                        <ShoppingBag className="h-4 w-4" />
+                                                    </button>
+                                                )}
+                                            </td>
+                                        )}
+                                        <td className="px-6 py-4 text-right">
+                                            <button
+                                                onClick={() => handleViewDetails(req)}
+                                                className="p-1 hover:text-primary-600 text-gray-400"
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 

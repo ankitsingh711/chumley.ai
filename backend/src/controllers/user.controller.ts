@@ -14,9 +14,54 @@ const updateUserSchema = z.object({
     role: z.enum(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER', 'MEMBER']).optional(),
 });
 
+// Add UserRole to imports if not present, or define locally if needed
+// Actually, let's use the string values matching the prisma schema for now to avoid import issues if UserRole isn't exported in backend
+// But we should try to use the enum if possible. Let's check imports first.
+
 export const getUsers = async (req: Request, res: Response) => {
     try {
+        const currentUser = req.user;
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Fetch full user details to get department info
+        const userWithDept = await prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: { department: true }
+        });
+
+        if (!userWithDept) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+
+        let whereClause: any = {};
+
+        // RBAC Logic
+        if (userWithDept.role === 'SYSTEM_ADMIN') {
+            // Admin sees all (or maybe filter out other admins if requirement says so, but usually they see all)
+            // Frontend filters it, backend can return all.
+        } else if (userWithDept.role === 'MANAGER' || userWithDept.role === 'SENIOR_MANAGER') {
+            // Managers only see their department
+            if (!userWithDept.departmentId) {
+                // If manager has no department, they see no one (or just themselves?)
+                // Returning empty array is safer
+                return res.json([]);
+            }
+            whereClause = {
+                departmentId: userWithDept.departmentId
+            };
+        } else {
+            // Members see no one (or just themselves)
+            whereClause = {
+                id: currentUser.id
+            };
+            // Alternatively, return 403 Forbidden
+            // return res.status(403).json({ error: 'Forbidden' });
+        }
+
         const users = await prisma.user.findMany({
+            where: whereClause,
             select: {
                 id: true,
                 email: true,
@@ -65,6 +110,53 @@ export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const validatedData = updateUserSchema.parse(req.body);
+        const currentUser = req.user;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Fetch requester's details
+        const requester = await prisma.user.findUnique({
+            where: { id: currentUser.id },
+            include: { department: true }
+        });
+
+        if (!requester) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+
+        // Fetch target user to check permissions
+        const targetUser = await prisma.user.findUnique({
+            where: { id }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+
+        // RBAC Checks
+        if (requester.role !== 'SYSTEM_ADMIN') {
+            if (requester.role === 'MANAGER' || requester.role === 'SENIOR_MANAGER') {
+                // Must be in same department
+                if (targetUser.departmentId !== requester.departmentId) {
+                    return res.status(403).json({ error: 'You can only manage users in your department' });
+                }
+                // Cannot update role to System Admin
+                if (validatedData.role === 'SYSTEM_ADMIN') {
+                    return res.status(403).json({ error: 'Cannot promote users to System Admin' });
+                }
+                // Cannot update a System Admin
+                if (targetUser.role === 'SYSTEM_ADMIN') {
+                    return res.status(403).json({ error: 'Client not authorized to update System Admin' });
+                }
+
+            } else {
+                // Members cannot update
+                return res.status(403).json({ error: 'Forbidden' });
+            }
+        }
 
         const user = await prisma.user.update({
             where: { id },
@@ -96,6 +188,52 @@ export const updateUser = async (req: Request, res: Response) => {
 export const deleteUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const currentUser = req.user;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        // Fetch requester's details
+        const requester = await prisma.user.findUnique({
+            where: { id: currentUser.id }
+        });
+
+        if (!requester) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+
+        // Fetch target user
+        const targetUser = await prisma.user.findUnique({
+            where: { id }
+        });
+
+        if (!targetUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // RBAC Checks
+        if (requester.role !== 'SYSTEM_ADMIN') {
+            // Only System Admins can delete users? Or Managers too?
+            // Usually deletion is sensitive. Let's allowing Managers to delete purely within their dept for now if that's the intention,
+            // but safer to restrict to Admin or check Requirement.
+            // Requirement: "user permission button should be available to manager... and can see theor department members and update their roles"
+            // It doesn't explicitly say DELETE. But usually "manage access" implies full control.
+            // However, `updateUser` logic above handles roles.
+            // I will allow Managers to delete from their Department, but NOT System Admins or Senior Managers out of their scope.
+
+            if (requester.role === 'MANAGER' || requester.role === 'SENIOR_MANAGER') {
+                if (targetUser.departmentId !== requester.departmentId) {
+                    return res.status(403).json({ error: 'You can only delete users in your department' });
+                }
+                if (targetUser.role === 'SYSTEM_ADMIN') {
+                    return res.status(403).json({ error: 'Cannot delete System Admin' });
+                }
+            } else {
+                return res.status(403).json({ error: 'Forbidden' });
+            }
+        }
+
         await prisma.user.delete({
             where: { id },
         });

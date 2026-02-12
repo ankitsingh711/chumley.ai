@@ -189,29 +189,6 @@ export default function CreateRequest() {
                                     className="w-full"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier / Vendor</label>
-                                <Select
-                                    value={selectedSupplierId}
-                                    onChange={setSelectedSupplierId}
-                                    options={[
-                                        { value: '', label: 'Select a supplier...' },
-                                        ...suppliers.map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
-                                    ]}
-                                    placeholder="Select a supplier..."
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Reason for Purchase</label>
-                                <textarea
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Briefly explain the business need..."
-                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
-                                />
-                            </div>
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
@@ -241,6 +218,30 @@ export default function CreateRequest() {
                                     branch={branch}
                                     disabled={!selectedDepartmentId}
                                     placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier / Vendor</label>
+                                <Select
+                                    value={selectedSupplierId}
+                                    onChange={setSelectedSupplierId}
+                                    options={[
+                                        { value: '', label: 'Select a supplier...' },
+                                        ...suppliers.map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
+                                    ]}
+                                    placeholder="Select a supplier..."
+                                    className="w-full"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Reason for Purchase</label>
+                                <textarea
+                                    value={reason}
+                                    onChange={(e) => setReason(e.target.value)}
+                                    placeholder="Briefly explain the business need..."
+                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
                                 />
                             </div>
 
