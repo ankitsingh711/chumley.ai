@@ -25,7 +25,7 @@ const INITIAL_GLOBAL_STEPS: WorkflowStep[] = [
         id: '2',
         type: 'CONDITION',
         title: 'Check Amount',
-        description: 'If amount > $1,000',
+        description: 'If amount > £1,000',
         condition: 'amount > 1000',
     },
     {
@@ -313,7 +313,7 @@ export default function ApprovalWorkflow() {
                     <div className="bg-indigo-900 text-white rounded-xl p-6 shadow-lg">
                         <h3 className="font-semibold mb-2">Pro Tip</h3>
                         <p className="text-sm text-indigo-100">
-                            You can set up multi-stage approvals. For example, require Department Head approval for all items, but add CFO approval only for items over $10,000.
+                            You can set up multi-stage approvals. For example, require Department Head approval for all items, but add CFO approval only for items over £10,000.
                         </p>
                     </div>
                 </div>
@@ -360,7 +360,7 @@ export default function ApprovalWorkflow() {
                                 <input
                                     type="text"
                                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none"
-                                    placeholder={newStepType === 'APPROVAL' ? "e.g. Requires manager sign-off" : "e.g. Amount > $1,000"}
+                                    placeholder={newStepType === 'APPROVAL' ? "e.g. Requires manager sign-off" : "e.g. Amount > £1,000"}
                                     value={newStepDescription}
                                     onChange={(e) => setNewStepDescription(e.target.value)}
                                 />

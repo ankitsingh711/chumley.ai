@@ -66,7 +66,7 @@ export const createOrder = async (req: Request, res: Response) => {
                 userId: request.requesterId, // Use requester ID as the context user, or could be approver
                 eventType: 'order_created',
                 title: 'Purchase Order Issued',
-                description: `Order #${order.id.slice(0, 8)} issued for Request #${request.id.slice(0, 8)}. Amount: $${Number(order.totalAmount).toLocaleString()}`,
+                description: `Order #${order.id.slice(0, 8)} issued for Request #${request.id.slice(0, 8)}. Amount: £${Number(order.totalAmount).toLocaleString()}`,
                 eventDate: new Date(),
             }
         });

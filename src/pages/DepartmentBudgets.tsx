@@ -181,21 +181,21 @@ export default function DepartmentBudgets() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
                     title="Total Budget Allocated"
-                    value={`$${totalStats.totalBudget.toLocaleString()}`}
+                    value={`£${totalStats.totalBudget.toLocaleString()}`}
                     color="blue"
                     icon={DollarSign}
                     trend={{ value: 'Annual Cap', isPositive: true, label: 'fixed' }}
                 />
                 <StatCard
                     title="Total Spent YTD"
-                    value={`$${totalStats.totalSpent.toLocaleString()}`}
+                    value={`£${totalStats.totalSpent.toLocaleString()}`}
                     color="orange"
                     icon={TrendingUp}
                     trend={{ value: `${totalStats.utilization}%`, isPositive: true, label: 'utilized' }}
                 />
                 <StatCard
                     title="Remaining Budget"
-                    value={`$${(totalStats.totalBudget - totalStats.totalSpent).toLocaleString()}`}
+                    value={`£${(totalStats.totalBudget - totalStats.totalSpent).toLocaleString()}`}
                     color="primary"
                     icon={PieChart}
                     trend={{ value: `${100 - totalStats.utilization}%`, isPositive: true, label: 'available' }}
@@ -312,7 +312,7 @@ export default function DepartmentBudgets() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Budget Limit ($)</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Budget Limit (£)</label>
                                 <input
                                     type="number"
                                     className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none"

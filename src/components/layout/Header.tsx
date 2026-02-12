@@ -90,7 +90,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                         id: req.id,
                         type: 'request',
                         title: `Request #${req.id.slice(0, 8)}`,
-                        subtitle: `$${Number(req.totalAmount).toLocaleString()} • ${req.status}`,
+                        subtitle: `£${Number(req.totalAmount).toLocaleString()} • ${req.status}`,
                         url: `/requests/${req.id}`
                     });
                 });
@@ -124,7 +124,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                         id: order.id,
                         type: 'order',
                         title: `Order #${order.id.slice(0, 8)}`,
-                        subtitle: `$${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
+                        subtitle: `£${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
                         url: `/orders`
                     });
                 });

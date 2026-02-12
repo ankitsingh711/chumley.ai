@@ -29,7 +29,7 @@ export class ChatService {
             // Simple keyword matching to simulate QA
             if (lowerText.includes('total') || lowerText.includes('amount') || lowerText.includes('cost') || lowerText.includes('price')) {
                 return {
-                    text: "Based on the document, the total amount appears to be **$1,250.00**. \n\n(This is a simulated response based on your document context)",
+                    text: "Based on the document, the total amount appears to be **£1,250.00**. \n\n(This is a simulated response based on your document context)",
                     type: 'text',
                     data: { attachmentUrl: contextAttachmentUrl } // Maintain context
                 };
@@ -179,7 +179,7 @@ export class ChatService {
             const percentUsed = budget > 0 ? ((totalSpent / budget) * 100).toFixed(1) : 0;
 
             return {
-                text: `Your department (${user.department.name}) has spent $${totalSpent.toLocaleString()} this year (${percentUsed}% of budget). Remaining: $${remaining.toLocaleString()}.`,
+                text: `Your department (${user.department.name}) has spent £${totalSpent.toLocaleString()} this year (${percentUsed}% of budget). Remaining: £${remaining.toLocaleString()}.`,
                 type: 'spend_summary',
                 data: { totalSpent, budget, remaining, percentUsed }
             };

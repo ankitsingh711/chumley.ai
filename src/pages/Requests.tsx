@@ -146,7 +146,7 @@ export default function Requests() {
         setConfirmModal({
             isOpen: true,
             title: 'Create Purchase Order',
-            message: `Are you sure you want to generate a Purchase Order for Request #${request.id.slice(0, 8)}?\n\nAmount: $${Number(request.totalAmount).toLocaleString()}`,
+            message: `Are you sure you want to generate a Purchase Order for Request #${request.id.slice(0, 8)}?\n\nAmount: £${Number(request.totalAmount).toLocaleString()}`,
             variant: 'warning',
             confirmText: 'Create Order',
             showCancel: true,
@@ -416,14 +416,14 @@ export default function Requests() {
                                                     value={advancedFilters.minAmount}
                                                     onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
                                                     className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="Min ($)"
+                                                    placeholder="Min (£)"
                                                 />
                                                 <input
                                                     type="number"
                                                     value={advancedFilters.maxAmount}
                                                     onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
                                                     className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="Max ($)"
+                                                    placeholder="Max (£)"
                                                 />
                                             </div>
                                         </div>

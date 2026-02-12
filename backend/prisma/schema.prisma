@@ -356,7 +356,7 @@ model Contract {
   
   // Financial
   totalValue        Decimal         @db.Decimal(12, 2)
-  currency          String          @default("USD")
+  currency          String          @default("GBP")
   paymentTerms      String?
   
   // Documents

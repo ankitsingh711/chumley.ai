@@ -51,7 +51,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Spend"
-                    value={`$${metrics?.totalSpend.toLocaleString() || '0'}`}
+                    value={`£${metrics?.totalSpend.toLocaleString() || '0'}`}
                     trend={{ value: '12.4%', isPositive: true, label: 'vs last month' }}
                     icon={Wallet}
                     color="blue"

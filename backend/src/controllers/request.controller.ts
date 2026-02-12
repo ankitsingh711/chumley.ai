@@ -80,7 +80,7 @@ export const createRequest = async (req: Request, res: Response) => {
                 id: `notif-${Date.now()}-${Math.random()}`,
                 type: 'request_created',
                 title: 'New Purchase Request',
-                message: `${req.user!.name} created a new purchase request for $${totalAmount.toLocaleString()}`,
+                message: `${req.user!.name} created a new purchase request for £${totalAmount.toLocaleString()}`,
                 userId: otherUser.id,
                 createdAt: new Date(),
                 read: false,
@@ -115,7 +115,7 @@ export const createRequest = async (req: Request, res: Response) => {
                     userId: requesterId,
                     eventType: 'request_created',
                     title: 'Purchase Request Created',
-                    description: `Request #${request.id.slice(0, 8)} created for ${validatedData.items.length} items. Total: $${totalAmount.toLocaleString()}`,
+                    description: `Request #${request.id.slice(0, 8)} created for ${validatedData.items.length} items. Total: £${totalAmount.toLocaleString()}`,
                     eventDate: new Date(),
                 }
             });

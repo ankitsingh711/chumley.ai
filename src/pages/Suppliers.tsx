@@ -69,7 +69,7 @@ export default function Suppliers() {
                 },
                 stats: {
                     activeOrders: s.stats?.activeOrders || 0,
-                    totalSpend: s.stats?.totalSpend ? `$${s.stats.totalSpend.toLocaleString()}` : '$0',
+                    totalSpend: s.stats?.totalSpend ? `£${s.stats.totalSpend.toLocaleString()}` : '£0',
                 },
                 lastOrder: s.lastOrderDate ? new Date(s.lastOrderDate).toLocaleDateString() : 'No orders yet'
             }));
@@ -153,7 +153,7 @@ export default function Suppliers() {
                     },
                     stats: {
                         activeOrders: 0,
-                        totalSpend: '$0',
+                        totalSpend: '£0',
                     },
                     lastOrder: 'New',
                 };
@@ -173,7 +173,7 @@ export default function Suppliers() {
                     },
                     stats: {
                         activeOrders: 0,
-                        totalSpend: '$0',
+                        totalSpend: '£0',
                     },
                     lastOrder: 'New',
                 };

@@ -56,8 +56,8 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
             <tr>
                 <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${item.description}</td>
                 <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${item.quantity}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">$${item.unitPrice.toLocaleString()}</td>
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600;">$${(item.quantity * item.unitPrice).toLocaleString()}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right;">£${item.unitPrice.toLocaleString('en-GB')}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600;">£${(item.quantity * item.unitPrice).toLocaleString('en-GB')}</td>
             </tr>
         `).join('');
 
@@ -172,7 +172,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                                     <tr style="border-bottom: ${idx === items.length - 1 ? 'none' : '1px solid #e5e7eb'};">
                                         <td style="padding: 16px; color: #111827; font-size: 14px;">${item.description}</td>
                                         <td style="padding: 16px; text-align: center; color: #111827; font-size: 14px; font-weight: 500;">${item.quantity}</td>
-                                        <td style="padding: 16px; text-align: right; color: #111827; font-size: 14px; font-weight: 600;">$${(item.quantity * item.unitPrice).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                        <td style="padding: 16px; text-align: right; color: #111827; font-size: 14px; font-weight: 600;">£${(item.quantity * item.unitPrice).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     </tr>
                                     `).join('')}
                                 </tbody>
@@ -189,7 +189,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                                         <span style="color: #6b7280; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">TOTAL AMOUNT</span>
                                     </td>
                                     <td align="right" style="width: 120px;">
-                                        <span style="color: #0d9488; font-size: 24px; font-weight: 700;">\$${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                        <span style="color: #0d9488; font-size: 24px; font-weight: 700;">\£${totalAmount.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     </td>
                                 </tr>
                             </table>
@@ -242,7 +242,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
         const mailOptions = {
             from: process.env.EMAIL_FROM || `"Chumley AI" <${process.env.EMAIL_USER}>`,
             to: supplierEmail,
-            subject: `New Purchase Request #${requestId.slice(0, 8)} - $${totalAmount.toLocaleString()}`,
+            subject: `New Purchase Request #${requestId.slice(0, 8)} - £${totalAmount.toLocaleString('en-GB')}`,
             html: htmlContent,
             text: `
 New Purchase Request Notification
@@ -254,10 +254,10 @@ A new purchase request has been created:
 Request ID: #${requestId.slice(0, 8)}
 Date: ${new Date(createdAt).toLocaleDateString()}
 Requester: ${requesterName} (${requesterEmail})
-Total Amount: $${totalAmount.toLocaleString()}
+Total Amount: £${totalAmount.toLocaleString('en-GB')}
 
 Items:
-${items.map(item => `- ${item.description} (Qty: ${item.quantity}, Price: $${item.unitPrice})`).join('\n')}
+${items.map(item => `- ${item.description} (Qty: ${item.quantity}, Price: £${item.unitPrice})`).join('\n')}
 
 Please review this request and respond at your earliest convenience.
 

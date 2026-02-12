@@ -154,15 +154,15 @@ class BudgetMonitorService {
         switch (thresholdType) {
             case NotificationType.BUDGET_WARNING:
                 title = 'Budget Warning';
-                message = `${department.name} department has spent $${spendingFormatted} of $${budgetFormatted} (${percentageFormatted}%) annual budget.`;
+                message = `${department.name} department has spent £${spendingFormatted} of £${budgetFormatted} (${percentageFormatted}%) annual budget.`;
                 break;
             case NotificationType.BUDGET_CRITICAL:
                 title = 'Budget Critical';
-                message = `${department.name} department has spent $${spendingFormatted} of $${budgetFormatted} (${percentageFormatted}%) annual budget. Approaching limit!`;
+                message = `${department.name} department has spent £${spendingFormatted} of £${budgetFormatted} (${percentageFormatted}%) annual budget. Approaching limit!`;
                 break;
             case NotificationType.BUDGET_EXCEEDED:
                 title = 'Budget Exceeded';
-                message = `${department.name} department has spent $${spendingFormatted}, exceeding the $${budgetFormatted} annual budget.`;
+                message = `${department.name} department has spent £${spendingFormatted}, exceeding the £${budgetFormatted} annual budget.`;
                 break;
             default:
                 return;

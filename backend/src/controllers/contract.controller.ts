@@ -144,7 +144,7 @@ export const createContract = async (req: Request, res: Response) => {
             startDate,
             endDate,
             totalValue,
-            currency = 'USD',
+            currency = 'GBP',
             paymentTerms,
             autoRenew = false,
             noticePeriodDays = 30,

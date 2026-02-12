@@ -57,13 +57,13 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
     };
 
     const formatCurrency = (str: string) => {
-        // Assuming string is like "$12,345" or "12345"
+        // Assuming string is like "£12,345" or "12345"
         const num = parseInt(str.replace(/[^0-9]/g, ''));
         if (isNaN(num)) return str;
         if (num >= 1000) {
-            return `$${(num / 1000).toFixed(1)}k`;
+            return `£${(num / 1000).toFixed(1)}k`;
         }
-        return `$${num}`;
+        return `£${num}`;
     };
 
     const { icon: Icon, color: iconStyle } = getCategoryIcon(supplier.category);

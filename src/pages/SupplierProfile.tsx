@@ -155,7 +155,7 @@ export default function SupplierProfile() {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <StatCard
                                     title="TOTAL SPEND (YTD)"
-                                    value={supplier.stats?.totalSpend ? `$${(supplier.stats.totalSpend / 1000).toFixed(1)}k` : '$0.0k'}
+                                    value={supplier.stats?.totalSpend ? `£${(supplier.stats.totalSpend / 1000).toFixed(1)}k` : '£0.0k'}
                                 // removed static trend
                                 />
                                 <StatCard

@@ -306,7 +306,7 @@ export default function CreateRequest() {
                                         />
                                     </div>
                                     <div className="w-32">
-                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Unit Price ($)</label>}
+                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Unit Price (£)</label>}
                                         <input
                                             type="number"
                                             min="0"
@@ -337,7 +337,7 @@ export default function CreateRequest() {
                     <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
                         <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Helpful Tip</h4>
                         <p className="text-xs text-blue-700 leading-relaxed">
-                            For capital equipment over $5,000, please ensure you have attached the necessary 3 competitive quotes in the "Files" section (coming soon).
+                            For capital equipment over £5,000, please ensure you have attached the necessary 3 competitive quotes in the "Files" section (coming soon).
                         </p>
                     </div>
                 </div>
@@ -354,7 +354,7 @@ export default function CreateRequest() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Shipping Estimate</span>
-                                <span className="font-medium text-gray-900">$0.00</span>
+                                <span className="font-medium text-gray-900">£0.00</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Tax Estimate (8.25%)</span>
