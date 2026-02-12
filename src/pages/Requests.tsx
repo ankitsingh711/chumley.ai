@@ -490,7 +490,7 @@ export default function Requests() {
                                         </td>
                                         <td className="px-6 py-4 text-gray-500">{req.items?.length || 0} items</td>
                                         <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
-                                        <td className="px-6 py-4 font-bold text-gray-900">${Number(req.totalAmount).toLocaleString()}</td>
+                                        <td className="px-6 py-4 font-bold text-gray-900">£{Number(req.totalAmount).toLocaleString()}</td>
                                         <td className="px-6 py-4">
 
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
@@ -608,7 +608,7 @@ export default function Requests() {
                                     </div>
                                     <div className="bg-gray-50 rounded-lg p-4">
                                         <p className="text-xs text-gray-500 uppercase font-medium mb-1">Total Amount</p>
-                                        <p className="text-2xl font-bold text-gray-900">${Number(selectedRequest.totalAmount).toLocaleString()}</p>
+                                        <p className="text-2xl font-bold text-gray-900">£{Number(selectedRequest.totalAmount).toLocaleString()}</p>
                                     </div>
                                 </div>
 
@@ -656,8 +656,8 @@ export default function Requests() {
                                                     <tr key={idx} className="hover:bg-gray-50">
                                                         <td className="px-4 py-3">{item.description}</td>
                                                         <td className="px-4 py-3 text-center">{item.quantity}</td>
-                                                        <td className="px-4 py-3 text-right">${Number(item.unitPrice).toLocaleString()}</td>
-                                                        <td className="px-4 py-3 text-right font-medium">${Number(item.quantity * item.unitPrice).toLocaleString()}</td>
+                                                        <td className="px-4 py-3 text-right">£{Number(item.unitPrice).toLocaleString()}</td>
+                                                        <td className="px-4 py-3 text-right font-medium">£{Number(item.quantity * item.unitPrice).toLocaleString()}</td>
                                                     </tr>
                                                 ))}
                                             </tbody>

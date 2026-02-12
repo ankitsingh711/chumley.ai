@@ -31,7 +31,7 @@ export const sendInvitationEmail = async ({
     inviteLink,
     invitedBy = 'Your administrator',
     role = 'Team Member',
-    companyName = 'Chumley AI',
+    companyName = 'Aspect',
 }: SendInvitationEmailParams): Promise<boolean> => {
     try {
         // Check if email is configured
@@ -65,7 +65,7 @@ export const sendInvitationEmail = async ({
         };
 
         const mailOptions = {
-            from: process.env.EMAIL_FROM || `"Chumley AI" <${process.env.EMAIL_USER}>`,
+            from: process.env.EMAIL_FROM || `"Aspect" <${process.env.EMAIL_USER}>`,
             to,
             subject: `You're invited to join ${companyName}`,
             html: `
@@ -260,7 +260,7 @@ export const sendInvitationEmail = async ({
                             <div class="logo-row">
                                 <div class="logo">
                                     <div class="logo-icon">C</div>
-                                    Chumley AI
+                                    Aspect
                                 </div>
                                 <div class="badge">OFFICIAL INVITATION</div>
                             </div>
@@ -314,7 +314,7 @@ export const sendInvitationEmail = async ({
                                 <a href="${process.env.FRONTEND_URL}/support">Contact Support</a>
                             </div>
                             <p class="footer-text">
-                                © ${new Date().getFullYear()} Chumley AI Inc. ${process.env.COMPANY_ADDRESS || '123 Enterprise Way, Suite 600, San Francisco, CA'}.<br>
+                                © ${new Date().getFullYear()} Aspect Inc. ${process.env.COMPANY_ADDRESS || '123 Enterprise Way, Suite 600, San Francisco, CA'}.<br>
                                 You received this because an administrator invited you.
                             </p>
                         </div>
@@ -338,7 +338,7 @@ This link is valid for 24 hours.
 SECURE INVITATION
 This is a verified invitation from your organization's administrator.
 
-© ${new Date().getFullYear()} Chumley AI Inc. You received this because an administrator invited you.
+© ${new Date().getFullYear()} Aspect Inc. You received this because an administrator invited you.
             `.trim(),
         };
 

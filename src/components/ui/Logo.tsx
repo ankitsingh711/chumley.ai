@@ -1,28 +1,8 @@
 export function Logo({ className = "h-8 w-8" }: { className?: string }) {
     return (
-        <svg
-            viewBox="0 0 32 32"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={className}
-        >
-            <path
-                d="M26 10L16 4.5L6 10V22L16 27.5L26 22"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-primary-600"
-            />
-            <circle cx="16" cy="16" r="4" className="fill-primary-600" />
-            <path
-                d="M16 4.5V10"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-                className="text-primary-600/50"
-            />
-        </svg>
+        <div className={className}>
+            <LogoIcon className="h-full w-full" />
+        </div>
     );
 }
 
@@ -35,13 +15,20 @@ export function LogoIcon({ className = "h-2/3 w-2/3" }: { className?: string }) 
             className={className}
         >
             <path
-                d="M20 7.5L12 3L4 7.5V16.5L12 21L20 16.5"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                d="M4 6C4 4.89543 4.89543 4 6 4H10L14 8V20C14 21.1046 13.1046 22 12 22H6C4.89543 22 4 21.1046 4 20V6Z"
+                className="fill-accent-400"
             />
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
+            <path
+                d="M14 8L18 12L14 16V8Z"
+                className="fill-accent-400"
+            />
+            {/* Abstract chip lines/details in blue */}
+            <path
+                d="M7 8H11M7 12H11M7 16H11"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-primary-600"
+            />
         </svg>
     );
 }
@@ -49,10 +36,10 @@ export function LogoIcon({ className = "h-2/3 w-2/3" }: { className?: string }) 
 export function LogoWithText({ classNameIcon = "h-8 w-8", classNameText = "text-lg", showText = true }: { classNameIcon?: string; classNameText?: string; showText?: boolean }) {
     return (
         <div className="flex items-center gap-2">
-            <div className={`flex items-center justify-center rounded-lg bg-primary-600 text-white ${classNameIcon}`}>
+            <div className={`flex items-center justify-center ${classNameIcon}`}>
                 <LogoIcon />
             </div>
-            {showText && <span className={`font-bold text-gray-900 ${classNameText} leading-none`}>Chumley AI</span>}
+            {showText && <span className={`font-bold text-primary-600 ${classNameText} leading-none tracking-tight`}>aspect</span>}
         </div>
     );
 }

@@ -14,7 +14,7 @@ export default function EmailTemplate() {
                 </div>
 
                 <div className="px-12 py-8">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Join Acme Corp on Chumley AI</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-6">Join Acme Corp on Aspect</h1>
 
                     <p className="text-gray-600 mb-2">Hello Sarah,</p>
                     <p className="text-gray-600 mb-8 leading-relaxed">
@@ -63,7 +63,7 @@ export default function EmailTemplate() {
                     </div>
 
                     <p className="text-[10px] text-gray-400 max-w-sm mx-auto leading-relaxed">
-                        © 2024 Chumley AI Inc. 123 Enterprise Way, Suite 400, San Francisco, CA. You received this because an administrator invited you.
+                        © 2024 Aspect Inc. 123 Enterprise Way, Suite 400, San Francisco, CA. You received this because an administrator invited you.
                     </p>
                 </div>
             </div>

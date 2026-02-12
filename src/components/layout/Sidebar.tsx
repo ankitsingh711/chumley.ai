@@ -11,7 +11,7 @@ import {
     FileSignature,
     Wallet
 } from 'lucide-react';
-import { LogoIcon } from '../ui/Logo';
+
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole } from '../../types/api';
@@ -57,13 +57,11 @@ export function Sidebar() {
     return (
         <div className="flex h-screen w-64 flex-col border-r bg-white">
             <div className="flex items-center gap-2 p-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-600 text-white">
-                    <LogoIcon />
-                </div>
-                <div className="flex flex-col">
-                    <h1 className="text-lg font-bold text-gray-900 leading-none">Chumley AI</h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Global Ops</p>
-                </div>
+                <img
+                    src="/logo.png"
+                    alt="Aspect Logo"
+                    className="h-10 w-auto object-contain"
+                />
             </div>
 
             <nav className="flex-1 space-y-1 px-4">

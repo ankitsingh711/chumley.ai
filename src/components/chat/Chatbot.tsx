@@ -152,7 +152,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                         <LogoWithText classNameIcon="bg-transparent text-white" showText={false} />
                     </div>
                     <div>
-                        <h3 className="font-semibold text-sm">ChumleyBot</h3>
+                        <h3 className="font-semibold text-sm">Aspect Bot</h3>
                         <p className="text-[10px] text-primary-100 opacity-90">Always here to help</p>
                     </div>
                 </div>

@@ -15,7 +15,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'chumley_uploads',
+        folder: 'aspect_uploads',
         allowed_formats: ['jpg', 'png', 'jpeg', 'webp', 'pdf', 'doc', 'docx'],
         // resource_type: 'auto' // Handle both images and raw files like PDF
     } as any // Cast to any to avoid type issues with multer-storage-cloudinary

@@ -307,7 +307,7 @@ export const inviteUser = async (req: Request, res: Response) => {
             name: user.name,
             inviteLink,
             role: user.role,
-            companyName: process.env.COMPANY_NAME || 'Chumley AI',
+            companyName: process.env.COMPANY_NAME || 'Aspect',
             invitedBy: 'Your administrator',
         });
 

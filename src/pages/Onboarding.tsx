@@ -79,7 +79,7 @@ export default function Onboarding() {
 
                 <div className="p-10">
                     <div className="text-center mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">Welcome to Chumley AI</h2>
+                        <h2 className="text-2xl font-bold text-gray-900">Welcome to Aspect</h2>
                         <p className="text-gray-500 mt-2 text-sm">Hi there, let's get your account ready in seconds.</p>
                     </div>
 
@@ -156,7 +156,7 @@ export default function Onboarding() {
                     </form>
 
                     <p className="text-[10px] text-center text-gray-400 mt-6 leading-relaxed">
-                        By completing setup, you agree to Chumley AI's <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>.
+                        By completing setup, you agree to Aspect's <a href="#" className="underline">Terms of Service</a> and <a href="#" className="underline">Privacy Policy</a>.
                     </p>
 
                     {/* Skeleton Loaders at bottom mimicking image */}

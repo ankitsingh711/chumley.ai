@@ -82,7 +82,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                                 <tr>
                                     <td>
                                         <div style="display: inline-block; background-color: #0d9488; padding: 10px 12px; border-radius: 8px; margin-bottom: 4px;">
-                                            <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Chumley AI</span>
+                                            <span style="color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">Aspect</span>
                                         </div>
                                         <div style="color: #6b7280; font-size: 13px; margin-top: 2px;">Global Corp Procurement</div>
                                     </td>
@@ -227,7 +227,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                                 <span style="color: #d1d5db; margin: 0 8px; font-size: 18px;">💼</span>
                             </div>
                             <p style="margin: 12px 0 0 0; color: #9ca3af; font-size: 12px; text-align: center;">
-                                © ${new Date().getFullYear()} CHUMLEY AI SYSTEMS INC.
+                                © ${new Date().getFullYear()} ASPECT SYSTEMS INC.
                             </p>
                         </td>
                     </tr>
@@ -240,7 +240,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
         `;
 
         const mailOptions = {
-            from: process.env.EMAIL_FROM || `"Chumley AI" <${process.env.EMAIL_USER}>`,
+            from: process.env.EMAIL_FROM || `"Aspect" <${process.env.EMAIL_USER}>`,
             to: supplierEmail,
             subject: `New Purchase Request #${requestId.slice(0, 8)} - £${totalAmount.toLocaleString('en-GB')}`,
             html: htmlContent,
@@ -264,8 +264,8 @@ Please review this request and respond at your earliest convenience.
 Reply to: ${requesterEmail}
 
 ---
-This is an automated notification from Chumley AI
-© ${new Date().getFullYear()} Chumley AI. All rights reserved.
+This is an automated notification from Aspect
+© ${new Date().getFullYear()} Aspect. All rights reserved.
             `.trim(),
         };
 

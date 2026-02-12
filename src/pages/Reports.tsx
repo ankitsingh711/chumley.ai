@@ -328,7 +328,7 @@ export default function Reports() {
                                     <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
                                     <td className="px-6 py-3 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                                     <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
-                                    <td className="px-6 py-3 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
+                                    <td className="px-6 py-3 font-medium">£{Number(req.totalAmount).toLocaleString()}</td>
                                     <td className="px-6 py-3">
                                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                             req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :

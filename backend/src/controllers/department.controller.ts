@@ -7,7 +7,8 @@ import Logger from '../utils/logger';
  */
 export const getAllDepartments = async (req: Request, res: Response) => {
     try {
-        const departments = await departmentService.getAllDepartments();
+        const user = req.user as any;
+        const departments = await departmentService.getAllDepartments(user);
         res.json(departments);
     } catch (error) {
         Logger.error(error);

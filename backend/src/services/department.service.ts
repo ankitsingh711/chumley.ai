@@ -120,8 +120,24 @@ export class DepartmentService {
     /**
      * Get all departments
      */
-    async getAllDepartments() {
+    /**
+     * Get all departments (Filtered by User Role)
+     */
+    async getAllDepartments(user?: any) {
+        let where: any = {};
+
+        // RBAC: Filter departments based on user role
+        if (user && user.role !== 'SYSTEM_ADMIN') {
+            if (user.departmentId) {
+                where = { id: user.departmentId };
+            } else {
+                // User has no department, return empty list (or handle as needed)
+                return [];
+            }
+        }
+
         const departments = await prisma.department.findMany({
+            where,
             include: {
                 users: {
                     select: {
@@ -141,22 +157,16 @@ export class DepartmentService {
         });
 
         // Calculate spending for each department
-        // We group by requester's department ID since requests are linked to users, who are linked to departments
-        // Note: Prisma doesn't support deep relation grouping easily in one go, so we fetch requests
-        // A more optimized SQL query would be better for scale, but this works for now.
+        // We only need to fetch approved requests for the departments we found.
+        const departmentIds = departments.map(d => d.id);
 
-        // Let's get all approved requests and sum them up by department in code or via a specific query if possible.
-        // Since we need to join PurchaseRequest -> User -> Department, simple groupBy might be tricky if departmentId isn't on PurchaseRequest.
-        // Wait, schema check: PurchaseRequest has requesterId, User has departmentId. 
-        // We can't do PurchaseRequest.groupBy({ by: ['requester.departmentId'] }).
-
-        // Alternative: Fetch all approved requests with minimal fields and aggregate in memory (ok for smaller datasets)
-        // OR better: loop through departments and get spending (N+1 but safe)
-        // OR best: Use raw query.
-
-        // Let's stick to a robust enough method: finding all approved requests with their user's dept ID.
         const approvedRequests = await prisma.purchaseRequest.findMany({
-            where: { status: 'APPROVED' },
+            where: {
+                status: 'APPROVED',
+                requester: {
+                    departmentId: { in: departmentIds }
+                }
+            },
             select: {
                 totalAmount: true,
                 requester: {

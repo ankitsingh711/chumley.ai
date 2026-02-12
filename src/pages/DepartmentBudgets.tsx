@@ -240,14 +240,14 @@ export default function DepartmentBudgets() {
                                             <div className="text-right">
                                                 <div className="flex items-center justify-end gap-2 mb-1">
                                                     <span className="text-xs font-medium text-gray-500">
-                                                        ${dept.spent.toLocaleString()} / ${currentBudget.toLocaleString()}
+                                                        £{dept.spent.toLocaleString()} / £{currentBudget.toLocaleString()}
                                                     </span>
                                                     <span className={cn("text-lg font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
                                                         {percentage}%
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-primary-600 font-medium">
-                                                    ${remaining.toLocaleString()} Available
+                                                    £{remaining.toLocaleString()} Available
                                                 </p>
                                             </div>
                                         </div>
