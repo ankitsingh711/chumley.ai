@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Branch } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -884,7 +884,8 @@ async function createCategory(
             data: {
                 name,
                 parentId,
-                departmentId
+                departmentId,
+                branch: Branch.CHESSINGTON
             }
         });
 
@@ -899,7 +900,8 @@ async function createCategory(
                         data: {
                             name: child,
                             parentId: category.id,
-                            departmentId
+                            departmentId,
+                            branch: Branch.CHESSINGTON
                         }
                     });
                 }

@@ -8,13 +8,18 @@ import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { suppliersApi } from '../services/suppliers.service';
 import type { Supplier, InteractionLog, Review } from '../types/api';
+import { UserRole } from '../types/api';
 import { EditSupplierModal } from '../components/suppliers/EditSupplierModal';
 import { MessageSupplierModal } from '../components/suppliers/MessageSupplierModal';
 import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
 import { WriteReviewModal } from '../components/suppliers/WriteReviewModal';
 
+import { useAuth } from '../contexts/AuthContext';
+
 export default function SupplierProfile() {
+    const { user } = useAuth();
     const { id } = useParams<{ id: string }>();
+    const isSystemAdmin = user?.role === UserRole.SYSTEM_ADMIN;
     const [supplier, setSupplier] = useState<Supplier | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -137,7 +142,9 @@ export default function SupplierProfile() {
                     </div>
                     <div className="flex gap-2">
                         <Button variant="outline" onClick={() => setShowMessageModal(true)}>Message</Button>
-                        <Button onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+                        {isSystemAdmin && (
+                            <Button onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+                        )}
                     </div>
                 </div>
 
@@ -184,7 +191,7 @@ export default function SupplierProfile() {
                                                     <div key={req.id} className="flex justify-between items-center py-2 border-b last:border-0 border-gray-50">
                                                         <span className="text-sm font-medium text-primary-600">#{req.id.slice(0, 8)}</span>
                                                         <span className="text-sm text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</span>
-                                                        <span className="text-sm font-medium">${Number(req.totalAmount).toLocaleString()}</span>
+                                                        <span className="text-sm font-medium">£{Number(req.totalAmount).toLocaleString()}</span>
                                                         <span className={`text-xs px-2 py-1 rounded ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
                                                             req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
                                                                 'bg-red-100 text-red-700'
@@ -431,7 +438,7 @@ export default function SupplierProfile() {
                                                         <td className="px-6 py-4 font-medium text-primary-600">#{req.id.slice(0, 8)}</td>
                                                         <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
                                                         <td className="px-6 py-4 text-gray-500">{req.items?.length || 1} items</td>
-                                                        <td className="px-6 py-4 font-medium">${Number(req.totalAmount).toLocaleString()}</td>
+                                                        <td className="px-6 py-4 font-medium">£{Number(req.totalAmount).toLocaleString()}</td>
                                                         <td className="px-6 py-4">
                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
                                                                 req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :

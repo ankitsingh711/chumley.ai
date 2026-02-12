@@ -105,11 +105,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
                         <div className="flex justify-between text-xs">
                             <div>
                                 <p className="text-gray-400">Spent</p>
-                                <p className="font-semibold text-gray-900">${Number(totalSpent).toLocaleString()}</p>
+                                <p className="font-semibold text-gray-900">£{Number(totalSpent).toLocaleString()}</p>
                             </div>
                             <div className="text-right">
                                 <p className="text-gray-400">Remaining</p>
-                                <p className="font-semibold text-green-600">${Number(remaining).toLocaleString()}</p>
+                                <p className="font-semibold text-green-600">£{Number(remaining).toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -133,7 +133,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                             <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                                 <div>
                                     <p className="text-gray-500">Total Amount</p>
-                                    <p className="font-semibold text-gray-900">${Number(request.totalAmount).toLocaleString()}</p>
+                                    <p className="font-semibold text-gray-900">£{Number(request.totalAmount).toLocaleString()}</p>
                                 </div>
                                 <div>
                                     <p className="text-gray-500">Date</p>
@@ -162,11 +162,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
                                             <div key={item.id} className="text-xs border-b border-gray-100 last:border-0 pb-2 last:pb-0">
                                                 <div className="flex justify-between font-medium">
                                                     <span className="text-gray-900">{item.description}</span>
-                                                    <span>${Number(item.totalPrice).toLocaleString()}</span>
+                                                    <span>£{Number(item.totalPrice).toLocaleString()}</span>
                                                 </div>
                                                 <div className="text-gray-500 flex justify-between mt-0.5">
                                                     <span>Qty: {item.quantity}</span>
-                                                    <span>@ ${Number(item.unitPrice).toLocaleString()}</span>
+                                                    <span>@ £{Number(item.unitPrice).toLocaleString()}</span>
                                                 </div>
                                             </div>
                                         ))}

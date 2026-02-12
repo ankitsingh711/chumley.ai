@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, OrderStatus, RequestStatus } from '@prisma/client';
+import { PrismaClient, OrderStatus, RequestStatus, UserRole } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import budgetMonitorService from '../services/budget-monitor.service';
@@ -90,7 +90,29 @@ export const createOrder = async (req: Request, res: Response) => {
 
 export const getOrders = async (req: Request, res: Response) => {
     try {
+        const user = req.user! as any;
+        // Restrict view for MEMBER, MANAGER, and SENIOR_MANAGER (System Admin sees all)
+        const isRestricted = [UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role);
+
+        const where: any = {};
+        if (isRestricted) {
+            if (user.departmentId) {
+                // Check if the request's requester is in the same department
+                where.request = {
+                    requester: {
+                        departmentId: user.departmentId
+                    }
+                };
+            } else {
+                // If user has no department, they can only see orders from their own requests (fallback)
+                where.request = {
+                    requesterId: user.id
+                };
+            }
+        }
+
         const orders = await prisma.purchaseOrder.findMany({
+            where,
             include: {
                 supplier: { select: { name: true } },
                 request: { select: { requester: { select: { name: true } } } },

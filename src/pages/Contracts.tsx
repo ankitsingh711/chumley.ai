@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Calendar, DollarSign, Building2, X, Loader2 } from 'lucide-react';
+import { Plus, FileText, Calendar, PoundSterling, Building2, X, Loader2 } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
@@ -196,10 +196,10 @@ export default function Contracts() {
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <span className="text-gray-500 flex items-center gap-1">
-                                        <DollarSign className="h-3.5 w-3.5" /> Value
+                                        <PoundSterling className="h-3.5 w-3.5" /> Value
                                     </span>
                                     <span className="font-medium text-gray-900">
-                                        {contract.currency} {contract.totalValue.toLocaleString()}
+                                        £{contract.totalValue.toLocaleString()}
                                     </span>
                                 </div>
                                 {contract.daysUntilExpiry !== undefined && contract.daysUntilExpiry > 0 && (

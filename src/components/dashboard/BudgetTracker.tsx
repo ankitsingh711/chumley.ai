@@ -93,7 +93,7 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
                                         <p className={cn("text-sm font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
                                             {percentage}%
                                         </p>
-                                        <p className="text-xs text-gray-400">REMAINING: ${remaining.toLocaleString()}</p>
+                                        <p className="text-xs text-gray-400">REMAINING: £{remaining.toLocaleString()}</p>
                                     </div>
                                 </div>
 
@@ -105,8 +105,8 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
                                 </div>
 
                                 <div className="mt-1 flex justify-between text-[10px] text-gray-400">
-                                    <span>Spent: ${dept.spent.toLocaleString()}</span>
-                                    <span>Limit: ${dept.limit.toLocaleString()}</span>
+                                    <span>Spent: £{dept.spent.toLocaleString()}</span>
+                                    <span>Limit: £{dept.limit.toLocaleString()}</span>
                                 </div>
                             </div>
                         );

@@ -330,7 +330,7 @@ export default function CreateRequest() {
                         </div>
 
                         <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-                            <p className="text-sm font-medium text-gray-600">Total: <span className="text-gray-900 text-lg ml-2">${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
+                            <p className="text-sm font-medium text-gray-600">Total: <span className="text-gray-900 text-lg ml-2">£{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
                         </div>
                     </div>
 
@@ -350,7 +350,7 @@ export default function CreateRequest() {
                         <div className="space-y-3 text-sm border-b border-gray-100 pb-4 mb-4">
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Subtotal</span>
-                                <span className="font-medium text-gray-900">${calculateTotal().toLocaleString()}</span>
+                                <span className="font-medium text-gray-900">£{calculateTotal().toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Shipping Estimate</span>
@@ -358,13 +358,13 @@ export default function CreateRequest() {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-gray-500">Tax Estimate (8.25%)</span>
-                                <span className="font-medium text-gray-900">${(calculateTotal() * 0.0825).toFixed(2)}</span>
+                                <span className="font-medium text-gray-900">£{(calculateTotal() * 0.0825).toFixed(2)}</span>
                             </div>
                         </div>
 
                         <div className="flex justify-between items-center mb-6">
                             <span className="text-base font-bold text-gray-900">Total</span>
-                            <span className="text-xl font-bold text-primary-600">${(calculateTotal() * 1.0825).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="text-xl font-bold text-primary-600">£{(calculateTotal() * 1.0825).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
 
                         <Button className="w-full bg-primary-700 hover:bg-primary-600" onClick={handleSubmit} disabled={loading}>
