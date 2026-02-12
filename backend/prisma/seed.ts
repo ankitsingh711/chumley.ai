@@ -7,6 +7,14 @@ async function main() {
     console.log('🌱 Seeding database...');
 
     // 1. Clean up
+    // 1. Clean up
+    await prisma.contract.deleteMany();
+    await prisma.review.deleteMany();
+    await prisma.message.deleteMany();
+    await prisma.notification.deleteMany();
+    await prisma.auditLog.deleteMany();
+    await prisma.userDepartmentRole.deleteMany();
+
     await prisma.supplierDocument.deleteMany();
     await prisma.supplierDetails.deleteMany();
     await prisma.purchaseOrder.deleteMany();
@@ -15,45 +23,117 @@ async function main() {
     await prisma.attachment.deleteMany();
     await prisma.purchaseRequest.deleteMany();
     await prisma.interactionLog.deleteMany();
+
+    // Handle Spending Categories (self-referencing)
+    await prisma.spendingCategory.updateMany({ data: { parentId: null } });
+    await prisma.spendingCategory.deleteMany();
+
     await prisma.supplier.deleteMany();
+
+    // Nullify managerId to avoid self-referencing FK constraint
+    await prisma.user.updateMany({ data: { managerId: null } });
     await prisma.user.deleteMany();
+
+    // Nullify parentId to avoid self-referencing FK constraint
+    await prisma.department.updateMany({ data: { parentId: null } });
     await prisma.department.deleteMany();
 
     // 2. Create Departments
-    const itDept = await prisma.department.create({
-        data: { name: 'IT', budget: 50000, description: 'Information Technology' }
-    });
-    const marketingDept = await prisma.department.create({
-        data: { name: 'Marketing', budget: 30000, description: 'Marketing & Brand' }
+    console.log('Building Department Hierarchy...');
+
+    // Parent Departments
+    const hr = await prisma.department.create({ data: { name: 'HR & Equipment', budget: 50000 } });
+    const fleet = await prisma.department.create({ data: { name: 'Fleet', budget: 100000 } });
+    const marketing = await prisma.department.create({ data: { name: 'Marketing', budget: 75000 } });
+    const sales = await prisma.department.create({ data: { name: 'Sales', budget: 50000 } });
+    const finance = await prisma.department.create({ data: { name: 'Finance', budget: 150000 } });
+    const trade = await prisma.department.create({ data: { name: 'Trade Group', budget: 200000 } });
+    const assets = await prisma.department.create({ data: { name: 'Assets', budget: 300000 } });
+    const tech = await prisma.department.create({ data: { name: 'Tech', budget: 250000 } });
+
+    // Sub-Departments
+    const it = await prisma.department.create({
+        data: {
+            name: 'IT',
+            budget: 120000,
+            parentId: tech.id // IT under Tech
+        }
     });
 
-    // 3. Create Users
+    console.log('✅ Created Departments');
+
+    // 3. Create Spending Categories (Dynamic)
+    const createCategory = async (name: string, deptId: string) => {
+        await prisma.spendingCategory.create({
+            data: { name, departmentId: deptId, branch: 'CHESSINGTON' } // Branch enum still needed?
+        });
+    };
+
+    // Assets Categories
+    await createCategory('Aspect Run', assets.id);
+    await createCategory('Custom', assets.id);
+    await createCategory('Heavy Machinery', assets.id);
+
+    // IT Categories
+    await createCategory('Hardware', it.id);
+    await createCategory('Software Licenses', it.id);
+    await createCategory('Cloud Services', it.id);
+
+    // Marketing Categories
+    await createCategory('Digital Ads', marketing.id);
+    await createCategory('Print Materials', marketing.id);
+
+    // 4. Create Users
     const hashedPassword = await bcrypt.hash('password123', 10);
 
-    // Admin
+    // System Admin
     const admin = await prisma.user.create({
         data: {
             email: 'admin@chumley.ai',
             password: hashedPassword,
-            name: 'System Admin',
+            name: 'System Admin', // Permissions: Full access
             role: UserRole.SYSTEM_ADMIN,
         }
     });
 
-    // Manager
+    // Senior Manager (e.g. Head of Tech)
+    const seniorManager = await prisma.user.create({
+        data: {
+            email: 'senior@chumley.ai',
+            password: hashedPassword,
+            name: 'Sarah Director',
+            role: UserRole.SENIOR_MANAGER,
+            departmentId: tech.id, // Head of Tech
+        }
+    });
+
+    // Manager (e.g. IT Manager) - Reports to Senior Manager
     const manager = await prisma.user.create({
         data: {
             email: 'manager@chumley.ai',
             password: hashedPassword,
             name: 'Mike Operations',
             role: UserRole.MANAGER,
-            departmentId: itDept.id,
+            departmentId: it.id,
+            managerId: seniorManager.id
         }
     });
 
-    console.log('✅ Created users');
+    // Department User (e.g. IT Support) - Reports to Manager
+    const user = await prisma.user.create({
+        data: {
+            email: 'user@chumley.ai',
+            password: hashedPassword,
+            name: 'John Doe',
+            role: UserRole.MEMBER,
+            departmentId: it.id,
+            managerId: manager.id
+        }
+    });
 
-    // 4. Create Suppliers
+    console.log('✅ Created Users');
+
+    // 5. Create Suppliers
     const suppliers = [
         {
             name: 'TechCorp Solutions',
@@ -70,16 +150,11 @@ async function main() {
                 country: 'USA',
                 paymentTerms: 'Net 30',
                 rating: 4.8,
-                deliveryDelayAverage: -2, // 2 days early
-                qualityScore: 98,
-                communicationScore: 85,
-                internalNotes: 'Reliable for bulk orders, but historically slow with custom motherboard quotes.',
             },
-            documents: [
-                { title: 'W-9 Tax Form (2023)', type: 'Tax', url: '#', status: 'Valid', expiryDate: null },
-                { title: 'Liability Insurance', type: 'Insurance', url: '#', status: 'Expiring Soon', expiryDate: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000) }, // 12 days
-                { title: 'ISO 27001 Cert', type: 'Certification', url: '#', status: 'Valid', expiryDate: new Date('2025-12-31') },
-            ]
+            // Link to IT and Tech departments
+            departments: {
+                connect: [{ id: it.id }, { id: tech.id }]
+            }
         },
         {
             name: 'Office Depot Inc.',
@@ -88,70 +163,25 @@ async function main() {
             contactName: 'Support Team',
             contactEmail: 'b2b@officedepot.com',
             details: {
-                city: 'Boca Raton',
-                state: 'FL',
                 paymentTerms: 'Net 45',
                 rating: 4.2,
-                deliveryDelayAverage: 1, // 1 day late
-                qualityScore: 92,
-                communicationScore: 90,
             },
-            documents: [
-                { title: 'W-9 Tax Form', type: 'Tax', url: '#', status: 'Valid', expiryDate: null },
-            ]
+            // Link to Admin/HR
+            departments: {
+                connect: [{ id: hr.id }]
+            }
         }
     ];
 
     for (const s of suppliers) {
-        const { details, documents, ...base } = s;
-        const supplier = await prisma.supplier.create({
+        const { details, departments, ...base } = s;
+        await prisma.supplier.create({
             data: {
                 ...base,
                 details: { create: details },
-                documents: { create: documents }
+                departments: departments
             }
         });
-
-        // Add some interaction logs
-        await prisma.interactionLog.create({
-            data: {
-                supplierId: supplier.id,
-                userId: manager.id,
-                eventType: 'meeting',
-                title: 'Quarterly Review',
-                description: 'discussed pricing updates for Q3.',
-                eventDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) // 1 week ago
-            }
-        });
-
-        // Add some Purchase Requests & Orders
-        if (s.name === 'TechCorp Solutions') {
-            const req = await prisma.purchaseRequest.create({
-                data: {
-                    requesterId: manager.id,
-                    supplierId: supplier.id,
-                    status: RequestStatus.APPROVED,
-                    totalAmount: 2499.99,
-                    reason: 'New workstations',
-                    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
-                    items: {
-                        create: [
-                            { description: 'Dell Precision 5000', quantity: 1, unitPrice: 2499.99, totalPrice: 2499.99 }
-                        ]
-                    }
-                }
-            });
-
-            // Create Order for it
-            await prisma.purchaseOrder.create({
-                data: {
-                    requestId: req.id,
-                    supplierId: supplier.id,
-                    status: OrderStatus.SENT,
-                    totalAmount: 2499.99
-                }
-            });
-        }
     }
 
     console.log('✅ Seeding complete');

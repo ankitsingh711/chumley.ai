@@ -1,5 +1,6 @@
 import { PrismaClient, UserRole, RequestStatus, User } from '@prisma/client';
 import Logger from '../utils/logger';
+import emailService from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -211,16 +212,30 @@ export class ApprovalService {
             });
 
             Logger.info(`Request ${requestId} routed to ${nextApprover.name} (${nextApprover.email})`);
+
+            // Send email to approver
+            await emailService.sendApprovalRequestEmail({
+                approverEmail: nextApprover.email,
+                approverName: nextApprover.name,
+                requesterName: request.requester.name,
+                requestId: request.id,
+                totalAmount: Number(request.totalAmount),
+                manageUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}`
+            });
+
         } else {
             // Auto-approve if no approver needed (e.g., Senior Manager's own request)
             await prisma.purchaseRequest.update({
                 where: { id: requestId },
                 data: {
-                    status: RequestStatus.APPROVED
+                    status: RequestStatus.APPROVED,
+                    updatedAt: new Date()
                 }
             });
 
             Logger.info(`Request ${requestId} auto-approved (no approver needed)`);
+
+            // Should success email be sent here? Maybe later.
         }
     }
 }

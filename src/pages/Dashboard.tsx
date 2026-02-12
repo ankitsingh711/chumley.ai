@@ -131,7 +131,7 @@ export default function Dashboard() {
                                             {request.requester?.name || 'Unknown'}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            ${Number(request.totalAmount).toLocaleString()}
+                                            £{Number(request.totalAmount).toLocaleString()}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${request.status === 'APPROVED' ? 'bg-green-100 text-green-800' :

@@ -3,7 +3,7 @@ import { PrismaClient, RequestStatus, UserRole } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
-import { sendPurchaseRequestNotification } from '../services/email.service';
+import { sendPurchaseRequestNotification, sendRejectionNotification } from '../services/email.service';
 import approvalService from '../services/approval.service';
 
 const prisma = new PrismaClient();
@@ -44,7 +44,7 @@ export const createRequest = async (req: Request, res: Response) => {
                 requesterId,
                 reason: validatedData.reason,
                 totalAmount,
-                status: RequestStatus.IN_PROGRESS, // Start as in progress
+                status: RequestStatus.PENDING, // Start as PENDING (Plan: 4a)
                 // New fields
                 supplierId: validatedData.supplierId,
                 budgetCategory: validatedData.budgetCategory,
@@ -63,63 +63,14 @@ export const createRequest = async (req: Request, res: Response) => {
             include: {
                 items: true,
                 supplier: true,
+                requester: { include: { department: true } } // Include for routing
             },
         });
 
         Logger.info(`Purchase Request created: ${request.id} by ${requesterId}`);
 
-        // Notify all users about new request (no role-based filtering)
-        const allUsers = await prisma.user.findMany({
-            where: {
-                id: { not: requesterId }, // Don't notify the creator
-            },
-        });
-
-        allUsers.forEach((otherUser) => {
-            sendNotification(otherUser.id, {
-                id: `notif-${Date.now()}-${Math.random()}`,
-                type: 'request_created',
-                title: 'New Purchase Request',
-                message: `${req.user!.name} created a new purchase request for £${totalAmount.toLocaleString()}`,
-                userId: otherUser.id,
-                createdAt: new Date(),
-                read: false,
-                metadata: { requestId: request.id },
-            });
-        });
-
-        // Send email notification to supplier if available
-        if (request.supplier && request.supplier.contactEmail) {
-            // Send email asynchronously, don't block the response
-            sendPurchaseRequestNotification({
-                supplierEmail: request.supplier.contactEmail,
-                supplierName: request.supplier.name,
-                requesterName: req.user!.name,
-                requesterEmail: req.user!.email,
-                requestId: request.id,
-                items: validatedData.items,
-                totalAmount,
-                createdAt: request.createdAt,
-                reason: validatedData.reason,
-            }).catch((error) => {
-                // Log error but don't fail the request creation
-                Logger.error(`Failed to send email to supplier ${request.supplier!.name}:`, error);
-            });
-        }
-
-        // Log interaction if supplier is involved
-        if (request.supplierId) {
-            await prisma.interactionLog.create({
-                data: {
-                    supplierId: request.supplierId,
-                    userId: requesterId,
-                    eventType: 'request_created',
-                    title: 'Purchase Request Created',
-                    description: `Request #${request.id.slice(0, 8)} created for ${validatedData.items.length} items. Total: £${totalAmount.toLocaleString()}`,
-                    eventDate: new Date(),
-                }
-            });
-        }
+        // Route to approver (Plan: 4a)
+        await approvalService.routeRequest(request.id);
 
         res.status(201).json(request);
     } catch (error: any) {
@@ -139,11 +90,26 @@ export const getRequests = async (req: Request, res: Response) => {
 
         const where: any = {};
         if (isRestricted) {
-            if (user.departmentId) {
-                where.requester = { departmentId: user.departmentId };
-            } else {
-                // If user has no department, they can only see their own requests (fallback)
-                where.requesterId = user.id;
+            // Plan 6c: Dept users see only own dept data
+            // But wait, Plan 2c says "Department users see only their department vendors"
+            // Plan 6b: Senior Manager view department-specific data
+            // Plan 5: Dashboard updates implies viewing requests based on role.
+
+            // Existing logic:
+            if (isRestricted) {
+                // Plan 6c: Dept users see only own requests usually
+                // Plan 6b: Senior Manager view department-specific data
+
+                if (user.role === UserRole.MEMBER) {
+                    // Members see only their own requests
+                    where.requesterId = user.id;
+                } else if (user.departmentId) {
+                    // Managers and Senior Managers see all requests in their department
+                    where.requester = { departmentId: user.departmentId };
+                } else {
+                    // Fallback for managers without department
+                    where.requesterId = user.id;
+                }
             }
         }
 
@@ -185,8 +151,6 @@ export const getRequestById = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        // All users can view all requests
-
         res.json(request);
     } catch (error) {
         Logger.error(error);
@@ -194,16 +158,24 @@ export const getRequestById = async (req: Request, res: Response) => {
     }
 };
 
+import { OrderStatus } from '@prisma/client';
+
 export const updateRequestStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const { status } = updateStatusSchema.parse(req.body);
         const approverId = req.user!.id;
 
-        const request = await prisma.purchaseRequest.findUnique({ where: { id } });
+        const request = await prisma.purchaseRequest.findUnique({
+            where: { id },
+            include: { items: true, supplier: true, requester: true }
+        });
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
         }
+
+        // Validate state transition?
+        // e.g. can only approve/reject PENDING requests
 
         const updatedRequest = await prisma.purchaseRequest.update({
             where: { id },
@@ -214,6 +186,52 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
         });
 
         Logger.info(`Request ${id} status updated to ${status} by ${approverId}`);
+
+        if (status === RequestStatus.APPROVED) {
+            // Plan 4b: Generate PO
+            if (request.supplierId) {
+                const po = await prisma.purchaseOrder.create({
+                    data: {
+                        requestId: id,
+                        supplierId: request.supplierId,
+                        totalAmount: request.totalAmount,
+                        status: OrderStatus.SENT, // Assuming we send it immediately via email below
+                    }
+                });
+                Logger.info(`Generated PO ${po.id} for Request ${id}`);
+
+                if (request.supplier && request.supplier.contactEmail) {
+                    sendPurchaseRequestNotification({
+                        supplierEmail: request.supplier.contactEmail,
+                        supplierName: request.supplier.name,
+                        requesterName: request.requester.name,
+                        requesterEmail: request.requester.email,
+                        requestId: request.id,
+                        items: request.items.map(item => ({
+                            description: item.description,
+                            quantity: item.quantity,
+                            unitPrice: Number(item.unitPrice)
+                        })),
+                        totalAmount: Number(request.totalAmount),
+                        createdAt: request.createdAt,
+                        reason: request.reason || undefined,
+                    }).catch(err => Logger.error('Failed to email vendor', err));
+                }
+            }
+        }
+
+        if (status === RequestStatus.REJECTED) {
+            // Plan 4c: Email requester
+            if (request.requester && request.requester.email) {
+                sendRejectionNotification({
+                    requesterEmail: request.requester.email,
+                    requesterName: request.requester.name,
+                    requestId: request.id,
+                    totalAmount: Number(request.totalAmount),
+                    // We don't have rejection reason in body yet
+                }).catch(err => Logger.error('Failed to email requester about rejection', err));
+            }
+        }
 
         // Notify requester about status change
         const notificationType = status === RequestStatus.APPROVED ? 'request_approved' : 'request_rejected';

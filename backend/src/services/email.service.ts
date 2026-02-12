@@ -278,6 +278,87 @@ This is an automated notification from Aspect
     }
 };
 
+interface ApprovalRequestEmailData {
+    approverEmail: string;
+    approverName: string;
+    requesterName: string;
+    requestId: string;
+    totalAmount: number;
+    manageUrl: string;
+}
+
+export const sendApprovalRequestEmail = async (data: ApprovalRequestEmailData): Promise<boolean> => {
+    try {
+        const { approverEmail, approverName, requesterName, requestId, totalAmount, manageUrl } = data;
+
+        const htmlContent = `
+            <h2>Purchase Request Approval Required</h2>
+            <p>Hello ${approverName},</p>
+            <p><strong>${requesterName}</strong> has submitted a new purchase request that requires your approval.</p>
+            <ul>
+                <li><strong>Request ID:</strong> #${requestId.slice(0, 8)}</li>
+                <li><strong>Amount:</strong> £${totalAmount.toLocaleString('en-GB')}</li>
+            </ul>
+            <p>Please review and approve or reject this request.</p>
+            <a href="${manageUrl}" style="background-color: #0d9488; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Review Request</a>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM || `"Aspect" <${process.env.EMAIL_USER}>`,
+            to: approverEmail,
+            subject: `Approval Required: Request #${requestId.slice(0, 8)}`,
+            html: htmlContent,
+        });
+
+        Logger.info(`Approval request email sent to ${approverEmail}`);
+        return true;
+    } catch (error) {
+        Logger.error('Failed to send approval request email:', error);
+        return false;
+    }
+};
+
+interface RejectionEmailData {
+    requesterEmail: string;
+    requesterName: string;
+    requestId: string;
+    totalAmount: number;
+    reason?: string;
+}
+
+export const sendRejectionNotification = async (data: RejectionEmailData): Promise<boolean> => {
+    try {
+        const { requesterEmail, requesterName, requestId, totalAmount, reason } = data;
+
+        const htmlContent = `
+            <h2>Purchase Request Rejected</h2>
+            <p>Hello ${requesterName},</p>
+            <p>Your purchase request has been <strong>rejected</strong> by the approver.</p>
+            <ul>
+                <li><strong>Request ID:</strong> #${requestId.slice(0, 8)}</li>
+                <li><strong>Amount:</strong> £${totalAmount.toLocaleString('en-GB')}</li>
+            </ul>
+            ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+            <p>Please contact your manager for more details.</p>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM || `"Aspect" <${process.env.EMAIL_USER}>`,
+            to: requesterEmail,
+            subject: `Request Rejected: #${requestId.slice(0, 8)}`,
+            html: htmlContent,
+        });
+
+        Logger.info(`Rejection email sent to ${requesterEmail}`);
+        return true;
+    } catch (error) {
+        Logger.error('Failed to send rejection email:', error);
+        return false;
+    }
+};
+
 export default {
     sendPurchaseRequestNotification,
+    sendApprovalRequestEmail,
+    sendRejectionNotification
 };

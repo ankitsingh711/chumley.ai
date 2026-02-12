@@ -38,7 +38,7 @@ export function LogoWithText({ classNameIcon = "w-40", classNameText = "text-gra
             <div className={classNameIcon}>
                 <LogoIcon className="w-full h-auto" />
             </div>
-            {showText && <span className={`text-xs ${classNameText} font-medium leading-none tracking-wide mt-1 ml-[40px]`}>Powered by chumley.ai</span>}
+            {showText && <span className={`text-xs ${classNameText} font-medium leading-none tracking-wide mt-1 ml-[40px]`}>Powered by Chamli</span>}
         </div>
     );
 }

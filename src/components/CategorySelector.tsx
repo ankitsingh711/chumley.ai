@@ -13,6 +13,7 @@ interface CategorySelectorProps extends Omit<React.HTMLAttributes<HTMLDivElement
     error?: string;
     placeholder?: string;
     disabled?: boolean;
+    required?: boolean;
 }
 
 interface FlattenedCategory extends Category {
@@ -30,7 +31,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     error,
     placeholder = 'Select a category',
     className,
-    disabled
+    disabled,
+    required
 }) => {
     const [categories, setCategories] = useState<CategoryTree>([]);
     const [loading, setLoading] = useState(false);
@@ -251,7 +253,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         <div className={cn("relative", className)} ref={containerRef}>
             {label && (
                 <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                    {label} {error && <span className="text-red-500">*</span>}
+                    {label} {(required || error) && <span className="text-red-500">*</span>}
                 </label>
             )}
 

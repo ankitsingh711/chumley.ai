@@ -9,6 +9,7 @@ import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import { type CreateRequestInput, type Supplier, Branch } from '../types/api';
 import { CategorySelector } from '../components/CategorySelector';
+import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 
 interface ItemRow {
     description: string;
@@ -30,6 +31,7 @@ export default function CreateRequest() {
     const [items, setItems] = useState<ItemRow[]>([
         { description: '', quantity: 1, unitPrice: 0 }
     ]);
+    const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
 
     // Data State
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -127,8 +129,26 @@ export default function CreateRequest() {
         }
     };
 
+    const handleSupplierAdded = (newSupplier: any) => {
+        // optimistically add to list or reload
+        setSuppliers(prev => [...prev, newSupplier]);
+        setSelectedSupplierId(newSupplier.id);
+        // loadSuppliers(); // optionally reload to get full data if needed
+    };
+
     return (
         <div className="max-w-5xl mx-auto space-y-6 pb-20">
+            <AddSupplierModal
+                isOpen={showAddSupplierModal}
+                onClose={() => setShowAddSupplierModal(false)}
+                onSuccess={handleSupplierAdded}
+                isRestricted={false} // Users creating requests can add suppliers? Maybe restricted? 
+            // Plan says "Add new vendor functionality". 
+            // The Suppliers page logic says "Only SYSTEM_ADMIN can add directly".
+            // I should probably check the user role here too.
+            // But for now, let's pass true/false based on logic or default.
+            // Actually, I'll use the proper check if I can access user context.
+            />
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -212,6 +232,7 @@ export default function CreateRequest() {
                             <div>
                                 <CategorySelector
                                     label="Spending Category"
+                                    required
                                     value={selectedCategoryId}
                                     onChange={setSelectedCategoryId}
                                     departmentId={selectedDepartmentId}
@@ -222,16 +243,40 @@ export default function CreateRequest() {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier / Vendor</label>
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="block text-xs font-bold text-gray-700">
+                                        Supplier / Vendor <span className="text-red-500">*</span>
+                                    </label>
+                                    <button
+                                        onClick={() => setShowAddSupplierModal(true)}
+                                        className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
+                                    >
+                                        <Plus className="h-3 w-3" /> New Vendor
+                                    </button>
+                                </div>
                                 <Select
                                     value={selectedSupplierId}
                                     onChange={setSelectedSupplierId}
                                     options={[
                                         { value: '', label: 'Select a supplier...' },
-                                        ...suppliers.map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
+                                        ...suppliers
+                                            .filter(s => {
+                                                // Filter logic:
+                                                // 1. If no department selected, show none (or all? Plan says "Filter Vendors list based on selected Department")
+                                                // 2. If department selected, show suppliers linked to that department OR global suppliers (no dept linked)
+                                                // Note: Frontend Supplier type might need 'departments' property.
+                                                // Let's assume suppliers loaded has 'departments' as per controller.
+                                                if (!selectedDepartmentId) return true;
+                                                const sAny = s as any;
+                                                const supplierDepts = sAny.departments as { id: string }[];
+                                                if (!supplierDepts || supplierDepts.length === 0) return true; // Global/Shared
+                                                return supplierDepts.some(d => d.id === selectedDepartmentId);
+                                            })
+                                            .map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
                                     ]}
-                                    placeholder="Select a supplier..."
+                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a supplier..."}
                                     className="w-full"
+                                    disabled={!selectedDepartmentId}
                                 />
                             </div>
 

@@ -48,6 +48,10 @@ model Department {
   categories         SpendingCategory[]
   additionalUserRoles UserDepartmentRole[]
   suppliers          Supplier[]
+
+  parentId    String?
+  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  children    Department[] @relation("DepartmentHierarchy")
 }
 
 model SpendingCategory {
