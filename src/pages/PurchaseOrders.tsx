@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Download, Eye } from 'lucide-react';
+import { Search, Download, Eye, Send, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { ordersApi } from '../services/orders.service';
 import type { PurchaseOrder } from '../types/api';
 import { OrderStatus } from '../types/api';
@@ -12,6 +13,26 @@ export default function PurchaseOrders() {
 
     const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [updating, setUpdating] = useState<string | null>(null);
+
+    // Modal State
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        variant: 'warning' | 'danger' | 'info' | 'success';
+        confirmText?: string;
+        showCancel?: boolean;
+        onConfirm: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        message: '',
+        variant: 'warning',
+        confirmText: 'Confirm',
+        showCancel: true,
+        onConfirm: () => { },
+    });
 
     const filteredOrders = orders.filter(order => {
         const query = searchQuery.toLowerCase();
@@ -68,6 +89,68 @@ export default function PurchaseOrders() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
+    };
+
+    const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
+        let title = '';
+        let message = '';
+        let confirmText = '';
+        let variant: 'warning' | 'success' | 'danger' = 'warning';
+
+        switch (newStatus) {
+            case OrderStatus.SENT:
+                title = 'Send Purchase Order';
+                message = 'Are you sure you want to mark this order as SENT? This will set the issuance date to today.';
+                confirmText = 'Send Order';
+                variant = 'warning';
+                break;
+            case OrderStatus.COMPLETED:
+                title = 'Complete Order';
+                message = 'Are you sure you want to mark this order as COMPLETED? This confirms all goods/services have been received.';
+                confirmText = 'Mark Completed';
+                variant = 'success';
+                break;
+            default:
+                return;
+        }
+
+        setConfirmModal({
+            isOpen: true,
+            title,
+            message,
+            variant,
+            confirmText,
+            showCancel: true,
+            onConfirm: async () => {
+                setUpdating(orderId);
+                try {
+                    await ordersApi.updateStatus(orderId, { status: newStatus });
+                    await loadOrders();
+
+                    // Update selected order if open
+                    if (selectedOrder && selectedOrder.id === orderId) {
+                        const updatedOrder = await ordersApi.getById(orderId);
+                        setSelectedOrder(updatedOrder);
+                    }
+
+                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                } catch (error: any) {
+                    console.error('Failed to update status:', error);
+                    const msg = error.response?.data?.error || 'Failed to update order status';
+                    setConfirmModal({
+                        isOpen: true,
+                        title: 'Error',
+                        message: msg,
+                        variant: 'danger',
+                        confirmText: 'OK',
+                        showCancel: false,
+                        onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                    });
+                } finally {
+                    setUpdating(null);
+                }
+            }
+        });
     };
 
     const handleExportAll = () => {
@@ -197,6 +280,26 @@ export default function PurchaseOrders() {
                                             >
                                                 <Download className="h-4 w-4" />
                                             </button>
+                                            {po.status === OrderStatus.IN_PROGRESS && (
+                                                <button
+                                                    className="p-1 hover:text-blue-600 text-blue-400"
+                                                    onClick={() => handleUpdateStatus(po.id, OrderStatus.SENT)}
+                                                    title="Send Order"
+                                                    disabled={!!updating}
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </button>
+                                            )}
+                                            {po.status === OrderStatus.SENT && (
+                                                <button
+                                                    className="p-1 hover:text-green-600 text-green-400"
+                                                    onClick={() => handleUpdateStatus(po.id, OrderStatus.COMPLETED)}
+                                                    title="Mark Completed"
+                                                    disabled={!!updating}
+                                                >
+                                                    <CheckCircle className="h-4 w-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
@@ -277,18 +380,51 @@ export default function PurchaseOrders() {
                                 </div>
                             </div>
 
-                            {/* Footer Actions */}
-                            <div className="pt-4 border-t flex justify-end gap-3">
-                                <Button variant="outline" onClick={closeModal}>Close</Button>
-                                <Button onClick={() => handleDownload(selectedOrder)}>
-                                    <Download className="mr-2 h-4 w-4" /> Download CSV
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="pt-4 border-t flex justify-end gap-3 flex-wrap">
+                            <Button variant="outline" onClick={closeModal}>Close</Button>
+                            <Button onClick={() => handleDownload(selectedOrder)} variant="outline">
+                                <Download className="mr-2 h-4 w-4" /> Download CSV
+                            </Button>
+
+                            {selectedOrder.status === OrderStatus.IN_PROGRESS && (
+                                <Button
+                                    onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.SENT)}
+                                    className="bg-blue-600 hover:bg-blue-700"
+                                    disabled={!!updating}
+                                >
+                                    <Send className="mr-2 h-4 w-4" /> Send to Supplier
                                 </Button>
-                            </div>
+                            )}
+
+                            {selectedOrder.status === OrderStatus.SENT && (
+                                <Button
+                                    onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.COMPLETED)}
+                                    className="bg-green-600 hover:bg-green-700"
+                                    disabled={!!updating}
+                                >
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Mark as Completed
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>,
                 document.body
             )}
+
+            <ConfirmationModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onConfirm={confirmModal.onConfirm}
+                title={confirmModal.title}
+                message={confirmModal.message}
+                variant={confirmModal.variant as any}
+                confirmText={confirmModal.confirmText}
+                showCancel={confirmModal.showCancel}
+                isLoading={!!updating}
+            />
         </div>
     );
 }

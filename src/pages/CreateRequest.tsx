@@ -27,6 +27,7 @@ export default function CreateRequest() {
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
     const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState('');
+    const [center, setCenter] = useState('Chessington');
     const [deliveryLocation, setDeliveryLocation] = useState('');
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [items, setItems] = useState<ItemRow[]>([
@@ -114,7 +115,7 @@ export default function CreateRequest() {
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
                 categoryId: selectedCategoryId,
-                deliveryLocation,
+                deliveryLocation: `${center} - ${deliveryLocation}`,
                 expectedDeliveryDate: expectedDeliveryDate || undefined,
                 items: validItems,
             };
@@ -172,6 +173,21 @@ export default function CreateRequest() {
                         </h3>
 
                         <div className="grid grid-cols-1 gap-6">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                                    Center / Base <span className="text-red-500">*</span>
+                                </label>
+                                <Select
+                                    value={center}
+                                    onChange={setCenter}
+                                    options={[
+                                        { value: 'Chessington', label: 'Chessington' },
+                                        { value: 'Royston', label: 'Royston' }
+                                    ]}
+                                    placeholder="Select Center..."
+                                    className="w-full"
+                                />
+                            </div>
                             <div>
                                 <label className="block text-xs font-bold text-gray-700 mb-1.5">Supplier / Vendor</label>
                                 <Select

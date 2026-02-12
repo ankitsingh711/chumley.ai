@@ -131,9 +131,33 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const { status } = updateOrderSchema.parse(req.body);
 
+        const currentOrder = await prisma.purchaseOrder.findUnique({ where: { id } });
+        if (!currentOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        const updateData: any = { status };
+
+        // specific logic for SENT status (Issuing the PO)
+        if (status === OrderStatus.SENT && !currentOrder.issuedAt) {
+            updateData.issuedAt = new Date();
+        }
+
         const order = await prisma.purchaseOrder.update({
             where: { id },
-            data: { status },
+            data: updateData,
+        });
+
+        // Log interaction for status change
+        await prisma.interactionLog.create({
+            data: {
+                supplierId: order.supplierId,
+                userId: req.user?.id || 'system', // Ideally use authenticated user ID
+                eventType: 'order_status_updated',
+                title: `Order #${order.id.slice(0, 8)} Updated`,
+                description: `Status changed from ${currentOrder.status} to ${status}`,
+                eventDate: new Date(),
+            }
         });
 
         Logger.info(`Order ${id} status updated to ${status}`);

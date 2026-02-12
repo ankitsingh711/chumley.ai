@@ -156,13 +156,17 @@ export default function SupplierProfile() {
                                 <StatCard
                                     title="TOTAL SPEND (YTD)"
                                     value={supplier.stats?.totalSpend ? `$${(supplier.stats.totalSpend / 1000).toFixed(1)}k` : '$0.0k'}
-                                    trend={{ value: '+12%', isPositive: true }}
+                                // removed static trend
                                 />
                                 <StatCard
                                     title="ACTIVE ORDERS"
                                     value={supplier.stats?.activeOrders?.toString().padStart(2, '0') || '00'}
                                 />
-                                <StatCard title="RELIABILITY SCORE" value="98.2%" color="green" />
+                                <StatCard
+                                    title="RELIABILITY SCORE"
+                                    value={`${supplier.details ? Math.round(((supplier.details.qualityScore || 0) + (supplier.details.communicationScore || 0)) / 2) : 0}%`}
+                                    color="green"
+                                />
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -199,23 +203,36 @@ export default function SupplierProfile() {
                                     <div className="rounded-xl border border-gray-100 bg-white p-6">
                                         <div className="flex items-center justify-between mb-4">
                                             <h3 className="font-semibold text-gray-900">Compliance & Documents</h3>
-                                            <Button variant="ghost" size="sm">+</Button>
+                                            <Button variant="ghost" size="sm" onClick={() => setIsAddDocumentOpen(true)}>+</Button>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                                <div className="p-2 bg-red-50 text-red-600 rounded"><FileText className="h-5 w-5" /></div>
-                                                <div>
-                                                    <p className="text-sm font-medium">W-9 Tax Form (2023)</p>
-                                                    <p className="text-xs text-gray-400">Modified Oct 1, 2023</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {supplier.documents && supplier.documents.length > 0 ? (
+                                                supplier.documents.slice(0, 4).map((doc) => (
+                                                    <div key={doc.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-gray-50 transition-colors cursor-pointer" onClick={() => window.open(doc.url, '_blank')}>
+                                                        <div className={`p-2 rounded ${doc.type === 'Tax' ? 'bg-red-50 text-red-600' :
+                                                            doc.type === 'Insurance' ? 'bg-blue-50 text-blue-600' :
+                                                                'bg-purple-50 text-purple-600'
+                                                            }`}>
+                                                            {doc.type === 'Insurance' ? <Shield className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                                                        </div>
+                                                        <div className="overflow-hidden">
+                                                            <p className="text-sm font-medium truncate" title={doc.title}>{doc.title}</p>
+                                                            <p className={`text-xs ${doc.status === 'Expiring Soon' ? 'text-yellow-600 font-medium' :
+                                                                doc.status === 'Expired' ? 'text-red-600 font-medium' :
+                                                                    'text-gray-400'
+                                                                }`}>
+                                                                {doc.status === 'Expiring Soon' ? 'EXPIRES SOON' :
+                                                                    doc.status === 'Expired' ? 'EXPIRED' :
+                                                                        doc.expiryDate ? `Expires: ${new Date(doc.expiryDate).toLocaleDateString()}` : 'Valid'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="col-span-2 text-center py-4 text-sm text-gray-500">
+                                                    No documents uploaded.
                                                 </div>
-                                            </div>
-                                            <div className="flex items-center gap-3 p-3 border rounded-lg">
-                                                <div className="p-2 bg-blue-50 text-blue-600 rounded"><Shield className="h-5 w-5" /></div>
-                                                <div>
-                                                    <p className="text-sm font-medium">Liability Insurance</p>
-                                                    <p className="text-xs text-yellow-600">EXPIRES IN 12 DAYS</p>
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -536,7 +553,8 @@ export default function SupplierProfile() {
                                         value: supplier.details?.deliveryDelayAverage !== undefined
                                             ? (supplier.details.deliveryDelayAverage < 0 ? 'Ahead of Schedule' : (supplier.details.deliveryDelayAverage === 0 ? 'On Time' : 'Behind Schedule'))
                                             : 'N/A',
-                                        isPositive: supplier.details?.deliveryDelayAverage !== undefined ? supplier.details.deliveryDelayAverage <= 0 : true
+                                        isPositive: supplier.details?.deliveryDelayAverage !== undefined ? supplier.details.deliveryDelayAverage <= 0 : true,
+                                        label: 'Current Status'
                                     }}
                                     color="blue"
                                 />
@@ -562,7 +580,12 @@ export default function SupplierProfile() {
                                                 <span className="text-sm font-bold text-gray-900">{supplier.details?.deliveryDelayAverage !== undefined ? Math.abs(supplier.details.deliveryDelayAverage) : 0} Days {supplier.details?.deliveryDelayAverage && supplier.details.deliveryDelayAverage < 0 ? 'Early' : 'Late'}</span>
                                             </div>
                                             <div className="w-full bg-gray-100 rounded-full h-2.5">
-                                                <div className="bg-primary-600 h-2.5 rounded-full" style={{ width: '95%' }}></div>
+                                                <div
+                                                    className={`h-2.5 rounded-full ${supplier.details?.deliveryDelayAverage && supplier.details.deliveryDelayAverage > 0 ? 'bg-red-500' : 'bg-green-500'}`}
+                                                    style={{
+                                                        width: `${Math.min(100, Math.max(0, 100 - (Math.abs(supplier.details?.deliveryDelayAverage || 0) * 5)))}%`
+                                                    }}
+                                                ></div>
                                             </div>
                                         </div>
 
