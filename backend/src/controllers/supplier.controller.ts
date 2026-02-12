@@ -110,21 +110,21 @@ export const createSupplier = async (req: Request, res: Response) => {
         const validatedData = createSupplierSchema.parse(req.body);
         const user = req.user!;
 
-        // Determine status based on role
-        const isMember = user.role === UserRole.MEMBER;
-        const status = isMember ? 'Review Pending' : 'Active';
+        // Determine status based on role - only SYSTEM_ADMIN can create directly active suppliers
+        const isRestricted = user.role !== UserRole.SYSTEM_ADMIN;
+        const status = isRestricted ? 'Review Pending' : 'Active';
 
         const supplier = await prisma.supplier.create({
             data: {
                 ...validatedData,
                 status,
                 // @ts-ignore
-                requesterId: isMember ? user.id : undefined,
+                requesterId: isRestricted ? user.id : undefined,
             },
         });
 
-        // If member, notify admins
-        if (isMember) {
+        // If restricted user, notify admins
+        if (isRestricted) {
             // Find all admins
             const admins = await prisma.user.findMany({
                 where: { role: UserRole.SYSTEM_ADMIN },
