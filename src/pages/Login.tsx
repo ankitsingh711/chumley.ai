@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { LogoIcon } from '../components/ui/Logo';
+import { LogoWithText } from '../components/ui/Logo';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
@@ -52,11 +52,8 @@ export default function Login() {
                 <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
                 <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-24">
-                        <div className="h-10 w-10 flex items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm border border-white/30">
-                            <LogoIcon className="h-6 w-6 text-white" />
-                        </div>
-                        <h1 className="text-2xl font-bold tracking-tight">Aspect</h1>
+                    <div className="mb-24">
+                        <LogoWithText classNameIcon="w-48" classNameText="text-white/90" />
                     </div>
 
                     <div className="max-w-xl">
