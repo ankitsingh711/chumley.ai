@@ -7,27 +7,24 @@ import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
-import type { CreateRequestInput, Supplier } from '../types/api';
+import { type CreateRequestInput, type Supplier, Branch } from '../types/api';
 import { CategorySelector } from '../components/CategorySelector';
 
 interface ItemRow {
     description: string;
-
     quantity: number;
     unitPrice: number;
 }
-
-
 
 export default function CreateRequest() {
     const navigate = useNavigate();
 
     // Form State
+    const [branch, setBranch] = useState<Branch>(Branch.CHESSINGTON);
     const [reason, setReason] = useState('');
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
     const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState('');
-    const [center, setCenter] = useState('Chessington');
     const [deliveryLocation, setDeliveryLocation] = useState('');
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [items, setItems] = useState<ItemRow[]>([
@@ -115,9 +112,10 @@ export default function CreateRequest() {
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
                 categoryId: selectedCategoryId,
-                deliveryLocation: `${center} - ${deliveryLocation}`,
+                deliveryLocation: `${branch} - ${deliveryLocation}`,
                 expectedDeliveryDate: expectedDeliveryDate || undefined,
                 items: validItems,
+                branch: branch,
             };
 
             await requestsApi.create(data);
@@ -178,11 +176,14 @@ export default function CreateRequest() {
                                     Center / Base <span className="text-red-500">*</span>
                                 </label>
                                 <Select
-                                    value={center}
-                                    onChange={setCenter}
+                                    value={branch}
+                                    onChange={(val) => {
+                                        setBranch(val as Branch);
+                                        setSelectedCategoryId(''); // Reset category when branch changes
+                                    }}
                                     options={[
-                                        { value: 'Chessington', label: 'Chessington' },
-                                        { value: 'Royston', label: 'Royston' }
+                                        { value: Branch.CHESSINGTON, label: 'Chessington' },
+                                        { value: Branch.ROYSTON, label: 'Royston' }
                                     ]}
                                     placeholder="Select Center..."
                                     className="w-full"
@@ -237,6 +238,7 @@ export default function CreateRequest() {
                                     value={selectedCategoryId}
                                     onChange={setSelectedCategoryId}
                                     departmentId={selectedDepartmentId}
+                                    branch={branch}
                                     disabled={!selectedDepartmentId}
                                     placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
                                 />

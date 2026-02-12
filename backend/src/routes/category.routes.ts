@@ -7,6 +7,9 @@ const router = Router();
 // All routes require authentication
 router.use(authenticate);
 
+// Get hierarchy by branch and department (must be before /:id)
+router.get('/hierarchy', categoryController.getHierarchy);
+
 // Get category tree (must be before /:id to avoid route conflicts)
 router.get('/tree', categoryController.getCategoryTree);
 

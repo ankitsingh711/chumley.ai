@@ -21,6 +21,16 @@ export const categoryService = {
     },
 
     /**
+     * Get categories by branch and department (for hierarchy)
+     */
+    async getCategoriesByBranchAndDepartment(branch: string, departmentId: string): Promise<Category[]> {
+        const response = await apiClient.get<Category[]>('/categories/hierarchy', {
+            params: { branch, departmentId }
+        });
+        return response.data;
+    },
+
+    /**
      * Get all categories by department (flat list)
      */
     async getCategoriesByDepartment(departmentId: string): Promise<Category[]> {

@@ -1,4 +1,4 @@
-import { PrismaClient, SpendingCategory } from '@prisma/client';
+import { PrismaClient, SpendingCategory, Branch } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -102,6 +102,7 @@ export const categoryService = {
         description?: string;
         parentId?: string;
         departmentId: string;
+        branch: Branch;
     }): Promise<SpendingCategory> {
         // Validate parent exists if provided
         if (data.parentId) {
@@ -114,6 +115,10 @@ export const categoryService = {
             // Ensure parent belongs to same department
             if (parent.departmentId !== data.departmentId) {
                 throw new Error('Parent category must belong to the same department');
+            }
+            // Ensure parent belongs to same branch
+            if (parent.branch !== data.branch) {
+                throw new Error('Parent category must belong to the same branch');
             }
         }
 

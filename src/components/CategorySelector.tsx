@@ -8,6 +8,7 @@ interface CategorySelectorProps extends Omit<React.HTMLAttributes<HTMLDivElement
     value: string;
     onChange: (categoryId: string) => void;
     departmentId?: string;
+    branch?: string;
     label?: string;
     error?: string;
     placeholder?: string;
@@ -24,6 +25,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     value,
     onChange,
     departmentId,
+    branch,
     label,
     error,
     placeholder = 'Select a category',
@@ -39,12 +41,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
     const containerRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch categories when department changes
+    // Fetch categories when department or branch changes
     useEffect(() => {
         let mounted = true;
 
         const fetchCategories = async () => {
-            if (!departmentId) {
+            if (!departmentId || !branch) {
                 setCategories([]);
                 return;
             }
@@ -52,7 +54,10 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
             try {
                 setLoading(true);
                 setFetchError('');
-                const tree = await categoryService.getCategoryTree(departmentId);
+                const tree = await categoryService.getCategoriesByBranchAndDepartment(
+                    branch,
+                    departmentId
+                );
                 if (mounted) {
                     setCategories(tree);
                 }
@@ -73,7 +78,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         return () => {
             mounted = false;
         };
-    }, [departmentId]);
+    }, [departmentId, branch]);
 
     // Close dropdown on click outside
     useEffect(() => {
@@ -240,7 +245,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
         return categories.map(node => renderNode(node));
     };
 
-    const isDisabled = disabled || loading || !departmentId;
+    const isDisabled = disabled || loading || !departmentId || !branch;
 
     return (
         <div className={cn("relative", className)} ref={containerRef}>

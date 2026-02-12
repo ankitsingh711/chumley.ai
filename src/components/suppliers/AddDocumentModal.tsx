@@ -43,7 +43,7 @@ export function AddDocumentModal({ isOpen, onClose, supplierId, onSuccess }: Add
         setLoading(true);
         try {
             // 1. Upload File
-            const url = await uploadApi.uploadImage(file);
+            const url = await uploadApi.uploadFile(file);
 
             // 2. Create Document Record
             await suppliersApi.addDocument(supplierId, {

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { categoryService } from '../services/category.service';
+import { hierarchyService } from '../services/hierarchy.service';
+import { Branch } from '@prisma/client';
 
 export const categoryController = {
     /**
@@ -20,12 +22,48 @@ export const categoryController = {
     },
 
     /**
+     * GET /api/categories/hierarchy
+     * Get categories by branch and department
+     */
+    async getHierarchy(req: Request, res: Response) {
+        try {
+            const { branch, departmentId } = req.query;
+
+            if (!branch || !departmentId) {
+                return res.status(400).json({
+                    error: 'Branch and departmentId are required'
+                });
+            }
+
+            const branchEnum = branch.toString().toUpperCase() as Branch;
+            const categories = await hierarchyService.getCategoriesByBranchAndDepartment(
+                branchEnum,
+                departmentId as string
+            );
+            res.json(categories);
+        } catch (error: any) {
+            console.error('Error fetching hierarchy:', error);
+            res.status(500).json({ error: error.message || 'Failed to fetch hierarchy' });
+        }
+    },
+
+    /**
      * GET /api/categories/tree
      * Get hierarchical tree structure
      */
     async getCategoryTree(req: Request, res: Response) {
         try {
-            const { departmentId } = req.query;
+            const { departmentId, branch } = req.query;
+
+            if (branch && departmentId) {
+                const branchEnum = branch.toString().toUpperCase() as Branch;
+                const tree = await hierarchyService.getHierarchyTree(
+                    branchEnum,
+                    departmentId as string
+                );
+                return res.json(tree);
+            }
+
             const tree = await categoryService.getCategoryTree(
                 typeof departmentId === 'string' ? departmentId : undefined
             );
@@ -92,11 +130,11 @@ export const categoryController = {
      */
     async createCategory(req: Request, res: Response) {
         try {
-            const { name, description, parentId, departmentId } = req.body;
+            const { name, description, parentId, departmentId, branch } = req.body;
 
-            if (!name || !departmentId) {
+            if (!name || !departmentId || !branch) {
                 return res.status(400).json({
-                    error: 'Name and departmentId are required'
+                    error: 'Name, departmentId, and branch are required'
                 });
             }
 
@@ -105,6 +143,7 @@ export const categoryController = {
                 description,
                 parentId,
                 departmentId,
+                branch: branch as Branch,
             });
 
             res.status(201).json(category);
@@ -151,3 +190,4 @@ export const categoryController = {
         }
     },
 };
+

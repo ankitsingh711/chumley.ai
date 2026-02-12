@@ -33,7 +33,7 @@ export function ImageUpload({ value, onChange, label = "Upload Image" }: ImageUp
                 throw new Error("File size exceeds 5MB limit");
             }
 
-            const url = await uploadApi.uploadImage(file);
+            const url = await uploadApi.uploadFile(file);
             onChange(url);
         } catch (err: any) {
             console.error(err);

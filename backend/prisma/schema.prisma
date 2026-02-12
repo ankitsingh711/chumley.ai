@@ -30,6 +30,11 @@ enum NotificationType {
   SYSTEM_ALERT
 }
 
+enum Branch {
+  CHESSINGTON
+  ROYSTON
+}
+
 model Department {
   id          String   @id @default(uuid())
   name        String   @unique
@@ -49,6 +54,7 @@ model SpendingCategory {
   description  String?
   parentId     String?
   departmentId String
+  branch       Branch
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   
@@ -59,6 +65,7 @@ model SpendingCategory {
   
   @@index([departmentId])
   @@index([parentId])
+  @@index([branch])
 }
 
 model User {
@@ -217,6 +224,7 @@ model PurchaseRequest {
   budgetCategory       String?
   deliveryLocation     String?
   expectedDeliveryDate DateTime?
+  branch               Branch         @default(CHESSINGTON)
   
   order                PurchaseOrder?
   approver             User?              @relation("Approver", fields: [approverId], references: [id])
@@ -232,6 +240,7 @@ model PurchaseRequest {
   @@index([supplierId], map: "PurchaseRequest_supplierId_fkey")
   @@index([categoryId])
   @@index([currentApproverId])
+  @@index([branch])
 }
 
 model ApprovalHistory {

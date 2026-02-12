@@ -16,6 +16,13 @@ export const UserStatus = {
 
 export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
 
+export const Branch = {
+    CHESSINGTON: 'CHESSINGTON',
+    ROYSTON: 'ROYSTON',
+} as const;
+
+export type Branch = (typeof Branch)[keyof typeof Branch];
+
 export interface Department {
     id: string;
     name: string;
@@ -185,6 +192,7 @@ export interface PurchaseRequest {
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
     attachments?: Attachment[];
+    branch?: Branch;
 }
 
 export interface Attachment {
@@ -264,6 +272,7 @@ export interface CreateRequestInput {
     categoryId?: string;
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
+    branch?: Branch;
     items: {
         description: string;
         quantity: number;
