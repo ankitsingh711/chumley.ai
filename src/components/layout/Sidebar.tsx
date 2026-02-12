@@ -34,10 +34,18 @@ export function Sidebar() {
 
     // Filter menu items based on user role
     const visibleNavItems = navItems.filter(item => {
-        // If item is admin-only, check if user is System Admin
-        if (item.adminOnly) {
-            return user?.role === UserRole.SYSTEM_ADMIN;
+        // If system admin, show everything (except explicit non-admin if any)
+        if (user?.role === UserRole.SYSTEM_ADMIN) return true;
+
+        // If member, only show Requests and Suppliers (and maybe Dashboard/Settings if safe, but req says restrict)
+        // Request says "For members we only need to show requets pages and suppliers pages"
+        if (user?.role === UserRole.MEMBER) {
+            return ['/requests', '/suppliers'].includes(item.path);
         }
+
+        // For other roles (Manager etc), default behavior (hide adminOnly)
+        if (item.adminOnly) return false;
+
         return true;
     });
 

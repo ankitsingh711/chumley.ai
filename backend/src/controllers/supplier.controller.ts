@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus } from '@prisma/client';
+import { PrismaClient, RequestStatus, UserRole, NotificationType } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 
@@ -108,20 +108,130 @@ export const getSupplierById = async (req: Request, res: Response) => {
 export const createSupplier = async (req: Request, res: Response) => {
     try {
         const validatedData = createSupplierSchema.parse(req.body);
+        const user = req.user!;
+
+        // Determine status based on role
+        const isMember = user.role === UserRole.MEMBER;
+        const status = isMember ? 'Review Pending' : 'Active';
 
         const supplier = await prisma.supplier.create({
             data: {
                 ...validatedData,
-                status: 'ACTIVE',
+                status,
+                // @ts-ignore
+                requesterId: isMember ? user.id : undefined,
             },
         });
 
-        Logger.info(`Supplier created: ${supplier.name}`);
+        // If member, notify admins
+        if (isMember) {
+            // Find all admins
+            const admins = await prisma.user.findMany({
+                where: { role: UserRole.SYSTEM_ADMIN },
+            });
+
+            // Create notifications for admins
+            if (admins.length > 0) {
+                await prisma.notification.createMany({
+                    data: admins.map(admin => ({
+                        userId: admin.id,
+                        // @ts-ignore
+                        type: NotificationType.SUPPLIER_REQUEST,
+                        title: 'New Supplier Request',
+                        message: `${user.name} has requested to add a new supplier: ${supplier.name}`,
+                        metadata: { supplierId: supplier.id, requesterId: user.id },
+                    })),
+                });
+            }
+        }
+
+        Logger.info(`Supplier created: ${supplier.name} with status ${status}`);
         res.status(201).json(supplier);
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
             return res.status(400).json({ error: (error as any).errors });
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const approveSupplier = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const user = req.user!;
+
+        if (user.role !== UserRole.SYSTEM_ADMIN) {
+            return res.status(403).json({ error: 'Only admins can approve suppliers' });
+        }
+
+        const supplier = await prisma.supplier.update({
+            where: { id },
+            data: { status: 'Standard' }, // Default to Standard upon approval
+        });
+
+        // Notify requester if exists
+        // @ts-ignore - Prisma types might lag
+        if (supplier.requesterId) {
+            await prisma.notification.create({
+                data: {
+                    // @ts-ignore
+                    userId: supplier.requesterId,
+                    type: NotificationType.REQUEST_APPROVED,
+                    title: 'Supplier Request Approved',
+                    message: `Your request to add supplier ${supplier.name} has been approved.`,
+                    metadata: { supplierId: supplier.id },
+                },
+            });
+        }
+
+        Logger.info(`Supplier approved: ${id} by ${user.id}`);
+        res.json(supplier);
+    } catch (error: any) {
+        Logger.error(error);
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const rejectSupplier = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const user = req.user!;
+
+        if (user.role !== UserRole.SYSTEM_ADMIN) {
+            return res.status(403).json({ error: 'Only admins can reject suppliers' });
+        }
+
+        // We can either delete it or mark as rejected. Let's mark as rejected for record.
+        const supplier = await prisma.supplier.update({
+            where: { id },
+            data: { status: 'Rejected' },
+        });
+
+        // Notify requester if exists
+        // @ts-ignore
+        if (supplier.requesterId) {
+            await prisma.notification.create({
+                data: {
+                    // @ts-ignore
+                    userId: supplier.requesterId,
+                    type: NotificationType.REQUEST_REJECTED,
+                    title: 'Supplier Request Rejected',
+                    message: `Your request to add supplier ${supplier.name} has been rejected.`,
+                    metadata: { supplierId: supplier.id },
+                },
+            });
+        }
+
+        Logger.info(`Supplier rejected: ${id} by ${user.id}`);
+        res.json(supplier);
+    } catch (error: any) {
+        Logger.error(error);
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: 'Supplier not found' });
         }
         res.status(500).json({ error: 'Internal Server Error' });
     }

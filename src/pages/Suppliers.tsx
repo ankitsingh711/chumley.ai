@@ -6,6 +6,9 @@ import { suppliersApi } from '../services/suppliers.service';
 import { ImageUpload } from '../components/ui/ImageUpload';
 import { Select } from '../components/ui/Select';
 
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/api';
+
 interface AddSupplierForm {
     name: string;
     contactEmail: string;
@@ -18,6 +21,9 @@ interface AddSupplierForm {
 }
 
 export default function Suppliers() {
+    const { user } = useAuth();
+    const isMember = user?.role === UserRole.MEMBER;
+
     const [suppliers, setSuppliers] = useState<CardSupplier[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
@@ -126,28 +132,54 @@ export default function Suppliers() {
             };
             const newSupplier = await suppliersApi.create(payload);
 
-            const mappedNew: CardSupplier = {
-                id: newSupplier.id,
-                name: newSupplier.name,
-                category: newSupplier.category,
-                status: (['Preferred', 'Standard', 'Review Pending'].includes(newSupplier.status) ? newSupplier.status : 'Standard') as any,
-                logoColor: 'bg-primary-600',
-                contact: {
-                    name: newSupplier.contactName || 'Unknown',
-                    role: 'Representative',
-                    image: newSupplier.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(newSupplier.contactName || newSupplier.name),
-                },
-                stats: {
-                    activeOrders: 0,
-                    totalSpend: '$0',
-                },
-                lastOrder: 'New',
-            };
+            if (isMember) {
+                // Determine what to do for member - just close and show toast/alert?
+                // For now, we won't add it to the list immediately if it's pending review and filtering excludes it,
+                // or we add it with "Review Pending" status.
+                const mappedNew: CardSupplier = {
+                    id: newSupplier.id,
+                    name: newSupplier.name,
+                    category: newSupplier.category,
+                    status: 'Review Pending',
+                    logoColor: 'bg-primary-600',
+                    contact: {
+                        name: newSupplier.contactName || 'Unknown',
+                        role: 'Representative',
+                        image: newSupplier.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(newSupplier.contactName || newSupplier.name),
+                    },
+                    stats: {
+                        activeOrders: 0,
+                        totalSpend: '$0',
+                    },
+                    lastOrder: 'New',
+                };
+                setSuppliers([mappedNew, ...suppliers]);
+                alert("Supplier request sent for approval!");
+            } else {
+                const mappedNew: CardSupplier = {
+                    id: newSupplier.id,
+                    name: newSupplier.name,
+                    category: newSupplier.category,
+                    status: (['Preferred', 'Standard', 'Review Pending'].includes(newSupplier.status) ? newSupplier.status : 'Standard') as any,
+                    logoColor: 'bg-primary-600',
+                    contact: {
+                        name: newSupplier.contactName || 'Unknown',
+                        role: 'Representative',
+                        image: newSupplier.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(newSupplier.contactName || newSupplier.name),
+                    },
+                    stats: {
+                        activeOrders: 0,
+                        totalSpend: '$0',
+                    },
+                    lastOrder: 'New',
+                };
+                setSuppliers([...suppliers, mappedNew]);
+            }
 
-            setSuppliers([...suppliers, mappedNew]);
             handleCloseModal();
         } catch (error) {
             console.error('Failed to create supplier:', error);
+            alert("Failed to create supplier");
         } finally {
             setSaving(false);
         }
@@ -163,7 +195,10 @@ export default function Suppliers() {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Export List</Button>
-                    <Button onClick={handleOpenModal}><Plus className="mr-2 h-4 w-4" /> Add New Supplier</Button>
+                    <Button onClick={handleOpenModal}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        {isMember ? 'Request New Supplier' : 'Add New Supplier'}
+                    </Button>
                 </div>
             </div>
 
@@ -211,8 +246,8 @@ export default function Suppliers() {
                     <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
                         <Plus className="h-6 w-6 text-primary-600" />
                     </div>
-                    <h3 className="font-semibold text-gray-900">Add New Supplier</h3>
-                    <p className="text-sm text-gray-500 mt-1 max-w-[200px]">Onboard a new vendor to your approved list</p>
+                    <h3 className="font-semibold text-gray-900">{isMember ? 'Request New Supplier' : 'Add New Supplier'}</h3>
+                    <p className="text-sm text-gray-500 mt-1 max-w-[200px]">{isMember ? 'Submit a request to add a new vendor' : 'Onboard a new vendor to your approved list'}</p>
                 </div>
             </div>
 
@@ -229,8 +264,8 @@ export default function Suppliers() {
                         {/* Modal Header */}
                         <div className="flex-shrink-0 bg-white border-b px-8 py-6 flex items-center justify-between rounded-t-2xl">
                             <div>
-                                <h2 className="text-xl font-bold text-gray-900">Add New Supplier</h2>
-                                <p className="text-sm text-gray-500 mt-1">Onboard a new vendor to your approved list</p>
+                                <h2 className="text-xl font-bold text-gray-900">{isMember ? 'Request New Supplier' : 'Add New Supplier'}</h2>
+                                <p className="text-sm text-gray-500 mt-1">{isMember ? 'Submit details for admin approval' : 'Onboard a new vendor to your approved list'}</p>
                             </div>
                             <button
                                 onClick={handleCloseModal}
@@ -388,10 +423,10 @@ export default function Suppliers() {
                                 {saving ? (
                                     <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Adding Supplier...
+                                        {isMember ? 'Sending Request...' : 'Adding Supplier...'}
                                     </>
                                 ) : (
-                                    'Add Supplier'
+                                    isMember ? 'Submit Request' : 'Add Supplier'
                                 )}
                             </Button>
                         </div>

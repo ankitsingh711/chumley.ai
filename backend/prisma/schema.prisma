@@ -28,6 +28,7 @@ enum NotificationType {
   REQUEST_REJECTED
   CONTRACT_EXPIRING
   SYSTEM_ALERT
+  SUPPLIER_REQUEST
 }
 
 enum Branch {
@@ -100,6 +101,7 @@ model User {
   @@index([managerId])
   
   reviews            Review[]
+  requestedSuppliers Supplier[]        @relation("SupplierRequester")
 }
 
 model UserDepartmentRole {
@@ -135,6 +137,8 @@ model Supplier {
   contracts    Contract[]
   details      SupplierDetails?
   reviews      Review[]
+  requesterId  String?
+  requester    User?             @relation("SupplierRequester", fields: [requesterId], references: [id])
 }
 
 model SupplierDetails {
