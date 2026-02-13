@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { X, Send, Paperclip, FileText, Loader2 } from 'lucide-react';
 import { uploadApi } from '../../services/upload.service';
 import { ChatMessage } from './ChatMessage';
-import { LogoWithText } from '../ui/Logo';
 import { chatApi } from '../../services/chat.service';
 
 
@@ -147,9 +146,9 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         <div className="fixed bottom-6 right-6 z-50 flex w-96 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 transition-all duration-300 animate-in slide-in-from-bottom-10 fade-in backdrop-blur-sm">
             {/* Header */}
             <div className="flex items-center justify-between bg-primary-600 px-4 py-3 text-white">
-                <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/20">
-                        <LogoWithText classNameIcon="bg-transparent text-white" showText={false} />
+                <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center">
+                        <img src="/chatbot-icon.png" alt="Aspect Bot" className="h-10 w-10 rounded-lg" />
                     </div>
                     <div>
                         <h3 className="font-semibold text-sm">Aspect Bot</h3>

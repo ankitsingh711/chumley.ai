@@ -7,32 +7,32 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Aspect brand colors
+        // Aspect brand colors - matching logo
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
           200: '#bfdbfe',
           300: '#93c5fd',
           400: '#60a5fa',
-          500: '#3b82f6', // Bright Azure Blue (approx matching logo/bg)
-          600: '#2563eb', // Standard Royal Blue
-          700: '#1d4ed8', // Deep Blue
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          500: '#27549D', // Aspect logo blue (exact match)
+          600: '#1e4078', // Darker blue
+          700: '#1a3563', // Deep blue
+          800: '#152a4e',
+          900: '#0f1f39',
+          950: '#0a1424',
         },
         accent: {
-          50: '#fefce8',
-          100: '#fef9c3',
-          200: '#fef08a',
-          300: '#fde047',
-          400: '#facc15', // Bright Yellow (matching icon)
-          500: '#eab308',
-          600: '#ca8a04',
-          700: '#a16207',
-          800: '#854d0e',
-          900: '#713f12',
-          950: '#422006',
+          50: '#fefff0',
+          100: '#feffd9',
+          200: '#feffb3',
+          300: '#feff8c',
+          400: '#f3ff58',
+          500: '#F1FF24', // Aspect logo yellow (exact match)
+          600: '#d4e000',
+          700: '#a8b300',
+          800: '#7c8600',
+          900: '#505900',
+          950: '#2d3300',
         },
       },
       fontFamily: {
