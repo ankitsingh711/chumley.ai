@@ -201,21 +201,34 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
                 Logger.info(`Generated PO ${po.id} for Request ${id}`);
 
                 if (request.supplier && request.supplier.contactEmail) {
-                    sendPurchaseRequestNotification({
-                        supplierEmail: request.supplier.contactEmail,
-                        supplierName: request.supplier.name,
-                        requesterName: request.requester.name,
-                        requesterEmail: request.requester.email,
-                        requestId: request.id,
-                        items: request.items.map(item => ({
-                            description: item.description,
-                            quantity: item.quantity,
-                            unitPrice: Number(item.unitPrice)
-                        })),
-                        totalAmount: Number(request.totalAmount),
-                        createdAt: request.createdAt,
-                        reason: request.reason || undefined,
-                    }).catch(err => Logger.error('Failed to email vendor', err));
+                    Logger.info(`Sending email to supplier ${request.supplier.name} (${request.supplier.contactEmail})`);
+                    try {
+                        const emailResult = await sendPurchaseRequestNotification({
+                            supplierEmail: request.supplier.contactEmail,
+                            supplierName: request.supplier.name,
+                            requesterName: request.requester?.name || 'Unknown',
+                            requesterEmail: request.requester?.email || '',
+                            requestId: request.id,
+                            items: request.items.map(item => ({
+                                description: item.description,
+                                quantity: item.quantity,
+                                unitPrice: Number(item.unitPrice)
+                            })),
+                            totalAmount: Number(request.totalAmount),
+                            createdAt: request.createdAt,
+                            reason: request.reason || undefined,
+                        });
+
+                        if (emailResult) {
+                            Logger.info(`Successfully sent email to ${request.supplier.contactEmail}`);
+                        } else {
+                            Logger.warn(`Failed to send email to ${request.supplier.contactEmail} (service returned false)`);
+                        }
+                    } catch (err) {
+                        Logger.error(`Error calling email service: ${err}`);
+                    }
+                } else {
+                    Logger.warn(`Cannot send email: Supplier missing or has no email. SupplierId: ${request.supplierId}, Email: ${request.supplier?.contactEmail}`);
                 }
             }
         }
