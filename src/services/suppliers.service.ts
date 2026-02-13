@@ -82,4 +82,14 @@ export const suppliersApi = {
         const response = await apiClient.post<Review>(`/suppliers/${id}/reviews`, data);
         return response.data;
     },
+
+    approve: async (id: string): Promise<Supplier> => {
+        const response = await apiClient.post<Supplier>(`/suppliers/${id}/approve`, {});
+        return response.data;
+    },
+
+    reject: async (id: string): Promise<Supplier> => {
+        const response = await apiClient.post<Supplier>(`/suppliers/${id}/reject`, {});
+        return response.data;
+    },
 };

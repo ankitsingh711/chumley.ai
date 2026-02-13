@@ -22,17 +22,13 @@ export const getSuppliers = async (req: Request, res: Response) => {
         let whereClause = {};
 
         if (user && user.role !== UserRole.SYSTEM_ADMIN) {
-            // If user has a department, filter by it.
-            // Also include suppliers with NO department (global) if desired, but request implies strict filtering to "their particular department".
-            // Let's check user's department first.
-            // We need to fetch user's full details to get departmentId if not present in token, but express.d.ts suggests it might be minimal.
-            // However, let's assume req.user might have it or fetch if needed.
-            // Actually, the token usually has ID. Let's fetch the user to be sure about departmentId.
-
+            Logger.info(`getSuppliers: Filtering for user ${user.id} (${user.role})`);
             const fullUser = await prisma.user.findUnique({
                 where: { id: user.id },
                 select: { departmentId: true }
             });
+
+            Logger.info(`getSuppliers: Found departmentId: ${fullUser?.departmentId}`);
 
             if (fullUser?.departmentId) {
                 whereClause = {
@@ -43,24 +39,20 @@ export const getSuppliers = async (req: Request, res: Response) => {
                     }
                 };
             } else {
-                // If user has no department, they see nothing? Or global?
-                // Safer to show nothing or just global unassigned.
-                // Let's show nothing or return empty if no department.
-                // Requirement: "user should see their particular department suppliers"
                 if (user.role !== UserRole.SYSTEM_ADMIN) {
-                    // If not admin and no department, maybe just return empty or global
-                    // For now, let's assume strict Departmental Access.
+                    // Force empty if no dept & not admin
                     whereClause = {
                         departments: {
                             some: {
-                                id: "non-existent-id" // Force empty if no dept
+                                id: "non-existent-id"
                             }
                         }
                     };
-                    // Actually better:
-                    // whereClause = { departments: { some: { id: fullUser.departmentId } } }; // if null, it might error or return nothing.
                 }
             }
+            Logger.info(`getSuppliers: Applied whereClause: ${JSON.stringify(whereClause)}`);
+        } else {
+            Logger.info(`getSuppliers: No filtering (System Admin or no user)`);
         }
 
         const suppliers = await prisma.supplier.findMany({

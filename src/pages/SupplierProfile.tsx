@@ -141,9 +141,45 @@ export default function SupplierProfile() {
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        <Button variant="outline" onClick={() => setShowMessageModal(true)}>Message</Button>
-                        {isSystemAdmin && (
-                            <Button onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+                        {isSystemAdmin && (supplier.status === 'Review Pending' || supplier.status === 'Pending') ? (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    className="text-red-600 hover:bg-red-50 border-red-200"
+                                    onClick={async () => {
+                                        if (confirm('Are you sure you want to reject this supplier?')) {
+                                            try {
+                                                const updated = await suppliersApi.reject(supplier.id);
+                                                setSupplier(updated);
+                                            } catch (err) {
+                                                console.error('Failed to reject supplier', err);
+                                            }
+                                        }
+                                    }}
+                                >
+                                    Reject
+                                </Button>
+                                <Button
+                                    className="bg-green-600 hover:bg-green-700 text-white"
+                                    onClick={async () => {
+                                        try {
+                                            const updated = await suppliersApi.approve(supplier.id);
+                                            setSupplier(updated);
+                                        } catch (err) {
+                                            console.error('Failed to approve supplier', err);
+                                        }
+                                    }}
+                                >
+                                    Approve Supplier
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" onClick={() => setShowMessageModal(true)}>Message</Button>
+                                {isSystemAdmin && (
+                                    <Button onClick={() => setShowEditModal(true)}>Edit Profile</Button>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
