@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, CheckCircle } from 'lucide-react';
 import { Button } from './Button';
 
 interface ConfirmationModalProps {
@@ -54,6 +54,8 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                 return <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4"><AlertTriangle className="h-6 w-6" /></div>;
             case 'warning':
                 return <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4"><AlertTriangle className="h-6 w-6" /></div>;
+            case 'success':
+                return <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-4"><CheckCircle className="h-6 w-6" /></div>;
             default:
                 return null;
         }

@@ -8,10 +8,14 @@ import Logger from '../utils/logger';
 export const getAllDepartments = async (req: Request, res: Response) => {
     try {
         const user = req.user as any;
+        Logger.info(`Fetching departments for user: ${user?.id} (${user?.email}, Role: ${user?.role})`);
+
         const departments = await departmentService.getAllDepartments(user);
+        Logger.info(`Found ${departments.length} departments for user ${user?.email}`);
+
         res.json(departments);
     } catch (error) {
-        Logger.error(error);
+        Logger.error('Error fetching departments:', error);
         res.status(500).json({ error: 'Failed to fetch departments' });
     }
 };

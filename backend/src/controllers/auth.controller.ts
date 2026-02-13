@@ -43,7 +43,13 @@ export const register = async (req: Request, res: Response) => {
         });
 
         const token = jwt.sign(
-            { id: user.id, email: user.email, name: user.name, role: user.role },
+            {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                departmentId: user.departmentId
+            },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -81,7 +87,13 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, email: user.email, name: user.name, role: user.role },
+            {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                departmentId: user.departmentId
+            },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -141,7 +153,13 @@ export const acceptInvite = async (req: Request, res: Response) => {
 
         // Generate JWT
         const jwtToken = jwt.sign(
-            { id: updatedUser.id, email: updatedUser.email, name: updatedUser.name, role: updatedUser.role },
+            {
+                id: updatedUser.id,
+                email: updatedUser.email,
+                name: updatedUser.name,
+                role: updatedUser.role,
+                departmentId: updatedUser.departmentId
+            },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );
@@ -172,7 +190,13 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { id: user.id, email: user.email, name: user.name, role: user.role },
+            {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                departmentId: user.departmentId
+            },
             process.env.JWT_SECRET || 'fallback_secret',
             { expiresIn: '24h' }
         );

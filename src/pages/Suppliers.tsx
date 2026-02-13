@@ -4,6 +4,7 @@ import { Button } from '../components/ui/Button';
 import { SupplierCard, type Supplier as CardSupplier } from '../components/suppliers/SupplierCard';
 import { suppliersApi } from '../services/suppliers.service';
 import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types/api';
@@ -16,6 +17,7 @@ export default function Suppliers() {
     const [suppliers, setSuppliers] = useState<CardSupplier[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     const [activeFilter, setActiveFilter] = useState('All Vendors');
 
@@ -91,7 +93,7 @@ export default function Suppliers() {
                 lastOrder: 'New',
             };
             setSuppliers([mappedNew, ...suppliers]);
-            alert("Supplier request sent for approval!");
+            setShowSuccessModal(true);
         } else {
             const mappedNew: CardSupplier = {
                 id: newSupplier.id,
@@ -186,6 +188,17 @@ export default function Suppliers() {
                 onClose={handleCloseModal}
                 onSuccess={handleSupplierAdded}
                 isRestricted={isRestricted}
+            />
+
+            <ConfirmationModal
+                isOpen={showSuccessModal}
+                onClose={() => setShowSuccessModal(false)}
+                onConfirm={() => setShowSuccessModal(false)}
+                title="Request Sent"
+                message="Your supplier request has been sent for approval. You will be notified once it is reviewed."
+                confirmText="OK"
+                variant="success"
+                showCancel={false}
             />
         </div>
     );

@@ -231,7 +231,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                             {departmentName || 'User'}
                         </p>
                     </div>
-                    <div className="h-9 w-9 overflow-hidden rounded-full bg-primary-500 flex items-center justify-center text-white font-semibold text-sm">
+                    <div className="h-9 w-9 overflow-hidden rounded-full bg-primary-700 flex items-center justify-center text-white font-semibold text-sm">
                         {user?.name ? getInitials(user.name) : 'U'}
                     </div>
                 </div>
