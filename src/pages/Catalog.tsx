@@ -16,6 +16,11 @@ export default function Catalog() {
     const [saving, setSaving] = useState(false);
     const [search, setSearch] = useState('');
 
+    // Pagination State
+    const [page, setPage] = useState(1);
+    const [limit] = useState(9); // 9 items per page (3x3 grid)
+    const [meta, setMeta] = useState({ total: 0, page: 1, limit: 9, totalPages: 0 });
+
     // Form State
     const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
@@ -30,23 +35,26 @@ export default function Catalog() {
 
     useEffect(() => {
         loadData();
-    }, []);
+    }, [page, selectedDept, search]); // Reload on these changes
+
+    // Debounce search? Ideally yes, but for now simple effect dependency
+    // Maybe add debounce later if needed.
 
     const loadData = async () => {
         try {
             setLoading(true);
-            const [depts] = await Promise.all([
-                departmentsApi.getAll()
+            const [depts, result] = await Promise.all([
+                departmentsApi.getAll(),
+                categoryService.getAllCategories({
+                    departmentId: selectedDept === 'all' ? undefined : selectedDept,
+                    page,
+                    limit,
+                    search: search || undefined
+                })
             ]);
-            // If tree returns nested, we might want to flatten or handle differently.
-            // For now assuming the service returns an array of categories (maybe flat with parentId).
-            // Actually getCategoryTree returns CategoryTree which is Category[] (with children).
-            // Let's use GetAllCategories if we want a flat list for table, or Tree for nested view.
-            // But controller has getAllCategories?
-            // Let's just use what we have. If it's a tree, we flatten it for table or show as tree.
-            // Let's assume we want a flat list for now to simpler management, or just fetch all.
-            const allCats = await categoryService.getAllCategories(); // This one has optional departmentId
-            setCategories(allCats as any); // Cast for now if types mismatch
+
+            setCategories(result.data);
+            setMeta(result.meta);
             setDepartments(depts);
         } catch (error) {
             console.error('Failed to load catalog:', error);
@@ -118,12 +126,19 @@ export default function Catalog() {
         }
     };
 
-    const filteredCategories = categories.filter(c => {
-        const matchesDept = selectedDept === 'all' || c.departmentId === selectedDept;
-        const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
-            (c.description && c.description.toLowerCase().includes(search.toLowerCase()));
-        return matchesDept && matchesSearch;
-    });
+    // Filter logic is now server-side, so we just use `categories` directly
+    const filteredCategories = categories;
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        setPage(1); // Reset to page 1 on search
+    };
+
+    const handleDeptChange = (value: string) => {
+        setSelectedDept(value);
+        setPage(1); // Reset to page 1 on filter
+    };
+
 
 
 
@@ -148,13 +163,13 @@ export default function Catalog() {
                         placeholder="Search categories..."
                         className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                         value={search}
-                        onChange={(e) => setSearch(e.target.value)}
+                        onChange={handleSearchChange}
                     />
                 </div>
                 <div className="w-full sm:w-64">
                     <Select
                         value={selectedDept}
-                        onChange={setSelectedDept}
+                        onChange={handleDeptChange}
                         options={[
                             { value: 'all', label: 'All Departments' },
                             ...departments.map(d => ({ value: d.id, label: d.name }))
@@ -164,68 +179,97 @@ export default function Catalog() {
             </div>
 
             {/* Categories List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                    <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
-                        <Loader2 className="h-12 w-12 animate-spin" />
-                    </div>
-                ) : filteredCategories.length === 0 ? (
-                    <div className="col-span-full py-12 text-center bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
-                        <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                        <h3 className="text-gray-900 font-medium">No categories found</h3>
-                        <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
-                    </div>
-                ) : (
-                    filteredCategories.map((category) => {
-                        const deptName = departments.find(d => d.id === category.departmentId)?.name || 'Unknown';
-                        return (
-                            <div key={category.id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600">
-                                            <Package className="h-5 w-5" />
+            <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {loading ? (
+                        <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
+                            <Loader2 className="h-12 w-12 animate-spin" />
+                        </div>
+                    ) : filteredCategories.length === 0 ? (
+                        <div className="col-span-full py-12 text-center bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
+                            <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                            <h3 className="text-gray-900 font-medium">No categories found</h3>
+                            <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
+                        </div>
+                    ) : (
+                        filteredCategories.map((category) => {
+                            const deptName = departments.find(d => d.id === category.departmentId)?.name || 'Unknown';
+                            return (
+                                <div key={category.id} className="group bg-white rounded-xl border border-gray-200 p-5 hover:border-primary-200 hover:shadow-md transition-all">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-lg bg-primary-50 flex items-center justify-center text-primary-600">
+                                                <Package className="h-5 w-5" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-gray-900">{category.name}</h3>
+                                                <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded-full mt-1">
+                                                    {deptName}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900">{category.name}</h3>
-                                            <p className="text-xs text-gray-500 bg-gray-100 inline-block px-2 py-0.5 rounded-full mt-1">
-                                                {deptName}
-                                            </p>
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button
+                                                onClick={() => handleOpenModal(category)}
+                                                className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                            >
+                                                <Edit2 className="h-4 w-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteClick(category.id)}
+                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button
-                                            onClick={() => handleOpenModal(category)}
-                                            className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                                        >
-                                            <Edit2 className="h-4 w-4" />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteClick(category.id)}
-                                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
-                                </div>
 
-                                {category.description && (
-                                    <p className="mt-3 text-sm text-gray-600 line-clamp-2">
-                                        {category.description}
-                                    </p>
-                                )}
-
-                                {/* Metadata footer */}
-                                <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
-                                    <span>ID: {category.id.slice(0, 8)}...</span>
-                                    {category.parentId && (
-                                        <span className="flex items-center gap-1">
-                                            <FolderTree className="h-3 w-3" /> Sub-category
-                                        </span>
+                                    {category.description && (
+                                        <p className="mt-3 text-sm text-gray-600 line-clamp-2">
+                                            {category.description}
+                                        </p>
                                     )}
+
+                                    {/* Metadata footer */}
+                                    <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-400">
+                                        <span>ID: {category.id.slice(0, 8)}...</span>
+                                        {category.parentId && (
+                                            <span className="flex items-center gap-1">
+                                                <FolderTree className="h-3 w-3" /> Sub-category
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })
+                            );
+                        })
+                    )}
+                </div>
+
+                {/* Pagination Controls */}
+                {!loading && meta.totalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-gray-100 pt-4">
+                        <div className="text-sm text-gray-500">
+                            Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, meta.total)} of {meta.total} results
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-3"
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                onClick={() => setPage(p => Math.min(meta.totalPages, p + 1))}
+                                disabled={page === meta.totalPages}
+                                className="px-3"
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
                 )}
             </div>
 

@@ -6,15 +6,20 @@ import { Branch } from '@prisma/client';
 export const categoryController = {
     /**
      * GET /api/categories
-     * Get all categories with optional department filter
+     * Get all categories with pagination and filtering
      */
     async getAllCategories(req: Request, res: Response) {
         try {
-            const { departmentId } = req.query;
-            const categories = await categoryService.getAllCategories(
-                typeof departmentId === 'string' ? departmentId : undefined
-            );
-            res.json(categories);
+            const { departmentId, page, limit, search } = req.query;
+
+            const result = await categoryService.getAllCategories({
+                departmentId: typeof departmentId === 'string' ? departmentId : undefined,
+                page: page ? parseInt(page as string) : 1,
+                limit: limit ? parseInt(limit as string) : 10,
+                search: typeof search === 'string' ? search : undefined
+            });
+
+            res.json(result);
         } catch (error: any) {
             console.error('Error fetching categories:', error);
             res.status(500).json({ error: error.message || 'Failed to fetch categories' });

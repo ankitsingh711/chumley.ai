@@ -8,20 +8,56 @@ interface CategoryTreeNode extends SpendingCategory {
 
 export const categoryService = {
     /**
-     * Get all categories with optional filtering
+     * Get all categories with pagination and filtering
      */
-    async getAllCategories(departmentId?: string): Promise<SpendingCategory[]> {
-        return await prisma.spendingCategory.findMany({
-            where: departmentId ? { departmentId } : undefined,
-            include: {
-                parent: true,
-                children: true,
-                department: true,
-            },
-            orderBy: {
-                name: 'asc',
-            },
-        });
+    async getAllCategories(options: {
+        departmentId?: string;
+        page?: number;
+        limit?: number;
+        search?: string;
+    } = {}) {
+        const { departmentId, page = 1, limit = 10, search } = options;
+        const skip = (page - 1) * limit;
+
+        const where: any = {};
+
+        if (departmentId) {
+            where.departmentId = departmentId;
+        }
+
+        if (search) {
+            where.OR = [
+                { name: { contains: search } },
+                { description: { contains: search } }
+            ];
+        }
+
+        const [total, data] = await Promise.all([
+            prisma.spendingCategory.count({ where }),
+            prisma.spendingCategory.findMany({
+                where,
+                include: {
+                    parent: true,
+                    children: true,
+                    department: true,
+                },
+                orderBy: {
+                    name: 'asc',
+                },
+                skip,
+                take: limit,
+            })
+        ]);
+
+        return {
+            data,
+            meta: {
+                total,
+                page,
+                limit,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
     },
 
     /**

@@ -12,11 +12,15 @@ export const categoryService = {
     },
 
     /**
-     * Get all categories (flat list)
+     * Get all categories with pagination
      */
-    async getAllCategories(departmentId?: string): Promise<Category[]> {
-        const params = departmentId ? { departmentId } : {};
-        const response = await apiClient.get<Category[]>('/categories', { params });
+    async getAllCategories(params?: {
+        departmentId?: string;
+        page?: number;
+        limit?: number;
+        search?: string;
+    }): Promise<{ data: Category[]; meta: { total: number; page: number; limit: number; totalPages: number } }> {
+        const response = await apiClient.get<{ data: Category[]; meta: { total: number; page: number; limit: number; totalPages: number } }>('/categories', { params });
         return response.data;
     },
 
