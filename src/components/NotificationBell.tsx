@@ -2,11 +2,15 @@ import { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCheck, X } from 'lucide-react';
 import { useNotifications } from '../hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
+import { NotificationDetailModal } from './NotificationDetailModal';
+import type { Notification } from '../services/notification.service';
 
 export default function NotificationBell() {
     const navigate = useNavigate();
     const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -45,12 +49,17 @@ export default function NotificationBell() {
         }
     };
 
-    const handleNotificationClick = (notification: any) => {
+    const handleNotificationClick = (notification: Notification) => {
         markAsRead(notification.id);
+        setSelectedNotification(notification);
+        setIsDetailModalOpen(true);
+        setIsOpen(false);
+    };
+
+    const handleNavigateFromModal = (notification: Notification) => {
         if (notification.metadata?.requestId) {
             navigate('/requests');
         }
-        setIsOpen(false);
     };
 
     const formatTime = (date: Date) => {
@@ -150,6 +159,13 @@ export default function NotificationBell() {
                     </div>
                 </div>
             )}
+
+            <NotificationDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => setIsDetailModalOpen(false)}
+                notification={selectedNotification}
+                onNavigate={handleNavigateFromModal}
+            />
         </div>
     );
 }
