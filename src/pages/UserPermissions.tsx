@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Search, Settings, CheckCircle, XCircle, X, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, MoreVertical, Trash2, UserPlus, LogOut, AlertTriangle, Check } from 'lucide-react';
+import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, Trash2, UserPlus, AlertTriangle, Check } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
 import { departmentsApi } from '../services/departments.service';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole, UserStatus, type User } from '../types/api';
-import { cn } from '../lib/utils'; // Assuming this exists, or I will use template literals
+
 
 export default function UserPermissions() {
     const [users, setUsers] = useState<User[]>([]);
@@ -281,10 +281,7 @@ export default function UserPermissions() {
                         <span>My Profile</span>
                         {activeTab === 'profile' && <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />}
                     </button>
-                    <a href="/settings/approval-workflows" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100/50 hover:text-gray-900 transition-all">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>Approval Workflows</span>
-                    </a>
+
                 </div>
 
                 {/* Organization List - Only show when in Permissions tab */}

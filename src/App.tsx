@@ -20,7 +20,7 @@ import GoogleCallback from './pages/GoogleCallback';
 import Contracts from './pages/Contracts';
 import Catalog from './pages/Catalog';
 import DepartmentBudgets from './pages/DepartmentBudgets';
-import ApprovalWorkflow from './pages/ApprovalWorkflow';
+
 
 function App() {
   return (
@@ -53,7 +53,7 @@ function App() {
               <Route path="/contracts" element={<AdminRoute><Contracts /></AdminRoute>} />
               <Route path="/catalog" element={<AdminRoute><Catalog /></AdminRoute>} />
               <Route path="/settings" element={<UserPermissions />} />
-              <Route path="/settings/approval-workflows" element={<ApprovalWorkflow />} />
+
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
