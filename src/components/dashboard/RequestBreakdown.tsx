@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Label } from 'recharts';
 
 interface RequestBreakdownProps {
@@ -9,12 +10,12 @@ interface RequestBreakdownProps {
     }
 }
 
-export function RequestBreakdown({ metrics }: RequestBreakdownProps) {
-    const data = [
+export const RequestBreakdown = memo(function RequestBreakdown({ metrics }: RequestBreakdownProps) {
+    const data = useMemo(() => [
         { name: 'In Progress', value: metrics?.pendingRequests || 0, color: '#5080CE' }, // Teal-500
         { name: 'Approved', value: metrics?.approvedRequests || 0, color: '#10b981' }, // Emerald-500
         { name: 'Rejected', value: metrics?.rejectedRequests || 0, color: '#ef4444' }, // Red-500
-    ];
+    ], [metrics]);
 
     const total = metrics?.totalRequests || 0;
 
@@ -70,4 +71,4 @@ export function RequestBreakdown({ metrics }: RequestBreakdownProps) {
             </div>
         </div>
     );
-}
+});

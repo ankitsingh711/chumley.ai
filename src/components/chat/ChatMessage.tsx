@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, memo } from 'react';
 import { Bot, User as UserIcon, Upload, Loader2, Paperclip } from 'lucide-react';
 import { uploadApi } from '../../services/upload.service';
 import { requestsApi } from '../../services/requests.service';
@@ -20,7 +20,7 @@ export interface ChatMessageProps {
     };
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export const ChatMessage = memo(function ChatMessage({ message }: ChatMessageProps) {
     const [requestData, setRequestData] = useState(message.data);
     const [uploading, setUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,4 +265,4 @@ export function ChatMessage({ message }: ChatMessageProps) {
             )}
         </div>
     );
-}
+});

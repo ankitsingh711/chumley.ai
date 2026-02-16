@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -13,7 +14,7 @@ interface StatCardProps {
     color?: 'primary' | 'blue' | 'yellow' | 'green' | 'orange' | 'purple';
 }
 
-export function StatCard({ title, value, trend, icon: Icon, color = 'primary' }: StatCardProps) {
+export const StatCard = memo(function StatCard({ title, value, trend, icon: Icon, color = 'primary' }: StatCardProps) {
     const colorStyles: Record<string, string> = {
         primary: 'bg-primary-50 text-primary-700',
         blue: 'bg-blue-50 text-blue-700',
@@ -51,4 +52,4 @@ export function StatCard({ title, value, trend, icon: Icon, color = 'primary' }:
             </div>
         </div>
     );
-}
+});

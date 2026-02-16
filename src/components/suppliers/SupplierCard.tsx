@@ -1,3 +1,4 @@
+import { memo, useCallback } from 'react';
 import { Mail, Cloud, Printer, Truck, Palette, Monitor, Package, Building2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -24,7 +25,7 @@ interface SupplierCardProps {
     supplier: Supplier;
 }
 
-export function SupplierCard({ supplier }: SupplierCardProps) {
+export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCardProps) {
     const navigate = useNavigate();
 
     const statusStyles = {
@@ -65,6 +66,10 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
         }
         return `£${num}`;
     };
+
+    const handleViewProfile = useCallback(() => {
+        navigate(`/suppliers/${supplier.id}`);
+    }, [navigate, supplier.id]);
 
     const { icon: Icon, color: iconStyle } = getCategoryIcon(supplier.category);
     const isReviewPending = supplier.status === 'Review Pending';
@@ -122,11 +127,11 @@ export function SupplierCard({ supplier }: SupplierCardProps) {
                 <Button
                     variant="ghost"
                     className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
-                    onClick={() => navigate(`/suppliers/${supplier.id}`)}
+                    onClick={handleViewProfile}
                 >
                     View Profile
                 </Button>
             </div>
         </div>
     );
-}
+});

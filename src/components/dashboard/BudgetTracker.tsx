@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
@@ -21,7 +22,7 @@ const COLORS = [
     'bg-primary-500',
 ];
 
-export function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
+export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
     const navigate = useNavigate();
     // Default limit for illustration since we don't have it in DB yet
     const DEFAULT_LIMIT = 50000;
@@ -29,36 +30,39 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
     // Create a map of department spend for easy lookup
     const spendMap = departmentSpend;
 
-    // Combine seeded departments with any extra spend categories (fallback)
-    // We prioritize the seeded departments list to show correct names and descriptions
-    const trackedDepartments = departments.map((dept, index) => {
-        // Use embedded metrics from backend if available (new standard), otherwise fallback to props map
-        const spendFromMetrics = (dept as any).metrics?.totalSpent;
-        const spendFromMap = spendMap[dept.name] || 0;
+    // Memoize sortedDepartments to avoid recalculation on every render
+    const sortedDepartments = useMemo(() => {
+        // Combine seeded departments with any extra spend categories (fallback)
+        // We prioritize the seeded departments list to show correct names and descriptions
+        const trackedDepartments = departments.map((dept, index) => {
+            // Use embedded metrics from backend if available (new standard), otherwise fallback to props map
+            const spendFromMetrics = (dept as any).metrics?.totalSpent;
+            const spendFromMap = spendMap[dept.name] || 0;
 
-        return {
-            name: dept.name,
-            category: dept.description || 'General Budget', // Use description as the subtitle
-            limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
-            color: COLORS[index % COLORS.length],
-            spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
-        };
-    });
+            return {
+                name: dept.name,
+                category: dept.description || 'General Budget', // Use description as the subtitle
+                limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
+                color: COLORS[index % COLORS.length],
+                spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
+            };
+        });
 
-    // If there is spend for a category NOT in the departments list (e.g. old data or unassigned), add it
-    Object.entries(spendMap).forEach(([name, amount]) => {
-        if (!trackedDepartments.find(d => d.name === name)) {
-            trackedDepartments.push({
-                name,
-                category: 'Unassigned / Other',
-                limit: DEFAULT_LIMIT,
-                color: 'bg-gray-400',
-                spent: amount
-            });
-        }
-    });
+        // If there is spend for a category NOT in the departments list (e.g. old data or unassigned), add it
+        Object.entries(spendMap).forEach(([name, amount]) => {
+            if (!trackedDepartments.find(d => d.name === name)) {
+                trackedDepartments.push({
+                    name,
+                    category: 'Unassigned / Other',
+                    limit: DEFAULT_LIMIT,
+                    color: 'bg-gray-400',
+                    spent: amount
+                });
+            }
+        });
 
-    const sortedDepartments = trackedDepartments.sort((a, b) => b.spent - a.spent);
+        return trackedDepartments.sort((a, b) => b.spent - a.spent);
+    }, [departments, spendMap]);
 
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -115,4 +119,4 @@ export function BudgetTracker({ departmentSpend = {}, departments = [] }: Budget
             </div>
         </div>
     );
-}
+});
