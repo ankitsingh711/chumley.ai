@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag } from 'lucide-react';
+import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { useAuth } from '../contexts/AuthContext';
 import { requestsApi } from '../services/requests.service';
 import { ordersApi } from '../services/orders.service';
+import { pdfService } from '../services/pdf.service';
 import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
 import { RequestStatus, UserRole } from '../types/api';
 
@@ -219,6 +220,25 @@ export default function Requests() {
         document.body.removeChild(link);
     };
 
+    const handleExportPDF = () => {
+        const headers = ['ID', 'Requester', 'Items', 'Date', 'Amount', 'Status'];
+        const rows = filteredRequests.map(req => [
+            req.id.slice(0, 8),
+            req.requester?.name || 'Unknown',
+            (req.items?.length || 0).toString(),
+            new Date(req.createdAt).toLocaleDateString(),
+            `£${Number(req.totalAmount).toLocaleString()}`,
+            req.status.replace(/_/g, ' ')
+        ]);
+
+        pdfService.exportToPDF(
+            'Purchase Requests',
+            headers,
+            rows,
+            'purchase_requests'
+        );
+    };
+
     // Apply status filter
     let filteredRequests = filter === 'all'
         ? requests
@@ -320,6 +340,7 @@ export default function Requests() {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={handleExportCSV}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+                    <Button variant="outline" onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" /> Export PDF</Button>
                     <Button onClick={() => navigate('/requests/new')}><Plus className="mr-2 h-4 w-4" /> New Request</Button>
                 </div>
             </div>

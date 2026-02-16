@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Download, Calendar, Filter, X, Check } from 'lucide-react';
+import { pdfService } from '../services/pdf.service';
+import { Download, Calendar, Filter, X, Check, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -75,6 +76,31 @@ export default function Reports() {
         } catch (error) {
             console.error('Export failed:', error);
             alert('Failed to export data');
+        }
+    };
+
+    const handleExportPDF = async () => {
+        try {
+            const allRequests = await requestsApi.getAll();
+            const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
+            const rows = allRequests.map(req => [
+                req.id.slice(0, 8),
+                new Date(req.createdAt).toLocaleDateString(),
+                req.requester?.name || 'Unknown',
+                req.requester?.department || 'N/A',
+                `£${Number(req.totalAmount).toLocaleString()}`,
+                req.status.replace(/_/g, ' ')
+            ]);
+
+            pdfService.exportToPDF(
+                'Procurement Reports',
+                headers,
+                rows,
+                'procurement_report'
+            );
+        } catch (error) {
+            console.error('PDF Export failed:', error);
+            alert('Failed to export PDF');
         }
     };
 
@@ -186,7 +212,10 @@ export default function Reports() {
                         )}
                     </div>
                     <Button className="bg-primary-700" onClick={handleExportData}>
-                        <Download className="mr-2 h-4 w-4" /> Export Data
+                        <Download className="mr-2 h-4 w-4" /> Export CSV
+                    </Button>
+                    <Button className="bg-primary-700" onClick={handleExportPDF}>
+                        <FileText className="mr-2 h-4 w-4" /> Export PDF
                     </Button>
                 </div>
             </div>

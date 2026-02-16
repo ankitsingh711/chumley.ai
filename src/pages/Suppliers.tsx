@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Download, Plus, LayoutGrid, List as ListIcon, Loader2 } from 'lucide-react';
+import { Plus, LayoutGrid, List as ListIcon, Loader2, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { SupplierCard, type Supplier as CardSupplier } from '../components/suppliers/SupplierCard';
 import { suppliersApi } from '../services/suppliers.service';
 import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { pdfService } from '../services/pdf.service';
 
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types/api';
@@ -116,6 +117,25 @@ export default function Suppliers() {
         }
     };
 
+    const handleExportPDF = () => {
+        const headers = ['Name', 'Category', 'Status', 'Contact', 'Active Orders', 'Total Spend'];
+        const rows = filteredSuppliers.map(s => [
+            s.name,
+            s.category,
+            s.status,
+            s.contact.name,
+            s.stats.activeOrders.toString(),
+            s.stats.totalSpend
+        ]);
+
+        pdfService.exportToPDF(
+            'Supplier Directory',
+            headers,
+            rows,
+            'supplier_directory'
+        );
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -125,7 +145,7 @@ export default function Suppliers() {
                     <p className="text-sm text-gray-500">Manage approved vendors, track performance, and monitor spend.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline"><Download className="mr-2 h-4 w-4" /> Export List</Button>
+                    <Button variant="outline" onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" /> Export PDF</Button>
                     <Button onClick={handleOpenModal}>
                         <Plus className="mr-2 h-4 w-4" />
                         {isRestricted ? 'Request New Supplier' : 'Add New Supplier'}

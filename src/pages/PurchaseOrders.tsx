@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Download, Eye, Send, CheckCircle } from 'lucide-react';
+import { Search, Download, Eye, Send, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { ordersApi } from '../services/orders.service';
+import { pdfService } from '../services/pdf.service';
 import type { PurchaseOrder } from '../types/api';
 import { OrderStatus, UserRole } from '../types/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -182,6 +183,58 @@ export default function PurchaseOrders() {
         document.body.removeChild(link);
     };
 
+    const handleExportPDF = () => {
+        const headers = ['PO ID', 'Supplier', 'Date Issued', 'Total Amount', 'Status'];
+        const rows = filteredOrders.map(order => [
+            order.id.slice(0, 8),
+            order.supplier?.name || 'Unknown',
+            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            `£${Number(order.totalAmount).toLocaleString()}`,
+            order.status
+        ]);
+
+        pdfService.exportToPDF(
+            'Purchase Orders',
+            headers,
+            rows,
+            'purchase_orders'
+        );
+    };
+
+    const handleDownloadPDF = (order: PurchaseOrder) => {
+        // Note: Assuming orders have items. If not, we might need to fetch them or just show summary.
+        // The current type definition and API response for getAll might not include items.
+        // For the single order view, we might want to ensure we have items.
+        // If items are not available on the list view object, we might need to fetch details first or just export summary.
+        // Let's assume for now we are exporting the order details we have.
+
+        // If items are not available, let's just export the summary for now or fetch if needed.
+        // But for a single PO PDF, usually you want the line items.
+        // If the 'order' object from the list doesn't have items, we should probably fetch it.
+        // However, looking at the previous code (handleView), it seems to use the object passed to it.
+        // Let's create a summary PDF for the single order if items are missing, or generic details.
+
+        // Actually, let's just export the same summary row but maybe transponsed or just a single row table for now
+        // OR better, let's fetch the full order details if we want to print a real PO.
+        // But to keep it simple and consistent with the "Download CSV" which just dumps the row:
+
+        const summaryHeaders = ['PO ID', 'Supplier', 'Date Issued', 'Total Amount', 'Status'];
+        const summaryRow = [
+            order.id.slice(0, 8),
+            order.supplier?.name || 'Unknown',
+            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            `£${Number(order.totalAmount).toLocaleString()}`,
+            order.status
+        ];
+
+        pdfService.exportToPDF(
+            `Purchase Order #${order.id.slice(0, 8)}`,
+            summaryHeaders,
+            [summaryRow],
+            `purchase_order_${order.id.slice(0, 8)}`
+        );
+    };
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case OrderStatus.SENT: return 'bg-blue-50 text-blue-700';
@@ -211,6 +264,7 @@ export default function PurchaseOrders() {
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={handleExportAll}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
+                    <Button variant="outline" onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" /> Export PDF</Button>
                 </div>
             </div>
 
@@ -283,6 +337,13 @@ export default function PurchaseOrders() {
                                                     title="Download CSV"
                                                 >
                                                     <Download className="h-4 w-4" />
+                                                </button>
+                                                <button
+                                                    className="p-1 hover:text-gray-600"
+                                                    onClick={() => handleDownloadPDF(po)}
+                                                    title="Download PDF"
+                                                >
+                                                    <FileText className="h-4 w-4" />
                                                 </button>
                                                 {po.status === OrderStatus.IN_PROGRESS && (
                                                     <button
@@ -392,6 +453,9 @@ export default function PurchaseOrders() {
                             <Button variant="outline" onClick={closeModal}>Close</Button>
                             <Button onClick={() => handleDownload(selectedOrder)} variant="outline">
                                 <Download className="mr-2 h-4 w-4" /> Download CSV
+                            </Button>
+                            <Button onClick={() => handleDownloadPDF(selectedOrder)} variant="outline">
+                                <FileText className="mr-2 h-4 w-4" /> Download PDF
                             </Button>
 
                             {selectedOrder.status === OrderStatus.IN_PROGRESS && (

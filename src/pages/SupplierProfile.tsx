@@ -1,4 +1,5 @@
 import { MapPin, CreditCard, Shield, FileText } from 'lucide-react';
+import { pdfService } from '../services/pdf.service';
 import { Button } from '../components/ui/Button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs';
 import { Select } from '../components/ui/Select';
@@ -451,7 +452,25 @@ export default function SupplierProfile() {
                                 <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                                     <h3 className="font-semibold text-gray-900">Purchase Orders History</h3>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm">Export CSV</Button>
+                                        <Button variant="outline" size="sm" onClick={() => {
+                                            if (!supplier.requests) return;
+                                            const headers = ['Order ID', 'Date', 'Items', 'Amount', 'Status'];
+                                            const rows = supplier.requests.map(req => [
+                                                req.id.slice(0, 8),
+                                                new Date(req.createdAt).toLocaleDateString(),
+                                                (req.items?.length || 1).toString(),
+                                                `£${Number(req.totalAmount).toLocaleString()}`,
+                                                req.status.replace(/_/g, ' ')
+                                            ]);
+                                            pdfService.exportToPDF(
+                                                `Purchase Orders - ${supplier.name}`,
+                                                headers,
+                                                rows,
+                                                `purchase_orders_${supplier.name.replace(/\s+/g, '_').toLowerCase()}`
+                                            );
+                                        }}>
+                                            <FileText className="mr-2 h-4 w-4" /> Export PDF
+                                        </Button>
                                         <Button variant="outline" size="sm">Filter</Button>
                                     </div>
                                 </div>
