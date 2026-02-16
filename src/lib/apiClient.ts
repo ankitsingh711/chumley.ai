@@ -1,4 +1,4 @@
-import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import axios, { type AxiosInstance } from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
@@ -11,35 +11,21 @@ class ApiClient {
             headers: {
                 'Content-Type': 'application/json',
             },
+            withCredentials: true, // Send cookies with requests
         });
-
-        // Request interceptor to add auth token
-        this.client.interceptors.request.use(
-            (config: InternalAxiosRequestConfig) => {
-                const token = localStorage.getItem('authToken');
-                if (token && config.headers) {
-                    config.headers.Authorization = `Bearer ${token}`;
-                }
-                return config;
-            },
-            (error) => {
-                return Promise.reject(error);
-            }
-        );
 
         // Response interceptor for error handling
         this.client.interceptors.response.use(
             (response) => response,
             (error) => {
                 if (error.response?.status === 401) {
-                    // Don't redirect if we're on the login/register endpoints
-                    const isAuthEndpoint = error.config?.url?.includes('/auth/login') || 
-                                          error.config?.url?.includes('/auth/register');
-                    
+                    // Don't redirect if we're on the login/register endpoints or checking auth status
+                    const isAuthEndpoint = error.config?.url?.includes('/auth/login') ||
+                        error.config?.url?.includes('/auth/register') ||
+                        error.config?.url?.includes('/auth/me');
+
                     if (!isAuthEndpoint) {
-                        // Token expired or invalid
-                        localStorage.removeItem('authToken');
-                        localStorage.removeItem('currentUser');
+                        // Session expired or invalid
                         window.location.href = '/login';
                     }
                 }

@@ -16,4 +16,13 @@ export const authApi = {
         const response = await apiClient.post<AuthResponse>('/auth/accept-invite', data);
         return response.data;
     },
+
+    getCurrentUser: async (): Promise<AuthResponse> => {
+        const response = await apiClient.get<AuthResponse>('/auth/me');
+        return response.data;
+    },
+
+    logout: async (): Promise<void> => {
+        await apiClient.post('/auth/logout');
+    },
 };

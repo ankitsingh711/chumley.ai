@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 import router from './routes';
 import Logger from './utils/logger';
 import { configurePassport } from './config/passport';
@@ -14,8 +15,9 @@ configurePassport();
 
 // Middleware
 app.use(helmet());
+app.use(cookieParser()); // Use cookie-parser before CORS if needed, or generally just before routes
 app.use(cors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: process.env.FRONTEND_URL, // Ensure explicit origin for credentials
     credentials: true
 }));
 app.use(express.json());

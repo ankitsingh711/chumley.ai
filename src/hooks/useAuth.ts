@@ -9,7 +9,7 @@ import {
 
 export const useAuth = () => {
     const dispatch = useAppDispatch();
-    const { user, token, isAuthenticated, isLoading, error } = useAppSelector(
+    const { user, isAuthenticated, isLoading, error } = useAppSelector(
         (state) => state.auth
     );
 
@@ -47,7 +47,6 @@ export const useAuth = () => {
 
     return {
         user,
-        token,
         isAuthenticated,
         isLoading,
         error,

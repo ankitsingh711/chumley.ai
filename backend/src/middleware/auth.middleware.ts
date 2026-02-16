@@ -13,16 +13,15 @@ export interface AuthRequest extends Request {
 }
 
 export const authenticate = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers.authorization;
+    // Check Authorization header first, then cookie
+    let token = req.headers.authorization?.split(' ')[1];
 
-    if (!authHeader) {
-        return res.status(401).json({ error: 'No token provided' });
+    if (!token && req.cookies && req.cookies.authToken) {
+        token = req.cookies.authToken;
     }
 
-    const token = authHeader.split(' ')[1];
-
     if (!token) {
-        return res.status(401).json({ error: 'Authentication failed' });
+        return res.status(401).json({ error: 'Authentication failed: No token provided' });
     }
 
     try {

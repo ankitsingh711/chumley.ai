@@ -19,6 +19,17 @@ const loginSchema = z.object({
     password: z.string(),
 });
 
+const setAuthCookie = (res: Response, token: string) => {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('authToken', token, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'lax', // Use 'none' if backend/frontend on different domains in prod, 'lax' is usually fine for same-site or localhost
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        path: '/'
+    });
+};
+
 export const register = async (req: Request, res: Response) => {
     try {
         const validatedData = registerSchema.parse(req.body);
@@ -58,7 +69,8 @@ export const register = async (req: Request, res: Response) => {
 
         const { password, ...userWithoutPassword } = user;
 
-        res.status(201).json({ user: userWithoutPassword, token });
+        setAuthCookie(res, token);
+        res.status(201).json({ user: userWithoutPassword });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -102,7 +114,8 @@ export const login = async (req: Request, res: Response) => {
 
         const { password: _, ...userWithoutPassword } = user;
 
-        res.status(200).json({ user: userWithoutPassword, token });
+        setAuthCookie(res, token);
+        res.status(200).json({ user: userWithoutPassword });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -116,14 +129,13 @@ const acceptInviteSchema = z.object({
     token: z.string(),
     name: z.string().min(2),
     password: z.string().min(6),
-    jobTitle: z.string().optional(), // If we add jobTitle to User model later
+    jobTitle: z.string().optional(),
 });
 
 export const acceptInvite = async (req: Request, res: Response) => {
     try {
         const { token, name, password } = acceptInviteSchema.parse(req.body);
 
-        // Find user by invitation token
         const user = await prisma.user.findUnique({
             where: { invitationToken: token },
         });
@@ -132,14 +144,12 @@ export const acceptInvite = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Invalid or expired invitation token' });
         }
 
-        // Check expiration
         if (user.invitationExpires && user.invitationExpires < new Date()) {
             return res.status(400).json({ error: 'Invitation has expired' });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Update user: set password, name, status ACTIVE, clear token
         const updatedUser = await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -151,7 +161,6 @@ export const acceptInvite = async (req: Request, res: Response) => {
             },
         });
 
-        // Generate JWT
         const jwtToken = jwt.sign(
             {
                 id: updatedUser.id,
@@ -168,7 +177,8 @@ export const acceptInvite = async (req: Request, res: Response) => {
 
         const { password: _, ...userWithoutPassword } = updatedUser;
 
-        res.json({ user: userWithoutPassword, token: jwtToken });
+        setAuthCookie(res, jwtToken);
+        res.json({ user: userWithoutPassword });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -178,17 +188,49 @@ export const acceptInvite = async (req: Request, res: Response) => {
     }
 };
 
-// Google OAuth callback handler
+export const logout = async (req: Request, res: Response) => {
+    res.clearCookie('authToken', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/'
+    });
+    res.status(200).json({ message: 'Logged out successfully' });
+};
+
+export const getMe = async (req: Request, res: Response) => {
+    try {
+        // req.user is populated by auth middleware
+        const userId = (req as any).user?.id;
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const { password, ...userWithoutPassword } = user;
+        res.json({ user: userWithoutPassword });
+    } catch (error) {
+        Logger.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 export const googleAuthCallback = async (req: Request, res: Response) => {
     try {
-        // User is attached to req by Passport
         const user = req.user as any;
 
         if (!user) {
             return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
         }
 
-        // Generate JWT token
         const token = jwt.sign(
             {
                 id: user.id,
@@ -203,8 +245,9 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
 
         Logger.info(`User logged in via Google: ${user.email}`);
 
-        // Redirect to frontend with token
-        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`);
+        setAuthCookie(res, token);
+        // Redirect to frontend without token in query params
+        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback`);
     } catch (error) {
         Logger.error(error);
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
