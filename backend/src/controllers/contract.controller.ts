@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import { PrismaClient, ContractStatus } from '@prisma/client';
+import { ContractStatus } from '@prisma/client';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 // Get all contracts with optional filters
 export const getAllContracts = async (req: Request, res: Response) => {

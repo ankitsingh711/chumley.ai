@@ -1,6 +1,6 @@
-import { PrismaClient, SpendingCategory, Branch } from '@prisma/client';
+import { SpendingCategory, Branch } from '@prisma/client';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 interface CategoryTreeNode extends SpendingCategory {
     children: CategoryTreeNode[];

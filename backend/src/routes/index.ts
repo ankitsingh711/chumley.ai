@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes';
+import healthRoutes from './health.routes';
 
 const router = Router();
 
-router.get('/health', (req, res) => {
-    res.status(200).json({ status: 'UP', timestamp: new Date() });
-});
+router.use('/health', healthRoutes);
+
 
 router.use('/auth', authRoutes);
 import userRoutes from './user.routes';

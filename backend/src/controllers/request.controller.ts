@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus, UserRole } from '@prisma/client';
+import { RequestStatus, UserRole } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
 import { sendPurchaseRequestNotification, sendRejectionNotification } from '../services/email.service';
 import approvalService from '../services/approval.service';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 const itemSchema = z.object({
     description: z.string().min(3),

@@ -1,6 +1,6 @@
-import { PrismaClient, NotificationType } from '@prisma/client';
+import { NotificationType } from '@prisma/client';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 export interface CreateNotificationInput {
     userId: string;

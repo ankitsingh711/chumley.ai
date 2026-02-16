@@ -1,8 +1,8 @@
-import { PrismaClient, UserRole, RequestStatus, User } from '@prisma/client';
+import { UserRole, RequestStatus, User } from '@prisma/client';
 import Logger from '../utils/logger';
 import emailService from './email.service';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 export class ApprovalService {
     /**

@@ -1,8 +1,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
-import { PrismaClient } from '@prisma/client';
+import prisma from './db';
 
-const prisma = new PrismaClient();
 
 export const configurePassport = () => {
     passport.use(

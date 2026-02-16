@@ -1,11 +1,10 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
 import Logger from '../utils/logger';
 import { sendInvitationEmail } from '../utils/email';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 const updateUserSchema = z.object({
     name: z.string().min(2).optional(),

@@ -1,8 +1,8 @@
-import { PrismaClient, NotificationType, UserRole } from '@prisma/client';
+import { NotificationType, UserRole } from '@prisma/client';
 import notificationService from './notification.service';
 import Logger from '../utils/logger';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 const THRESHOLDS = {
     WARNING: 0.8,   // 80%

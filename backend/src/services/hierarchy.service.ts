@@ -1,7 +1,7 @@
-import { PrismaClient, Branch } from '@prisma/client';
+import { Branch } from '@prisma/client';
 import Logger from '../utils/logger';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 export const hierarchyService = {
     /**

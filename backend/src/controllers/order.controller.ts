@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { PrismaClient, OrderStatus, RequestStatus, UserRole } from '@prisma/client';
+import { OrderStatus, RequestStatus, UserRole } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import budgetMonitorService from '../services/budget-monitor.service';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 const createOrderSchema = z.object({
     requestId: z.string().uuid(),

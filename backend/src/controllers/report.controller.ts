@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus, OrderStatus, UserRole } from '@prisma/client';
+import { RequestStatus, OrderStatus, UserRole } from '@prisma/client';
 import Logger from '../utils/logger';
 import { startOfMonth, subMonths, format } from 'date-fns';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 export const getKPIs = async (req: Request, res: Response) => {
     try {

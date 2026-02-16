@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import redisClient from '../config/redis';
+import redisClient, { isRedisAvailable } from '../config/redis';
 import Logger from '../utils/logger';
 
 // Extend Express Response to include sendResponse property for typing if needed, 
@@ -9,6 +9,11 @@ export const cacheMiddleware = (duration: number) => {
     return async (req: Request, res: Response, next: NextFunction) => {
         // Only cache GET requests
         if (req.method !== 'GET') {
+            return next();
+        }
+
+        // Skip caching if Redis is not available
+        if (!isRedisAvailable || !redisClient) {
             return next();
         }
 
@@ -31,10 +36,12 @@ export const cacheMiddleware = (duration: number) => {
                 // Restore original method
                 res.json = originalJson;
 
-                // Cache the response asynchronously
-                redisClient.set(key, JSON.stringify(body), 'EX', duration).catch((err) => {
-                    Logger.error('Redis cache set error', err);
-                });
+                // Cache the response asynchronously (only if Redis is available)
+                if (redisClient) {
+                    redisClient.set(key, JSON.stringify(body), 'EX', duration).catch((err) => {
+                        Logger.error('Redis cache set error', err);
+                    });
+                }
 
                 // Send the response
                 return res.json(body);
@@ -43,6 +50,7 @@ export const cacheMiddleware = (duration: number) => {
             next();
         } catch (error) {
             Logger.error('Redis cache middleware error', error);
+            // Continue without caching on error
             next();
         }
     };

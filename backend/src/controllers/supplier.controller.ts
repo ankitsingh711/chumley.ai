@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { PrismaClient, RequestStatus, UserRole, NotificationType } from '@prisma/client';
+import { RequestStatus, UserRole, NotificationType } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
+import prisma from '../config/db';
 
-const prisma = new PrismaClient();
 
 const createSupplierSchema = z.object({
     name: z.string().min(2),
