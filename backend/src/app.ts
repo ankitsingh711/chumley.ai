@@ -18,7 +18,7 @@ configurePassport();
 app.use(helmet());
 app.use(cookieParser()); // Use cookie-parser before CORS if needed, or generally just before routes
 app.use(cors({
-    origin: process.env.FRONTEND_URL, // Ensure explicit origin for credentials
+    origin: [process.env.FRONTEND_URL || 'https://chumley-ai.vercel.app', 'http://localhost:5173'], // Allow both production and local dev
     credentials: true
 }));
 app.use(express.json());
