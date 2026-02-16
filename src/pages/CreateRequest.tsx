@@ -8,7 +8,9 @@ import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import { type CreateRequestInput, type Supplier, Branch } from '../types/api';
-import { CategorySelector } from '../components/CategorySelector';
+
+import { type Category } from '../types/category';
+import { categoryService } from '../services/category.service';
 import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 
 interface ItemRow {
@@ -25,7 +27,8 @@ export default function CreateRequest() {
     const [reason, setReason] = useState('');
     const [selectedSupplierId, setSelectedSupplierId] = useState('');
     const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
-    const [selectedCategoryId, setSelectedCategoryId] = useState('');
+    const [selectedCategoryId, setSelectedCategoryId] = useState(''); // Main Category
+    const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(''); // Sub Category
     const [deliveryLocation, setDeliveryLocation] = useState('');
     const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [items, setItems] = useState<ItemRow[]>([
@@ -36,6 +39,7 @@ export default function CreateRequest() {
     // Data State
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -61,6 +65,19 @@ export default function CreateRequest() {
             console.error('Failed to load departments', err);
         }
     };
+
+    useEffect(() => {
+        if (branch && selectedDepartmentId) {
+            categoryService.getCategoriesByBranchAndDepartment(branch, selectedDepartmentId)
+                .then(data => setCategories(data))
+                .catch(err => console.error('Failed to load categories', err));
+        } else {
+            setCategories([]);
+        }
+    }, [branch, selectedDepartmentId]);
+
+    const parentCategories = categories.filter(c => !c.parentId);
+    const subCategories = selectedCategoryId ? categories.filter(c => c.parentId === selectedCategoryId) : [];
 
     const addItem = () => {
         setItems([...items, { description: '', quantity: 1, unitPrice: 0 }]);
@@ -102,8 +119,10 @@ export default function CreateRequest() {
             return;
         }
 
-        if (!selectedCategoryId) {
-            setError('Please select a spending category');
+        const finalCategoryId = subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId;
+
+        if (!finalCategoryId) {
+            setError(subCategories.length > 0 ? 'Please select a spending subcategory' : 'Please select a spending category');
             return;
         }
 
@@ -113,7 +132,7 @@ export default function CreateRequest() {
                 reason: reason || undefined,
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
-                categoryId: selectedCategoryId,
+                categoryId: subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId,
                 deliveryLocation: `${branch} - ${deliveryLocation}`,
                 expectedDeliveryDate: expectedDeliveryDate || undefined,
                 items: validItems,
@@ -199,7 +218,8 @@ export default function CreateRequest() {
                                     value={branch}
                                     onChange={(val) => {
                                         setBranch(val as Branch);
-                                        setSelectedCategoryId(''); // Reset category when branch changes
+                                        setSelectedCategoryId('');
+                                        setSelectedSubCategoryId('');
                                     }}
                                     options={[
                                         { value: Branch.CHESSINGTON, label: 'Chessington' },
@@ -218,7 +238,8 @@ export default function CreateRequest() {
                                     value={selectedDepartmentId}
                                     onChange={(val) => {
                                         setSelectedDepartmentId(val);
-                                        setSelectedCategoryId(''); // Reset category when department changes
+                                        setSelectedCategoryId('');
+                                        setSelectedSubCategoryId('');
                                     }}
                                     options={[
                                         { value: '', label: 'Select Department...' },
@@ -229,17 +250,39 @@ export default function CreateRequest() {
                                 />
                             </div>
 
-                            <div>
-                                <CategorySelector
+                            <div className="space-y-4">
+                                <Select
                                     label="Spending Category"
-                                    required
                                     value={selectedCategoryId}
-                                    onChange={setSelectedCategoryId}
-                                    departmentId={selectedDepartmentId}
-                                    branch={branch}
+                                    onChange={(val) => {
+                                        setSelectedCategoryId(val);
+                                        setSelectedSubCategoryId('');
+                                    }}
+                                    options={[
+                                        { value: '', label: 'Select category...' },
+                                        ...parentCategories.map(c => ({ value: c.id, label: c.name }))
+                                    ]}
                                     disabled={!selectedDepartmentId}
                                     placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
+                                    className="w-full"
                                 />
+
+
+                                {subCategories.length > 0 && (
+                                    <div>
+                                        <Select
+                                            label="Spending Subcategory"
+                                            value={selectedSubCategoryId}
+                                            onChange={setSelectedSubCategoryId}
+                                            options={[
+                                                { value: '', label: 'Select subcategory...' },
+                                                ...subCategories.map(c => ({ value: c.id, label: c.name }))
+                                            ]}
+                                            placeholder="Select a subcategory..."
+                                            className="w-full"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             <div>

@@ -61,7 +61,7 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                     departmentId
                 );
                 if (mounted) {
-                    setCategories(tree);
+                    setCategories(tree.filter(c => !c.parentId));
                 }
             } catch (err) {
                 if (mounted) {

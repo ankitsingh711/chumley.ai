@@ -449,7 +449,7 @@ export default function PurchaseOrders() {
                         </div>
 
                         {/* Footer Actions */}
-                        <div className="pt-4 border-t flex justify-end gap-3 flex-wrap">
+                        <div className="sticky bottom-0 bg-white border-t px-6 py-4 flex justify-end gap-3 flex-wrap">
                             <Button variant="outline" onClick={closeModal}>Close</Button>
                             <Button onClick={() => handleDownload(selectedOrder)} variant="outline">
                                 <Download className="mr-2 h-4 w-4" /> Download CSV
