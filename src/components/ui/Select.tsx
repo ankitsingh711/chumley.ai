@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../../lib/utils'; // Assuming you have a utility for merging classes
+import { cn } from '../../lib/utils';
 
 interface Option {
     value: string;
@@ -18,6 +18,7 @@ interface SelectProps {
     error?: string;
     disabled?: boolean;
     className?: string;
+    triggerClassName?: string;
 }
 
 export function Select({
@@ -29,7 +30,8 @@ export function Select({
     description,
     error,
     disabled = false,
-    className
+    className,
+    triggerClassName
 }: SelectProps) {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -60,6 +62,7 @@ export function Select({
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={cn(
                     "flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition-all hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500",
+                    triggerClassName,
                     disabled && "cursor-not-allowed opacity-50 bg-gray-50",
                     error && "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-100",
                     !selectedOption && "text-gray-500"
