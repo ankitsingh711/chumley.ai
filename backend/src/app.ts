@@ -7,6 +7,7 @@ import router from './routes';
 import Logger from './utils/logger';
 import { configurePassport } from './config/passport';
 import passport from 'passport';
+import { rateLimiterMiddleware } from './middleware/rateLimiter.middleware';
 
 const app = express();
 
@@ -21,6 +22,10 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Rate Limiting
+app.use(rateLimiterMiddleware('general')); // Global limit
+app.use('/api/auth', rateLimiterMiddleware('auth')); // Stricter auth limit
 import path from 'path';
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(passport.initialize());
