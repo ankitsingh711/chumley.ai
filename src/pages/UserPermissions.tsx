@@ -4,7 +4,7 @@ import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { usersApi } from '../services/users.service';
 import { departmentsApi } from '../services/departments.service';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { UserRole, UserStatus, type User } from '../types/api';
 
 

@@ -7,7 +7,7 @@ import { departmentsApi, type Department } from '../services/departments.service
 import { reportsApi } from '../services/reports.service';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
 
 interface DepartmentBudget extends Department {

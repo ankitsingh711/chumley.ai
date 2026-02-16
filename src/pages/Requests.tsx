@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { requestsApi } from '../services/requests.service';
 import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';

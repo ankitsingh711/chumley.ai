@@ -14,7 +14,7 @@ import {
 import { LogoWithText } from '../ui/Logo';
 
 import { cn } from '../../lib/utils';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
 
 const navItems = [

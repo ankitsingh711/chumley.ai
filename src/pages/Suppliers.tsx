@@ -7,7 +7,7 @@ import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { pdfService } from '../services/pdf.service';
 
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
 
 export default function Suppliers() {

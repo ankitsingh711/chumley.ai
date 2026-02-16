@@ -15,7 +15,7 @@ import { MessageSupplierModal } from '../components/suppliers/MessageSupplierMod
 import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
 import { WriteReviewModal } from '../components/suppliers/WriteReviewModal';
 
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export default function SupplierProfile() {
     const { user } = useAuth();

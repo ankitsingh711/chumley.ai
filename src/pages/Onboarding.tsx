@@ -4,7 +4,7 @@ import { Briefcase, Eye, EyeOff, CheckCircle2, User } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { LogoWithText } from '../components/ui/Logo';
 import { authApi } from '../services/auth.service';
-// import { useAuth } from '../contexts/AuthContext';
+// import { useAuth } from '../hooks/useAuth';
 
 export default function Onboarding() {
     const navigate = useNavigate();

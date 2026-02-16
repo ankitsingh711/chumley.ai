@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './contexts/AuthContext';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { AppInitializer } from './AppInitializer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { Layout } from './components/layout/Layout';
@@ -24,43 +23,40 @@ import DepartmentBudgets from './pages/DepartmentBudgets';
 
 function App() {
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <Router>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/onboarding/success" element={<OnboardingSuccess />} />
-            <Route path="/email-template" element={<EmailTemplate />} />
-            <Route path="/auth/google/callback" element={<GoogleCallback />} />
+    <Router>
+      <AppInitializer />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/onboarding/success" element={<OnboardingSuccess />} />
+        <Route path="/email-template" element={<EmailTemplate />} />
+        <Route path="/auth/google/callback" element={<GoogleCallback />} />
 
-            <Route
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/requests" element={<Requests />} />
-              <Route path="/requests/:id" element={<Requests />} />
-              <Route path="/requests/new" element={<CreateRequest />} />
-              <Route path="/orders" element={<PurchaseOrders />} />
-              <Route path="/suppliers" element={<Suppliers />} />
-              <Route path="/suppliers/:id" element={<SupplierProfile />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/budgets" element={<AdminRoute><DepartmentBudgets /></AdminRoute>} />
-              <Route path="/contracts" element={<AdminRoute><Contracts /></AdminRoute>} />
-              <Route path="/catalog" element={<AdminRoute><Catalog /></AdminRoute>} />
-              <Route path="/settings" element={<UserPermissions />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/requests" element={<Requests />} />
+          <Route path="/requests/:id" element={<Requests />} />
+          <Route path="/requests/new" element={<CreateRequest />} />
+          <Route path="/orders" element={<PurchaseOrders />} />
+          <Route path="/suppliers" element={<Suppliers />} />
+          <Route path="/suppliers/:id" element={<SupplierProfile />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/budgets" element={<AdminRoute><DepartmentBudgets /></AdminRoute>} />
+          <Route path="/contracts" element={<AdminRoute><Contracts /></AdminRoute>} />
+          <Route path="/catalog" element={<AdminRoute><Catalog /></AdminRoute>} />
+          <Route path="/settings" element={<UserPermissions />} />
 
-            </Route>
+        </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
-      </NotificationProvider>
-    </AuthProvider>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

@@ -7,7 +7,7 @@ import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';
 import type { PurchaseOrder } from '../types/api';
 import { OrderStatus, UserRole } from '../types/api';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 
 export default function PurchaseOrders() {
     const { user } = useAuth();

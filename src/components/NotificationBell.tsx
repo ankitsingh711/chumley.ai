@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, CheckCheck, X } from 'lucide-react';
-import { useNotifications } from '../contexts/NotificationContext';
+import { useNotifications } from '../hooks/useNotifications';
 import { useNavigate } from 'react-router-dom';
 
 export default function NotificationBell() {

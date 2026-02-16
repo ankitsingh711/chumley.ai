@@ -8,11 +8,15 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-slot', 'lucide-react', 'clsx', 'tailwind-merge'],
+          ui: ['lucide-react', 'clsx', 'tailwind-merge'],
+          charts: ['recharts'],
+          animation: ['framer-motion'],
+          pdf: ['jspdf', 'jspdf-autotable'],
+          state: ['@reduxjs/toolkit', 'react-redux'],
         },
       },
     },
-    chunkSizeWarningLimit: 1000,
+    chunkSizeWarningLimit: 2000,
   },
   plugins: [react()],
 })
