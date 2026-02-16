@@ -24,7 +24,7 @@ const setAuthCookie = (res: Response, token: string) => {
     res.cookie('authToken', token, {
         httpOnly: true,
         secure: isProduction,
-        sameSite: 'lax', // Use 'none' if backend/frontend on different domains in prod, 'lax' is usually fine for same-site or localhost
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-domain in production, 'lax' for localhost
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         path: '/'
     });
@@ -189,10 +189,11 @@ export const acceptInvite = async (req: Request, res: Response) => {
 };
 
 export const logout = async (req: Request, res: Response) => {
+    const isProduction = process.env.NODE_ENV === 'production';
     res.clearCookie('authToken', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: isProduction,
+        sameSite: isProduction ? 'none' : 'lax',
         path: '/'
     });
     res.status(200).json({ message: 'Logged out successfully' });
