@@ -41,14 +41,17 @@ export default function UserPermissions() {
 
     useEffect(() => {
         if (!authLoading) {
-            // If not admin, force to profile tab
-            if (currentUser && currentUser.role !== UserRole.SYSTEM_ADMIN && activeTab === 'permissions') {
-                setActiveTab('profile');
-            }
             fetchUsers();
             fetchDepartments();
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentUser, authLoading]);
+
+    useEffect(() => {
+        if (!authLoading && currentUser && currentUser.role !== UserRole.SYSTEM_ADMIN && activeTab === 'permissions') {
+            setActiveTab('profile');
+        }
+    }, [currentUser, authLoading, activeTab]);
 
     const fetchDepartments = async () => {
         try {
