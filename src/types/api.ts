@@ -193,6 +193,7 @@ export interface PurchaseRequest {
     expectedDeliveryDate?: string;
     attachments?: Attachment[];
     branch?: Branch;
+    order?: { id: string; status: OrderStatus };
 }
 
 export interface Attachment {

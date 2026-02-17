@@ -233,6 +233,10 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
         });
 
         Logger.info(`Order ${id} status updated to ${status}`);
+
+        // Invalidate cache
+        await CacheService.invalidateOrderCache(id);
+
         res.json(order);
     } catch (error: any) {
         Logger.error(error);

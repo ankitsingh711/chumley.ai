@@ -163,6 +163,12 @@ export const getRequests = async (req: Request, res: Response) => {
                             unitPrice: true,
                             totalPrice: true
                         }
+                    },
+                    order: {
+                        select: {
+                            id: true,
+                            status: true
+                        }
                     }
                 },
                 orderBy: { createdAt: 'desc' },
@@ -193,7 +199,8 @@ export const getRequests = async (req: Request, res: Response) => {
                 unitPrice: Number(item.unitPrice),
                 totalPrice: Number(item.totalPrice)
             })),
-            supplier: req.supplier
+            supplier: req.supplier,
+            order: req.order
         }));
 
         const response = createPaginatedResponse(requestsDTO, total, page, limit);

@@ -590,14 +590,24 @@ export default function Requests() {
 
                                                 {/* Create PO Button for Approved Requests */}
                                                 {req.status === RequestStatus.APPROVED && (
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                                                        onClick={() => handleCreateOrder(req)}
-                                                        disabled={updating === req.id}
-                                                        title="Create Purchase Order"
-                                                    >
-                                                        <ShoppingBag className="h-4 w-4" />
-                                                    </button>
+                                                    req.order ? (
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-purple-50 text-purple-600 disabled:opacity-50"
+                                                            onClick={() => navigate(`/orders?search=${req.order?.id}`)} // Or navigate to specific order
+                                                            title="View Purchase Order"
+                                                        >
+                                                            <ShoppingBag className="h-4 w-4" />
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                                                            onClick={() => handleCreateOrder(req)}
+                                                            disabled={updating === req.id}
+                                                            title="Create Purchase Order"
+                                                        >
+                                                            <ShoppingBag className="h-4 w-4" />
+                                                        </button>
+                                                    )
                                                 )}
                                             </td>
                                         )}
