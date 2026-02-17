@@ -153,8 +153,10 @@ export const getOrders = async (req: Request, res: Response) => {
         const ordersDTO = orders.map(order => ({
             id: order.id,
             requestId: order.requestId,
-            supplierId: order.supplierId,
-            supplierName: order.supplier.name,
+            supplier: {
+                id: order.supplierId,
+                name: order.supplier.name,
+            },
             requesterName: order.request.requester.name,
             status: order.status,
             totalAmount: Number(order.totalAmount),
@@ -222,7 +224,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
         await prisma.interactionLog.create({
             data: {
                 supplierId: order.supplierId,
-                userId: req.user?.id || 'system', // Ideally use authenticated user ID
+                userId: (req as any).user.id,
                 eventType: 'order_status_updated',
                 title: `Order #${order.id.slice(0, 8)} Updated`,
                 description: `Status changed from ${currentOrder.status} to ${status}`,

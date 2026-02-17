@@ -36,7 +36,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Mont', 'sans-serif'],
       },
     },
   },
