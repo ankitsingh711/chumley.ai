@@ -15,6 +15,7 @@ import { EditSupplierModal } from '../components/suppliers/EditSupplierModal';
 import { MessageSupplierModal } from '../components/suppliers/MessageSupplierModal';
 import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
 import { WriteReviewModal } from '../components/suppliers/WriteReviewModal';
+import { RequestDetailsModal } from '../components/requests/RequestDetailsModal';
 
 import { useAuth } from '../hooks/useAuth';
 
@@ -37,6 +38,16 @@ export default function SupplierProfile() {
     const [reviewsTotal, setReviewsTotal] = useState(0);
     const [loadingReviews, setLoadingReviews] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
+
+    // Request Modal & Filtering
+    const [selectedRequest, setSelectedRequest] = useState<any>(null);
+    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [requestFilter, setRequestFilter] = useState('ALL');
+
+    const filteredRequests = supplier?.requests?.filter(req => {
+        if (requestFilter === 'ALL') return true;
+        return req.status === requestFilter;
+    }) || [];
 
     const fetchReviews = async (pageNum = 1, append = false) => {
         if (!id) return;
@@ -472,7 +483,21 @@ export default function SupplierProfile() {
                                         }}>
                                             <FileText className="mr-2 h-4 w-4" /> Export PDF
                                         </Button>
-                                        <Button variant="outline" size="sm">Filter</Button>
+
+                                        {/* Status Filter */}
+                                        <div className="w-40">
+                                            <Select
+                                                value={requestFilter}
+                                                onChange={setRequestFilter}
+                                                options={[
+                                                    { value: 'ALL', label: 'All Status' },
+                                                    { value: 'APPROVED', label: 'Approved' },
+                                                    { value: 'PENDING', label: 'Pending' },
+                                                    { value: 'REJECTED', label: 'Rejected' }
+                                                ]}
+                                                placeholder="Filter Status"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="overflow-x-auto">
@@ -488,8 +513,8 @@ export default function SupplierProfile() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
-                                            {supplier.requests && supplier.requests.length > 0 ? (
-                                                supplier.requests.map((req) => (
+                                            {filteredRequests && filteredRequests.length > 0 ? (
+                                                filteredRequests.map((req) => (
                                                     <tr key={req.id} className="hover:bg-gray-50">
                                                         <td className="px-6 py-4 font-medium text-primary-600">#{req.id.slice(0, 8)}</td>
                                                         <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
@@ -504,7 +529,16 @@ export default function SupplierProfile() {
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 text-right">
-                                                            <Button variant="ghost" size="sm">View</Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    setSelectedRequest(req);
+                                                                    setShowRequestModal(true);
+                                                                }}
+                                                            >
+                                                                View
+                                                            </Button>
                                                         </td>
                                                     </tr>
                                                 ))
@@ -758,6 +792,12 @@ export default function SupplierProfile() {
                             // Also refresh supplier details to update rating
                             suppliersApi.getDetails(supplier.id).then(setSupplier);
                         }}
+                    />
+                    <RequestDetailsModal
+                        isOpen={showRequestModal}
+                        onClose={() => setShowRequestModal(false)}
+                        request={selectedRequest}
+                        canApprove={false} // View only for now
                     />
                 </>
             )}
