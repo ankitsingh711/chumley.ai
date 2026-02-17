@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { RequestsSkeleton } from '../components/skeletons/RequestsSkeleton';
 import { useAuth } from '../hooks/useAuth';
 import { requestsApi } from '../services/requests.service';
 import { ordersApi } from '../services/orders.service';
@@ -324,11 +325,7 @@ export default function Requests() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        );
+        return <RequestsSkeleton />;
     }
 
     return (

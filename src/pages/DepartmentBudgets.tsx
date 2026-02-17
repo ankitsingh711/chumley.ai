@@ -3,6 +3,7 @@ import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X } from 'lucide-re
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
+import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
 import { departmentsApi, type Department } from '../services/departments.service';
 import { reportsApi } from '../services/reports.service';
 import { cn } from '../lib/utils';
@@ -158,11 +159,7 @@ export default function DepartmentBudgets() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        );
+        return <DepartmentBudgetsSkeleton />;
     }
 
     return (

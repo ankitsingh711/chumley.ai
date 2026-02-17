@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, Trash2, UserPlus, AlertTriangle, Check } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
+import { UserPermissionsSkeleton } from '../components/skeletons/UserPermissionsSkeleton';
 import { usersApi } from '../services/users.service';
 import { departmentsApi } from '../services/departments.service';
 import { useAuth } from '../hooks/useAuth';
@@ -244,11 +245,7 @@ export default function UserPermissions() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center h-full">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            </div>
-        );
+        return <UserPermissionsSkeleton />;
     }
 
     return (

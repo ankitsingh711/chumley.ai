@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/Tabs'
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
+import { SupplierProfileSkeleton } from '../components/skeletons/SupplierProfileSkeleton';
 import { useParams } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { suppliersApi } from '../services/suppliers.service';
@@ -91,7 +92,7 @@ export default function SupplierProfile() {
         : '??';
 
     if (isLoading) {
-        return <div className="flex items-center justify-center h-64">Loading...</div>;
+        return <SupplierProfileSkeleton />;
     }
 
     if (!supplier) {

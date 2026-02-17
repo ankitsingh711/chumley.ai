@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Package, Plus, Edit2, Trash2, FolderTree, X, Search, Loader2 } from 'lucide-react';
+import { Package, Plus, Edit2, Trash2, FolderTree, X, Search } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
+import { CatalogSkeleton } from '../components/skeletons/CatalogSkeleton';
 import { categoryService } from '../services/category.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { Category } from '../types/category';
@@ -182,9 +183,7 @@ export default function Catalog() {
             <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {loading ? (
-                        <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
-                            <Loader2 className="h-12 w-12 animate-spin" />
-                        </div>
+                        <CatalogSkeleton />
                     ) : filteredCategories.length === 0 ? (
                         <div className="col-span-full py-12 text-center bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
                             <Package className="h-12 w-12 text-gray-300 mx-auto mb-3" />

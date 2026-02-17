@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Search, Download, Eye, Send, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
+import { PurchaseOrdersSkeleton } from '../components/skeletons/PurchaseOrdersSkeleton';
 import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';
 import type { PurchaseOrder } from '../types/api';
@@ -247,11 +248,7 @@ export default function PurchaseOrders() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        );
+        return <PurchaseOrdersSkeleton />;
     }
 
     return (

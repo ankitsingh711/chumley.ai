@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 // import { useNavigate } from 'react-router-dom';
-import { Plus, FileText, Calendar, PoundSterling, Building2, X, Loader2 } from 'lucide-react';
+import { Plus, FileText, Calendar, PoundSterling, Building2, X } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
 import { Button } from '../components/ui/Button';
+import { ContractsSkeleton } from '../components/skeletons/ContractsSkeleton';
 import { contractsApi } from '../services/contracts.service';
 import { suppliersApi } from '../services/suppliers.service';
 import type { Contract, ContractStatus as ContractStatusType, Supplier } from '../types/api';
@@ -151,9 +152,7 @@ export default function Contracts() {
             {/* Contracts Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {loading ? (
-                    <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
-                        <Loader2 className="h-12 w-12 animate-spin" />
-                    </div>
+                    <ContractsSkeleton />
                 ) : filteredContracts.length === 0 ? (
                     <div className="col-span-full text-center py-12">
                         <FileText className="mx-auto h-12 w-12 text-gray-400" />

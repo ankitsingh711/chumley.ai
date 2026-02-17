@@ -7,6 +7,7 @@ import { StatCard } from '../components/dashboard/StatCard';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
+import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
 import type { KPIMetrics, MonthlySpendData, PurchaseRequest } from '../types/api';
 import { RequestStatus } from '../types/api';
 
@@ -134,11 +135,7 @@ export default function Reports() {
     };
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-            </div>
-        )
+        return <ReportsSkeleton />;
     }
 
     const breakdownData = [
