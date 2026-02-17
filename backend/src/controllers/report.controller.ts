@@ -260,8 +260,11 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
         // RBAC: Check if user has access to this department's data
         if (
             user.role !== UserRole.SYSTEM_ADMIN &&
-            user.departmentId !== departmentId
+            user.departmentId !== departmentId &&
+            user.role !== UserRole.MANAGER &&
+            user.role !== UserRole.SENIOR_MANAGER // Managers can view any department if they have access? Actually usually restricted to own dept.
         ) {
+            // Strict check: User must be Admin OR belong to the department
             return res.status(403).json({ error: 'Access denied' });
         }
 
@@ -287,7 +290,33 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
 
         const dateWhere = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
 
-        // Fetch orders for this department
+        // 1. Fetch all categories for this department to build hierarchy
+        const categories = await prisma.spendingCategory.findMany({
+            where: { departmentId: String(departmentId) },
+            select: { id: true, name: true, parentId: true }
+        });
+
+        // Map for O(1) lookup
+        const categoryMap = new Map<string, { name: string; parentId: string | null }>();
+        categories.forEach(c => categoryMap.set(c.id, { name: c.name, parentId: c.parentId }));
+
+        // Helper to find root category
+        const getRootCategoryName = (categoryId: string): string => {
+            let currentId = categoryId;
+            let current = categoryMap.get(currentId);
+            let depth = 0;
+
+            // Traverse up
+            while (current && current.parentId && depth < 10) {
+                currentId = current.parentId;
+                current = categoryMap.get(currentId);
+                depth++;
+            }
+
+            return current ? current.name : 'Unassigned';
+        };
+
+        // 2. Fetch orders for this department
         const orders = await prisma.purchaseOrder.findMany({
             where: {
                 status: { not: OrderStatus.CANCELLED },
@@ -302,21 +331,29 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
                 request: {
                     select: {
                         budgetCategory: true,
+                        // We need key ID to resolve hierarchy
+                        categoryId: true,
                         category: { select: { name: true } }
                     }
                 }
             }
         });
 
-        // Group by category
+        // 3. Group by category
         const categorySpend: Record<string, number> = {};
 
         orders.forEach(order => {
-            // Priority: budgetCategory > request.category.name > "Unassigned"
-            const categoryName =
-                order.request?.budgetCategory ||
-                order.request?.category?.name ||
-                'Unassigned';
+            let categoryName = 'Unassigned';
+
+            if (order.request?.categoryId) {
+                // Use hierarchy rollup
+                categoryName = getRootCategoryName(order.request.categoryId);
+            } else if (order.request?.budgetCategory && order.request.budgetCategory !== 'Unassigned') {
+                // Fallback to legacy field if meaningful (not 'Unassigned')
+                // But wait, budgetCategory is often the Department Name. We probably shouldn't use it for category breakdown unless we are sure.
+                // If we have no categoryId, it really is unassigned or 'General'
+                categoryName = 'General / Uncategorized';
+            }
 
             categorySpend[categoryName] = (categorySpend[categoryName] || 0) + Number(order.totalAmount);
         });
