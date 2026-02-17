@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
-import { DatePicker } from '../components/ui/DatePicker';
-import { Plus, Trash2, MapPin } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
-import type {  Supplier } from '../types/api';
+import type { Supplier } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { type CreateRequestInput, Branch } from '../types/api';
 
@@ -31,8 +30,6 @@ export default function CreateRequest() {
     const [selectedDepartmentId, setSelectedDepartmentId] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState(''); // Main Category
     const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(''); // Sub Category
-    const [deliveryLocation, setDeliveryLocation] = useState('');
-    const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
     const [items, setItems] = useState<ItemRow[]>([
         { description: '', quantity: 1, unitPrice: 0 }
     ]);
@@ -136,8 +133,6 @@ export default function CreateRequest() {
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
                 categoryId: subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId,
-                deliveryLocation: `${branch} - ${deliveryLocation}`,
-                expectedDeliveryDate: expectedDeliveryDate || undefined,
                 items: validItems,
                 branch: branch,
             };
@@ -335,30 +330,6 @@ export default function CreateRequest() {
                                     className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
                                 />
                             </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Delivery Location</label>
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            value={deliveryLocation}
-                                            onChange={(e) => setDeliveryLocation(e.target.value)}
-                                            placeholder="e.g. HQ - Receiving Dock"
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 pl-9 text-sm outline-none focus:border-primary-500"
-                                        />
-                                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5">Expected Delivery</label>
-                                    <DatePicker
-                                        value={expectedDeliveryDate}
-                                        onChange={setExpectedDeliveryDate}
-                                        placeholder="Select date"
-                                    />
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -444,19 +415,11 @@ export default function CreateRequest() {
                                 <span className="text-gray-500">Subtotal</span>
                                 <span className="font-medium text-gray-900">£{calculateTotal().toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Shipping Estimate</span>
-                                <span className="font-medium text-gray-900">£0.00</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Tax Estimate (8.25%)</span>
-                                <span className="font-medium text-gray-900">£{(calculateTotal() * 0.0825).toFixed(2)}</span>
-                            </div>
                         </div>
 
                         <div className="flex justify-between items-center mb-6">
                             <span className="text-base font-bold text-gray-900">Total</span>
-                            <span className="text-xl font-bold text-primary-600">£{(calculateTotal() * 1.0825).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                            <span className="text-xl font-bold text-primary-600">£{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
 
                         <Button className="w-full bg-primary-700 hover:bg-primary-600" onClick={handleSubmit} disabled={loading}>
@@ -471,3 +434,5 @@ export default function CreateRequest() {
         </div>
     );
 }
+
+
