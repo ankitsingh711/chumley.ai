@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Plus, LayoutGrid, List as ListIcon, Loader2, FileText } from 'lucide-react';
+import { Plus, LayoutGrid, List as ListIcon, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { SupplierCard, type Supplier as CardSupplier } from '../components/suppliers/SupplierCard';
 import { suppliersApi } from '../services/suppliers.service';
 import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { pdfService } from '../services/pdf.service';
+import { SuppliersSkeleton } from '../components/skeletons/SuppliersSkeleton';
 
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
@@ -136,6 +137,10 @@ export default function Suppliers() {
         );
     };
 
+    if (loading) {
+        return <SuppliersSkeleton />;
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -180,15 +185,9 @@ export default function Suppliers() {
 
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {loading ? (
-                    <div className="col-span-full min-h-[50vh] flex items-center justify-center text-primary-600">
-                        <Loader2 className="h-12 w-12 animate-spin" />
-                    </div>
-                ) : (
-                    filteredSuppliers.map(supplier => (
-                        <SupplierCard key={supplier.id} supplier={supplier} />
-                    ))
-                )}
+                {filteredSuppliers.map(supplier => (
+                    <SupplierCard key={supplier.id} supplier={supplier} />
+                ))}
 
                 {/* Add New Quick Card */}
                 <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer group h-full min-h-[300px]"

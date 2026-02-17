@@ -11,11 +11,11 @@ const generalLimiter = new RateLimiterRedis({
     duration: 15 * 60, // per 15 minutes by default
 });
 
-// Auth limiter: 5 requests per 15 minutes by IP for login/register/etc
+// Auth limiter: 50 requests per 15 minutes by IP for login/register/etc
 const authLimiter = new RateLimiterRedis({
     storeClient: redisClient,
     keyPrefix: 'middleware_limiter_auth',
-    points: 10,
+    points: 50,
     duration: 15 * 60,
 });
 

@@ -5,6 +5,7 @@ import { StatCard } from '../components/dashboard/StatCard';
 import { BudgetTracker } from '../components/dashboard/BudgetTracker';
 import { RequestBreakdown } from '../components/dashboard/RequestBreakdown';
 import { Button } from '../components/ui/Button';
+import { DashboardSkeleton } from '../components/skeletons/DashboardSkeleton';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import { departmentsApi, type Department } from '../services/departments.service';
@@ -38,11 +39,7 @@ export default function Dashboard() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-96">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-            </div>
-        );
+        return <DashboardSkeleton />;
     }
 
     return (

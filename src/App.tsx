@@ -4,7 +4,7 @@ import { AppInitializer } from './AppInitializer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { Layout } from './components/layout/Layout';
-import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { SkeletonLoader } from './components/skeletons/SkeletonLoader';
 
 // Lazy load all page components for optimal code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -29,7 +29,7 @@ function App() {
   return (
     <Router>
       <AppInitializer />
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={<SkeletonLoader />}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
