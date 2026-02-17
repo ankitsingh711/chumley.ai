@@ -8,7 +8,7 @@ export interface Notification {
     message: string;
     metadata?: Record<string, any>;
     read: boolean;
-    createdAt: Date;
+    createdAt: string;
 }
 
 export const notificationsApi = {
@@ -18,7 +18,7 @@ export const notificationsApi = {
     getAll: async (unreadOnly: boolean = false): Promise<Notification[]> => {
         const params = unreadOnly ? '?unreadOnly=true' : '';
         const response = await apiClient.get<Notification[]>(`/notifications${params}`);
-        return response.data.map(n => ({ ...n, createdAt: new Date(n.createdAt) }));
+        return response.data;
     },
 
     /**

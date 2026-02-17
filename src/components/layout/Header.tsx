@@ -31,7 +31,7 @@ export function Header({ onChatToggle }: HeaderProps) {
     const searchRef = useRef<HTMLDivElement>(null);
 
     // Fix department rendering safely
-    const departmentName = typeof user?.department === 'object' ? user.department.name : user?.department;
+    const departmentName = (typeof user?.department === 'object' && user.department) ? user.department.name : user?.department;
 
     // Generate initials from user name
     const getInitials = (name: string) => {

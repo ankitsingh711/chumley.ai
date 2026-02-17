@@ -133,7 +133,17 @@ export const getRequests = async (req: Request, res: Response) => {
                     createdAt: true,
                     updatedAt: true,
                     requester: {
-                        select: { id: true, name: true, email: true }
+                        select: {
+                            id: true,
+                            name: true,
+                            email: true,
+                            department: {
+                                select: {
+                                    id: true,
+                                    name: true
+                                }
+                            }
+                        }
                     },
                     supplierId: true, // Add this
                     supplier: {
@@ -167,7 +177,8 @@ export const getRequests = async (req: Request, res: Response) => {
             requester: {
                 id: req.requester.id,
                 name: req.requester.name,
-                email: req.requester.email
+                email: req.requester.email,
+                department: req.requester.department
             },
             supplierId: req.supplierId, // Add this
             status: req.status,
@@ -233,14 +244,41 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
 
         const request = await prisma.purchaseRequest.findUnique({
             where: { id },
-            include: { items: true, supplier: true, requester: true }
+            include: { items: true, supplier: true, requester: true, order: true }
         });
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        // Validate state transition?
-        // e.g. can only approve/reject PENDING requests
+        // Permission Check
+        Logger.info(`updateRequestStatus: User ${req.user?.id} updating request ${id} to ${status}`);
+
+        if (!req.user || !req.user.id) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        const userId = req.user.id;
+        const currentUser = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, role: true, departmentId: true }
+        });
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+
+        if (currentUser.role !== UserRole.SYSTEM_ADMIN) {
+            // Must be MANAGER or SENIOR_MANAGER
+            if (currentUser.role !== UserRole.MANAGER && currentUser.role !== UserRole.SENIOR_MANAGER) {
+                return res.status(403).json({ error: 'Insufficient permissions' });
+            }
+
+            // Must be in same department as requester
+            if (!currentUser.departmentId || currentUser.departmentId !== request.requester.departmentId) {
+                Logger.warn(`Permission Denied: User ${userId} Dept: ${currentUser.departmentId}, Requester Dept: ${request.requester.departmentId}`);
+                return res.status(403).json({ error: 'You can only approve requests from your own department' });
+            }
+        }
 
         const updatedRequest = await prisma.purchaseRequest.update({
             where: { id },
@@ -255,15 +293,20 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
         if (status === RequestStatus.APPROVED) {
             // Plan 4b: Generate PO
             if (request.supplierId) {
-                const po = await prisma.purchaseOrder.create({
-                    data: {
-                        requestId: id,
-                        supplierId: request.supplierId,
-                        totalAmount: request.totalAmount,
-                        status: OrderStatus.SENT, // Assuming we send it immediately via email below
-                    }
-                });
-                Logger.info(`Generated PO ${po.id} for Request ${id}`);
+                // Check if PO already exists
+                if (request.order) {
+                    Logger.info(`PO already exists for Request ${id}: ${request.order.id}. Skipping creation.`);
+                } else {
+                    const po = await prisma.purchaseOrder.create({
+                        data: {
+                            requestId: id,
+                            supplierId: request.supplierId,
+                            totalAmount: request.totalAmount,
+                            status: OrderStatus.SENT, // Assuming we send it immediately via email below
+                        }
+                    });
+                    Logger.info(`Generated PO ${po.id} for Request ${id}`);
+                }
 
                 if (request.supplier && request.supplier.contactEmail) {
                     Logger.info(`Sending email to supplier ${request.supplier.name} (${request.supplier.contactEmail})`);
@@ -327,6 +370,9 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
             metadata: { requestId: id, status },
         });
 
+        // Invalidate cache
+        await CacheService.invalidateRequestCache();
+
         res.json(updatedRequest);
     } catch (error: any) {
         Logger.error(error);
@@ -350,6 +396,9 @@ export const deleteRequest = async (req: Request, res: Response) => {
         }
 
         await prisma.purchaseRequest.delete({ where: { id } });
+
+        // Invalidate cache
+        await CacheService.invalidateRequestCache();
 
         Logger.info(`Request ${id} deleted by ${req.user!.id}`);
         res.status(204).send();

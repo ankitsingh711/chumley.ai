@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { RequestStatus, UserRole, NotificationType } from '@prisma/client';
+import { RequestStatus, UserRole, NotificationType, UserStatus } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
@@ -227,7 +227,9 @@ export const createSupplier = async (req: Request, res: Response) => {
         // If restricted user, notify admins and relevant managers
         if (isRestricted) {
             // Find all admins and relevant managers
-            const recipients = await prisma.user.findMany({
+            Logger.info(`createSupplier: Fetching recipients. User Dept: ${fullUser?.departmentId}`);
+
+            const recipientQuery = {
                 where: {
                     OR: [
                         { role: UserRole.SYSTEM_ADMIN },
@@ -236,9 +238,15 @@ export const createSupplier = async (req: Request, res: Response) => {
                             departmentId: fullUser.departmentId
                         }] : [])
                     ],
-                    status: 'ACTIVE'
+                    status: UserStatus.ACTIVE
                 }
-            });
+            };
+
+            Logger.info(`createSupplier: Recipient query: ${JSON.stringify(recipientQuery)}`);
+
+            const recipients = await prisma.user.findMany(recipientQuery);
+
+            Logger.info(`createSupplier: Found ${recipients.length} recipients: ${recipients.map(r => `${r.email} (${r.role})`).join(', ')}`);
 
             // Create notifications for recipients
             if (recipients.length > 0) {
@@ -324,6 +332,9 @@ export const approveSupplier = async (req: Request, res: Response) => {
             });
         }
 
+        // Invalidate cache
+        await CacheService.invalidateSupplierCache(id);
+
         Logger.info(`Supplier approved: ${id} by ${user.id}`);
         res.json(supplier);
     } catch (error: any) {
@@ -391,6 +402,9 @@ export const rejectSupplier = async (req: Request, res: Response) => {
                 },
             });
         }
+
+        // Invalidate cache
+        await CacheService.invalidateSupplierCache(id);
 
         Logger.info(`Supplier rejected: ${id} by ${user.id}`);
         res.json(supplier);
