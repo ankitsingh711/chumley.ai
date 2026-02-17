@@ -141,6 +141,31 @@ export default function Suppliers() {
         }
     };
 
+    const handleApprove = async (id: string) => {
+        try {
+            await suppliersApi.approve(id);
+            // Update local state
+            setSuppliers(suppliers.map(s =>
+                s.id === id ? { ...s, status: 'Standard' } : s
+            ));
+        } catch (error) {
+            console.error('Failed to approve supplier:', error);
+            alert('Failed to approve supplier. You may not have permission.');
+        }
+    };
+
+    const handleReject = async (id: string) => {
+        if (!confirm('Are you sure you want to reject this supplier?')) return;
+        try {
+            await suppliersApi.reject(id);
+            // Remove from list or update status
+            setSuppliers(suppliers.filter(s => s.id !== id)); // Assuming rejected should allow removal or moving to rejected list
+        } catch (error) {
+            console.error('Failed to reject supplier:', error);
+            alert('Failed to reject supplier. You may not have permission.');
+        }
+    };
+
     const handleExportPDF = () => {
         const headers = ['Name', 'Category', 'Status', 'Contact', 'Active Orders', 'Total Spend'];
         const rows = filteredSuppliers.map(s => [
@@ -209,7 +234,24 @@ export default function Suppliers() {
             {/* Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredSuppliers.map(supplier => (
-                    <SupplierCard key={supplier.id} supplier={supplier} />
+                    <SupplierCard
+                        key={supplier.id}
+                        supplier={supplier}
+                        onApprove={
+                            (user?.role === UserRole.SYSTEM_ADMIN ||
+                                user?.role === UserRole.SENIOR_MANAGER ||
+                                user?.role === UserRole.MANAGER)
+                                ? handleApprove
+                                : undefined
+                        }
+                        onReject={
+                            (user?.role === UserRole.SYSTEM_ADMIN ||
+                                user?.role === UserRole.SENIOR_MANAGER ||
+                                user?.role === UserRole.MANAGER)
+                                ? handleReject
+                                : undefined
+                        }
+                    />
                 ))}
 
                 {/* Add New Quick Card */}

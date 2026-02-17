@@ -260,12 +260,39 @@ export const approveSupplier = async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const user = req.user!;
 
+        if (
+            user.role !== UserRole.SYSTEM_ADMIN &&
+            user.role !== UserRole.SENIOR_MANAGER &&
+            user.role !== UserRole.MANAGER
+        ) {
+            return res.status(403).json({ error: 'Insufficient permissions to approve suppliers' });
+        }
+
+        let whereClause: any = { id };
+
+        // If not system admin, restrict to own department
         if (user.role !== UserRole.SYSTEM_ADMIN) {
-            return res.status(403).json({ error: 'Only admins can approve suppliers' });
+            const fullUser = await prisma.user.findUnique({
+                where: { id: user.id },
+                select: { departmentId: true }
+            });
+
+            if (!fullUser?.departmentId) {
+                return res.status(403).json({ error: 'User does not belong to a department' });
+            }
+
+            whereClause = {
+                id,
+                departments: {
+                    some: {
+                        id: fullUser.departmentId
+                    }
+                }
+            };
         }
 
         const supplier = await prisma.supplier.update({
-            where: { id },
+            where: whereClause,
             data: { status: 'Standard' }, // Default to Standard upon approval
         });
 
@@ -300,13 +327,40 @@ export const rejectSupplier = async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const user = req.user!;
 
+        if (
+            user.role !== UserRole.SYSTEM_ADMIN &&
+            user.role !== UserRole.SENIOR_MANAGER &&
+            user.role !== UserRole.MANAGER
+        ) {
+            return res.status(403).json({ error: 'Insufficient permissions to reject suppliers' });
+        }
+
+        let whereClause: any = { id };
+
+        // If not system admin, restrict to own department
         if (user.role !== UserRole.SYSTEM_ADMIN) {
-            return res.status(403).json({ error: 'Only admins can reject suppliers' });
+            const fullUser = await prisma.user.findUnique({
+                where: { id: user.id },
+                select: { departmentId: true }
+            });
+
+            if (!fullUser?.departmentId) {
+                return res.status(403).json({ error: 'User does not belong to a department' });
+            }
+
+            whereClause = {
+                id,
+                departments: {
+                    some: {
+                        id: fullUser.departmentId
+                    }
+                }
+            };
         }
 
         // We can either delete it or mark as rejected. Let's mark as rejected for record.
         const supplier = await prisma.supplier.update({
-            where: { id },
+            where: whereClause,
             data: { status: 'Rejected' },
         });
 

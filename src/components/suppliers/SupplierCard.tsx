@@ -23,9 +23,11 @@ export interface Supplier {
 
 interface SupplierCardProps {
     supplier: Supplier;
+    onApprove?: (id: string) => void;
+    onReject?: (id: string) => void;
 }
 
-export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCardProps) {
+export const SupplierCard = memo(function SupplierCard({ supplier, onApprove, onReject }: SupplierCardProps) {
     const navigate = useNavigate();
 
     const statusStyles = {
@@ -124,13 +126,40 @@ export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCar
                 <p className={`text-xs ${isReviewPending ? 'text-orange-600 font-medium' : 'text-gray-400'}`}>
                     {isReviewPending ? 'Contract expires soon' : `Last order: ${supplier.lastOrder}`}
                 </p>
-                <Button
-                    variant="ghost"
-                    className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
-                    onClick={handleViewProfile}
-                >
-                    View Profile
-                </Button>
+                <div className="flex gap-2">
+                    {/* Action Buttons for Pending Review */}
+                    {isReviewPending && onApprove && onReject ? (
+                        <>
+                            <Button
+                                variant="outline"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-semibold h-8 px-2 border-red-200"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onReject(supplier.id);
+                                }}
+                            >
+                                Reject
+                            </Button>
+                            <Button
+                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold h-8 px-2"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onApprove(supplier.id);
+                                }}
+                            >
+                                Approve
+                            </Button>
+                        </>
+                    ) : (
+                        <Button
+                            variant="ghost"
+                            className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
+                            onClick={handleViewProfile}
+                        >
+                            View Profile
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );
