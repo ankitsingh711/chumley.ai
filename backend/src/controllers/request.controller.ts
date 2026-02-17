@@ -138,8 +138,14 @@ export const getRequests = async (req: Request, res: Response) => {
                     supplier: {
                         select: { id: true, name: true }
                     },
-                    _count: {
-                        select: { items: true }
+                    items: {
+                        select: {
+                            id: true,
+                            description: true,
+                            quantity: true,
+                            unitPrice: true,
+                            totalPrice: true
+                        }
                     }
                 },
                 orderBy: { createdAt: 'desc' },
@@ -151,13 +157,23 @@ export const getRequests = async (req: Request, res: Response) => {
         const requestsDTO = requests.map(req => ({
             id: req.id,
             requesterId: req.requesterId,
-            requesterName: req.requester.name,
+            requester: {
+                id: req.requester.id,
+                name: req.requester.name,
+                email: req.requester.email
+            },
             status: req.status,
             totalAmount: Number(req.totalAmount),
             reason: req.reason,
             createdAt: req.createdAt,
             updatedAt: req.updatedAt,
-            itemCount: req._count.items,
+            items: req.items.map(item => ({
+                id: item.id,
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: Number(item.unitPrice),
+                totalPrice: Number(item.totalPrice)
+            })),
             supplier: req.supplier
         }));
 
