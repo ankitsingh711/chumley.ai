@@ -79,7 +79,7 @@ export function Header({ onChatToggle }: HeaderProps) {
             ]);
 
             // Extract data from paginated responses
-            const requests:PurchaseRequest[] = isPaginatedResponse(requestsResponse) ? requestsResponse.data : requestsResponse;
+            const requests: PurchaseRequest[] = isPaginatedResponse(requestsResponse) ? requestsResponse.data : requestsResponse;
             const suppliers: Supplier[] = isPaginatedResponse(suppliersResponse) ? suppliersResponse.data : suppliersResponse;
             const orders: PurchaseOrder[] = isPaginatedResponse(ordersResponse) ? ordersResponse.data : ordersResponse;
 
@@ -96,9 +96,9 @@ export function Header({ onChatToggle }: HeaderProps) {
                     results.push({
                         id: req.id,
                         type: 'request',
-                        title: `Request #${ req.id.slice(0, 8) } `,
-                        subtitle: `£${ Number(req.totalAmount).toLocaleString() } • ${ req.status } `,
-                        url: `/ requests / ${ req.id } `
+                        title: `Request #${req.id.slice(0, 8)}`,
+                        subtitle: `£${Number(req.totalAmount).toLocaleString()} • ${req.status}`,
+                        url: `/requests/${req.id}`
                     });
                 });
 
@@ -116,7 +116,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                         type: 'supplier',
                         title: sup.name,
                         subtitle: sup.category || 'Supplier',
-                        url: `/ suppliers / ${ sup.id } `
+                        url: `/suppliers/${sup.id}`
                     });
                 });
 
@@ -130,9 +130,9 @@ export function Header({ onChatToggle }: HeaderProps) {
                     results.push({
                         id: order.id,
                         type: 'order',
-                        title: `Order #${ order.id.slice(0, 8) } `,
-                        subtitle: `£${ Number(order.totalAmount).toLocaleString() } • ${ order.status } `,
-                        url: `/ orders`
+                        title: `Order #${order.id.slice(0, 8)}`,
+                        subtitle: `£${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
+                        url: `/orders`
                     });
                 });
 
@@ -202,7 +202,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                             <div className="py-2">
                                 {searchResults.map((result) => (
                                     <button
-                                        key={`${ result.type } -${ result.id } `}
+                                        key={`${result.type}-${result.id}`}
                                         onClick={() => handleResultClick(result)}
                                         className="w-full px-4 py-3 hover:bg-gray-50 flex items-start gap-3 text-left transition-colors"
                                     >
