@@ -8,6 +8,7 @@ import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';
 import type { PurchaseOrder } from '../types/api';
 import { OrderStatus, UserRole } from '../types/api';
+import { isPaginatedResponse } from '../types/pagination';
 import { useAuth } from '../hooks/useAuth';
 
 export default function PurchaseOrders() {
@@ -52,8 +53,10 @@ export default function PurchaseOrders() {
     }, []);
 
     const loadOrders = async () => {
+        setLoading(true);
         try {
-            const data = await ordersApi.getAll();
+            const response = await ordersApi.getAll();
+            const data = isPaginatedResponse(response) ? response.data : response;
             setOrders(data);
         } catch (error) {
             console.error('Failed to load orders:', error);

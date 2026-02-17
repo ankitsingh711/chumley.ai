@@ -7,15 +7,16 @@ import { Button } from '../components/ui/Button';
 import { ContractsSkeleton } from '../components/skeletons/ContractsSkeleton';
 import { contractsApi } from '../services/contracts.service';
 import { suppliersApi } from '../services/suppliers.service';
-import type { Contract, ContractStatus as ContractStatusType, Supplier } from '../types/api';
+import type { Contract, Supplier } from '../types/api';
 import { ContractStatus } from '../types/api';
+import { isPaginatedResponse } from '../types/pagination';
 
 export default function Contracts() {
     // const navigate = useNavigate(); // Future use for details page
     const [contracts, setContracts] = useState<Contract[]>([]);
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | ContractStatusType>('all');
+    const [filter, setFilter] = useState<'all' | ContractStatus>('all');
     const [showAddModal, setShowAddModal] = useState(false);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
@@ -33,15 +34,23 @@ export default function Contracts() {
         loadData();
     }, []);
 
+    const fetchSuppliers = async () => {
+        try {
+            const response = await suppliersApi.getAll();
+            const data = isPaginatedResponse(response) ? response.data : response;
+            setSuppliers(data);
+        } catch (error) {
+            console.error('Failed to fetch suppliers:', error);
+        }
+    };
+
     const loadData = async () => {
         try {
             setLoading(true);
-            const [contractsData, suppliersData] = await Promise.all([
-                contractsApi.getAll(),
-                suppliersApi.getAll(),
-            ]);
-            setContracts(contractsData);
-            setSuppliers(suppliersData);
+            const contractsResponse = await contractsApi.getAll();
+            const contractsData = isPaginatedResponse<Contract>(contractsResponse) ? contractsResponse.data : contractsResponse;
+            setContracts(contractsData as Contract[]);
+            await fetchSuppliers();
         } catch (error) {
             console.error('Failed to load data:', error);
         } finally {
@@ -81,7 +90,7 @@ export default function Contracts() {
         }
     };
 
-    const getStatusBadgeColor = (status: ContractStatusType) => {
+    const getStatusBadgeColor = (status: ContractStatus) => {
         switch (status) {
             case ContractStatus.ACTIVE:
                 return 'bg-green-100 text-green-700';

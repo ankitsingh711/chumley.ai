@@ -10,6 +10,7 @@ import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
+import { isPaginatedResponse } from '../types/pagination';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -21,14 +22,16 @@ export default function Dashboard() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [kpiData, requestsData, departmentsData] = await Promise.all([
+                const [kpiData, departmentsData] = await Promise.all([
                     reportsApi.getKPIs(),
-                    requestsApi.getAll(),
                     departmentsApi.getAll(),
                 ]);
                 setMetrics(kpiData);
-                setRecentRequests(requestsData.slice(0, 5)); // Show only 5 most recent
                 setDepartments(departmentsData);
+
+                const response = await requestsApi.getAll();
+                const allRequests = isPaginatedResponse(response) ? response.data : response;
+                setRecentRequests(allRequests.slice(0, 5)); // Show only 5 most recent
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
             } finally {

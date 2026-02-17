@@ -7,7 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
-import { type CreateRequestInput, type Supplier, Branch } from '../types/api';
+import type {  Supplier } from '../types/api';
+import { isPaginatedResponse } from '../types/pagination';
+import { type CreateRequestInput, Branch } from '../types/api';
 
 import { type Category } from '../types/category';
 import { categoryService } from '../services/category.service';
@@ -44,16 +46,17 @@ export default function CreateRequest() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        loadSuppliers();
+        fetchSuppliers();
         loadDepartments();
     }, []);
 
-    const loadSuppliers = async () => {
+    const fetchSuppliers = async () => {
         try {
-            const data = await suppliersApi.getAll();
+            const response = await suppliersApi.getAll();
+            const data = isPaginatedResponse(response) ? response.data : response;
             setSuppliers(data);
-        } catch (err) {
-            console.error('Failed to load suppliers', err);
+        } catch (error) {
+            console.error('Failed to fetch suppliers:', error);
         }
     };
 

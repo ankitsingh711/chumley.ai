@@ -10,6 +10,7 @@ import { requestsApi } from '../services/requests.service';
 import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
 import type { KPIMetrics, MonthlySpendData, PurchaseRequest } from '../types/api';
 import { RequestStatus } from '../types/api';
+import { isPaginatedResponse } from '../types/pagination';
 
 export default function Reports() {
     const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
@@ -29,13 +30,14 @@ export default function Reports() {
     const loadData = async (startDate?: string, endDate?: string) => {
         try {
             setLoading(true);
-            const [kpiData, monthlyData, requestsData] = await Promise.all([
+            const [kpiData, monthlyData, requestsResponse] = await Promise.all([
                 reportsApi.getKPIs(startDate, endDate),
                 reportsApi.getMonthlySpend(startDate, endDate),
                 requestsApi.getAll(),
             ]);
             setMetrics(kpiData);
             setSpendData(monthlyData);
+            const requestsData: PurchaseRequest[] = isPaginatedResponse(requestsResponse) ? requestsResponse.data : requestsResponse;
             setAllRequests(requestsData);
         } catch (error) {
             console.error('Failed to load reports data:', error);
@@ -46,11 +48,12 @@ export default function Reports() {
 
     const handleExportData = async () => {
         try {
-            const allRequests = await requestsApi.getAll();
+            const response = await requestsApi.getAll();
+            const allRequests: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
 
             // Create CSV content
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
-            const rows = allRequests.map(req => [
+            const rows = allRequests.map((req: PurchaseRequest) => [
                 req.id.slice(0, 8),
                 new Date(req.createdAt).toLocaleDateString(),
                 req.requester?.name || 'Unknown',
@@ -61,7 +64,7 @@ export default function Reports() {
 
             const csvContent = [
                 headers.join(','),
-                ...rows.map(row => row.join(','))
+                ...rows.map((row: any[]) => row.join(','))
             ].join('\n');
 
             // Download CSV
@@ -82,9 +85,10 @@ export default function Reports() {
 
     const handleExportPDF = async () => {
         try {
-            const allRequests = await requestsApi.getAll();
+            const response = await requestsApi.getAll();
+            const allRequests: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
-            const rows = allRequests.map(req => [
+            const rows = allRequests.map((req: PurchaseRequest) => [
                 req.id.slice(0, 8),
                 new Date(req.createdAt).toLocaleDateString(),
                 req.requester?.name || 'Unknown',

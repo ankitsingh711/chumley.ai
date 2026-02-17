@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../../services/requests.service';
 import { suppliersApi } from '../../services/suppliers.service';
 import { ordersApi } from '../../services/orders.service';
+import { isPaginatedResponse } from '../../types/pagination';
+import type { Supplier, PurchaseRequest, PurchaseOrder } from '../../types/api';
 import NotificationBell from '../NotificationBell';
 
 interface SearchResult {
@@ -70,62 +72,67 @@ export function Header({ onChatToggle }: HeaderProps) {
     const performSearch = async (query: string) => {
         setIsSearching(true);
         try {
-            const [requests, suppliers, orders] = await Promise.all([
+            const [requestsResponse, suppliersResponse, ordersResponse] = await Promise.all([
                 requestsApi.getAll().catch(() => []),
                 suppliersApi.getAll().catch(() => []),
                 ordersApi.getAll().catch(() => []),
             ]);
+
+            // Extract data from paginated responses
+            const requests:PurchaseRequest[] = isPaginatedResponse(requestsResponse) ? requestsResponse.data : requestsResponse;
+            const suppliers: Supplier[] = isPaginatedResponse(suppliersResponse) ? suppliersResponse.data : suppliersResponse;
+            const orders: PurchaseOrder[] = isPaginatedResponse(ordersResponse) ? ordersResponse.data : ordersResponse;
 
             const results: SearchResult[] = [];
             const lowerQuery = query.toLowerCase();
 
             // Search requests
             requests
-                .filter(req =>
+                .filter((req: PurchaseRequest) =>
                     req.id.toLowerCase().includes(lowerQuery)
                 )
                 .slice(0, 5)
-                .forEach(req => {
+                .forEach((req: PurchaseRequest) => {
                     results.push({
                         id: req.id,
                         type: 'request',
-                        title: `Request #${req.id.slice(0, 8)}`,
-                        subtitle: `£${Number(req.totalAmount).toLocaleString()} • ${req.status}`,
-                        url: `/requests/${req.id}`
+                        title: `Request #${ req.id.slice(0, 8) } `,
+                        subtitle: `£${ Number(req.totalAmount).toLocaleString() } • ${ req.status } `,
+                        url: `/ requests / ${ req.id } `
                     });
                 });
 
             // Search suppliers
             suppliers
-                .filter(sup =>
+                .filter((sup: Supplier) =>
                     sup.name.toLowerCase().includes(lowerQuery) ||
                     sup.contactEmail?.toLowerCase().includes(lowerQuery) ||
                     sup.category?.toLowerCase().includes(lowerQuery)
                 )
                 .slice(0, 5)
-                .forEach(sup => {
+                .forEach((sup: Supplier) => {
                     results.push({
                         id: sup.id,
                         type: 'supplier',
                         title: sup.name,
                         subtitle: sup.category || 'Supplier',
-                        url: `/suppliers/${sup.id}`
+                        url: `/ suppliers / ${ sup.id } `
                     });
                 });
 
             // Search orders
             orders
-                .filter(order =>
+                .filter((order: PurchaseOrder) =>
                     order.id.toLowerCase().includes(lowerQuery)
                 )
                 .slice(0, 5)
-                .forEach(order => {
+                .forEach((order: PurchaseOrder) => {
                     results.push({
                         id: order.id,
                         type: 'order',
-                        title: `Order #${order.id.slice(0, 8)}`,
-                        subtitle: `£${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
-                        url: `/orders`
+                        title: `Order #${ order.id.slice(0, 8) } `,
+                        subtitle: `£${ Number(order.totalAmount).toLocaleString() } • ${ order.status } `,
+                        url: `/ orders`
                     });
                 });
 
@@ -195,7 +202,7 @@ export function Header({ onChatToggle }: HeaderProps) {
                             <div className="py-2">
                                 {searchResults.map((result) => (
                                     <button
-                                        key={`${result.type}-${result.id}`}
+                                        key={`${ result.type } -${ result.id } `}
                                         onClick={() => handleResultClick(result)}
                                         className="w-full px-4 py-3 hover:bg-gray-50 flex items-start gap-3 text-left transition-colors"
                                     >
