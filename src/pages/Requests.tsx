@@ -13,6 +13,7 @@ import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../typ
 import { RequestStatus, UserRole } from '../types/api';
 import { Pagination } from '../components/Pagination';
 import { isPaginatedResponse } from '../types/pagination';
+import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 export default function Requests() {
     const navigate = useNavigate();
@@ -217,7 +218,7 @@ export default function Requests() {
                 `"${req.requester?.name || 'Unknown'}"`,
                 `"${req.requester?.email || ''}"`,
                 req.items?.length || 0,
-                new Date(req.createdAt).toLocaleDateString(),
+                formatDateTime(req.createdAt),
                 Number(req.totalAmount).toFixed(2),
                 req.status
             ];
@@ -244,7 +245,7 @@ export default function Requests() {
             req.id.slice(0, 8),
             req.requester?.name || 'Unknown',
             (req.items?.length || 0).toString(),
-            new Date(req.createdAt).toLocaleDateString(),
+            formatDateTime(req.createdAt),
             `£${Number(req.totalAmount).toLocaleString()}`,
             req.status.replace(/_/g, ' ')
         ]);
@@ -524,7 +525,17 @@ export default function Requests() {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-500">{req.items?.length || 0} items</td>
-                                        <td className="px-6 py-4 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                        <td className="px-6 py-4 text-gray-500">
+                                            {(() => {
+                                                const { date, time } = getDateAndTime(req.createdAt);
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-gray-900">{date}</span>
+                                                        <span className="text-xs text-gray-500">{time}</span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </td>
                                         <td className="px-6 py-4 font-bold text-gray-900">£{Number(req.totalAmount).toLocaleString()}</td>
                                         <td className="px-6 py-4">
 

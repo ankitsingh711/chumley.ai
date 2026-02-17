@@ -11,6 +11,7 @@ import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
 import type { KPIMetrics, MonthlySpendData, PurchaseRequest } from '../types/api';
 import { RequestStatus } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
+import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 export default function Reports() {
     const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
@@ -55,7 +56,7 @@ export default function Reports() {
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
             const rows = allRequests.map((req: PurchaseRequest) => [
                 req.id.slice(0, 8),
-                new Date(req.createdAt).toLocaleDateString(),
+                formatDateTime(req.createdAt),
                 req.requester?.name || 'Unknown',
                 req.requester?.department || 'N/A',
                 req.totalAmount,
@@ -90,7 +91,7 @@ export default function Reports() {
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
             const rows = allRequests.map((req: PurchaseRequest) => [
                 req.id.slice(0, 8),
-                new Date(req.createdAt).toLocaleDateString(),
+                formatDateTime(req.createdAt),
                 req.requester?.name || 'Unknown',
                 req.requester?.department || 'N/A',
                 `£${Number(req.totalAmount).toLocaleString()}`,
@@ -356,7 +357,17 @@ export default function Reports() {
                             .map(req => (
                                 <tr key={req.id}>
                                     <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
-                                    <td className="px-6 py-3 text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</td>
+                                    <td className="px-6 py-3 text-gray-500">
+                                        {(() => {
+                                            const { date, time } = getDateAndTime(req.createdAt);
+                                            return (
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-gray-900">{date}</span>
+                                                    <span className="text-xs text-gray-500">{time}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </td>
                                     <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
                                     <td className="px-6 py-3 font-medium">£{Number(req.totalAmount).toLocaleString()}</td>
                                     <td className="px-6 py-3">

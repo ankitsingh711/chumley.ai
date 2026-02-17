@@ -10,6 +10,7 @@ import type { PurchaseOrder } from '../types/api';
 import { OrderStatus, UserRole } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { useAuth } from '../hooks/useAuth';
+import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 export default function PurchaseOrders() {
     const { user } = useAuth();
@@ -79,7 +80,7 @@ export default function PurchaseOrders() {
         const row = [
             order.id,
             `"${order.supplier?.name || 'Unknown'}"`,
-            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            order.issuedAt ? formatDateTime(order.issuedAt) : 'Not issued',
             Number(order.totalAmount).toFixed(2),
             order.status
         ];
@@ -167,7 +168,7 @@ export default function PurchaseOrders() {
         const rows = orders.map(order => [
             order.id,
             `"${order.supplier?.name || 'Unknown'}"`,
-            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            order.issuedAt ? formatDateTime(order.issuedAt) : 'Not issued',
             Number(order.totalAmount).toFixed(2),
             order.status
         ]);
@@ -192,7 +193,7 @@ export default function PurchaseOrders() {
         const rows = filteredOrders.map(order => [
             order.id.slice(0, 8),
             order.supplier?.name || 'Unknown',
-            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            order.issuedAt ? formatDateTime(order.issuedAt) : 'Not issued',
             `£${Number(order.totalAmount).toLocaleString()}`,
             order.status
         ]);
@@ -226,7 +227,7 @@ export default function PurchaseOrders() {
         const summaryRow = [
             order.id.slice(0, 8),
             order.supplier?.name || 'Unknown',
-            order.issuedAt ? new Date(order.issuedAt).toLocaleDateString() : 'Not issued',
+            order.issuedAt ? formatDateTime(order.issuedAt) : 'Not issued',
             `£${Number(order.totalAmount).toLocaleString()}`,
             order.status
         ];
@@ -310,7 +311,15 @@ export default function PurchaseOrders() {
                                         {po.supplier?.name || 'Unknown'}
                                     </td>
                                     <td className="px-6 py-4 text-gray-500">
-                                        {po.issuedAt ? new Date(po.issuedAt).toLocaleDateString() : 'Not issued'}
+                                        {po.issuedAt ? (() => {
+                                            const { date, time } = getDateAndTime(po.issuedAt);
+                                            return (
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-gray-900">{date}</span>
+                                                    <span className="text-xs text-gray-500">{time}</span>
+                                                </div>
+                                            );
+                                        })() : 'Not issued'}
                                     </td>
                                     <td className="px-6 py-4 font-bold text-gray-900">
                                         £{Number(po.totalAmount).toLocaleString()}
@@ -438,11 +447,11 @@ export default function PurchaseOrders() {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-medium mb-1">Date Issued</p>
-                                    <p className="text-sm text-gray-900">{selectedOrder.issuedAt ? new Date(selectedOrder.issuedAt).toLocaleDateString() : 'Not issued'}</p>
+                                    <p className="text-sm text-gray-900">{selectedOrder.issuedAt ? formatDateTime(selectedOrder.issuedAt) : 'Not issued'}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 uppercase font-medium mb-1">Last Updated</p>
-                                    <p className="text-sm text-gray-900">{new Date(selectedOrder.updatedAt).toLocaleDateString()}</p>
+                                    <p className="text-sm text-gray-900">{formatDateTime(selectedOrder.updatedAt)}</p>
                                 </div>
                             </div>
 

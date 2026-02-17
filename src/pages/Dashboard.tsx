@@ -11,6 +11,7 @@ import { requestsApi } from '../services/requests.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
+import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -143,7 +144,15 @@ export default function Dashboard() {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(request.createdAt).toLocaleDateString()}
+                                            {(() => {
+                                                const { date, time } = getDateAndTime(request.createdAt);
+                                                return (
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium text-gray-900">{date}</span>
+                                                        <span className="text-xs text-gray-500">{time}</span>
+                                                    </div>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 ))
