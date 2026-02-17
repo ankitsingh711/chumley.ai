@@ -145,7 +145,7 @@ export default function NotificationBell() {
                                             </p>
                                             <div className="flex items-center gap-2 mt-2">
                                                 <span className="text-xs text-gray-400">
-                                                    {formatTime(notification.createdAt)}
+                                                    {formatTime(new Date(notification.createdAt))}
                                                 </span>
                                                 {!notification.read && (
                                                     <span className="h-2 w-2 bg-primary-500 rounded-full"></span>

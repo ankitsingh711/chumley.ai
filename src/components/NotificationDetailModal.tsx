@@ -133,7 +133,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                                 {notification.title}
                             </h2>
                             <p className="text-sm text-white/80">
-                                {formatDate(notification.createdAt)}
+                                {formatDate(new Date(notification.createdAt))}
                             </p>
                         </div>
                     </div>
