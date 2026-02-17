@@ -135,6 +135,7 @@ export const getRequests = async (req: Request, res: Response) => {
                     requester: {
                         select: { id: true, name: true, email: true }
                     },
+                    supplierId: true, // Add this
                     supplier: {
                         select: { id: true, name: true }
                     },
@@ -162,6 +163,7 @@ export const getRequests = async (req: Request, res: Response) => {
                 name: req.requester.name,
                 email: req.requester.email
             },
+            supplierId: req.supplierId, // Add this
             status: req.status,
             totalAmount: Number(req.totalAmount),
             reason: req.reason,

@@ -150,7 +150,9 @@ export default function Requests() {
     };
 
     const handleCreateOrder = async (request: PurchaseRequest) => {
-        if (!request.supplierId) {
+        const supplierId = request.supplierId || request.supplier?.id;
+
+        if (!supplierId) {
             setConfirmModal({
                 isOpen: true,
                 title: 'Missing Supplier',
@@ -175,7 +177,7 @@ export default function Requests() {
                 try {
                     await ordersApi.create({
                         requestId: request.id,
-                        supplierId: request.supplierId!,
+                        supplierId: supplierId,
                         totalAmount: request.totalAmount
                     });
                     setConfirmModal(prev => ({ ...prev, isOpen: false }));
