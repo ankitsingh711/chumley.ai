@@ -23,8 +23,12 @@ export const rateLimiterMiddleware = (type: 'general' | 'auth' = 'general') => {
     const limiter = type === 'auth' ? authLimiter : generalLimiter;
 
     return (req: Request, res: Response, next: NextFunction) => {
+        // Bypass for local development
+        if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+            return next();
+        }
         // Use IP as key. Handle proxy if needed (req.ip or x-forwarded-for)
-        const key = req.ip || '127.0.0.1';
+        const key = req.ip!;
 
         limiter.consume(key)
             .then(() => {
