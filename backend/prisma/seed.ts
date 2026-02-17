@@ -38,52 +38,46 @@ async function main() {
     await prisma.department.updateMany({ data: { parentId: null } });
     await prisma.department.deleteMany();
 
-    // 2. Create Departments
-    console.log('Building Department Hierarchy...');
+    // 2. Seed Hierarchy (Departments & Categories)
+    console.log('Building Hierarchy from JSON...');
+    const hierarchyData = require('./data/hierarchy.json');
+    // Import hierarchy service - using dynamic import or relative path
+    // Since we are in prisma/seed.ts, and hierarchyService is in src/services
+    // We need to ensure we can import it.
+    // However, seed.ts imports PrismaClient directly. hierarchyService uses prisma instance.
+    // Let's copy the seeding logic or import the service.
+    // Importing service is better but might have issues with path aliases if any.
+    // Let's try importing. service uses '../config/db', which is relative to service file.
 
-    // Parent Departments
-    const hr = await prisma.department.create({ data: { name: 'HR & Equipment', budget: 50000 } });
-    const fleet = await prisma.department.create({ data: { name: 'Fleet', budget: 100000 } });
-    const marketing = await prisma.department.create({ data: { name: 'Marketing', budget: 75000 } });
-    const sales = await prisma.department.create({ data: { name: 'Sales', budget: 50000 } });
-    const finance = await prisma.department.create({ data: { name: 'Finance', budget: 150000 } });
-    const trade = await prisma.department.create({ data: { name: 'Trade Group', budget: 200000 } });
-    const assets = await prisma.department.create({ data: { name: 'Assets', budget: 300000 } });
-    const tech = await prisma.department.create({ data: { name: 'Tech', budget: 250000 } });
+    // Actually, simpler to just include the logic here or import the service.
+    // Let's try to import hierarchyService.
+    const { hierarchyService } = require('../src/services/hierarchy.service');
 
-    // Sub-Departments
-    const it = await prisma.department.create({
-        data: {
-            name: 'IT',
-            budget: 120000,
-            parentId: tech.id // IT under Tech
-        }
-    });
+    const stats = await hierarchyService.seedHierarchyData(hierarchyData);
+    console.log('✅ Hierarchy Seeded:', stats);
 
-    console.log('✅ Created Departments');
+    // 4. Create Users (Fetch depts first)
+    const hr = await prisma.department.findFirst({ where: { name: 'HR & Recruitment' } }); // Updated name from JSON
+    const fleet = await prisma.department.findFirst({ where: { name: 'Fleet' } });
+    const marketing = await prisma.department.findFirst({ where: { name: 'Marketing' } });
+    const tech = await prisma.department.findFirst({ where: { name: 'Tech' } }); // Top level? JSON has Tech under Chessington/Royston.
+    // Wait, the JSON structure has Branches at top level: Chessington, Royston.
+    // department names are keys under "Staff Cost" or seemingly the keys under Branch.
+    // Looking at JSON: Chessington -> Tech -> ...
+    // The keys under Branch seem to be "Tech", "Sector Group", "Trade Group", "Support", "Fleet", "Assets", etc.
+    // These look like Categories or Departments?
+    // In seedHierarchyData:
+    // for (const [departmentName, departmentData] of Object.entries(branchData))
+    // It treats the keys under branch as Departments.
+    // So "Tech", "Sector Group", "Trade Group" are Departments.
 
-    // 3. Create Spending Categories (Dynamic)
-    const createCategory = async (name: string, deptId: string) => {
-        await prisma.spendingCategory.create({
-            data: { name, departmentId: deptId, branch: 'CHESSINGTON' } // Branch enum still needed?
-        });
-    };
+    // Let's fetch them
+    const itDept = await prisma.department.findFirst({ where: { name: 'Tech' } }); // "Tech" is a department in JSON
 
-    // Assets Categories
-    await createCategory('Aspect Run', assets.id);
-    await createCategory('Custom', assets.id);
-    await createCategory('Heavy Machinery', assets.id);
+    if (!hr || !fleet || !marketing || !itDept) {
+        console.warn('⚠️ Some departments not found for user assignment. Using available ones or skipping.');
+    }
 
-    // IT Categories
-    await createCategory('Hardware', it.id);
-    await createCategory('Software Licenses', it.id);
-    await createCategory('Cloud Services', it.id);
-
-    // Marketing Categories
-    await createCategory('Digital Ads', marketing.id);
-    await createCategory('Print Materials', marketing.id);
-
-    // 4. Create Users
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     // System Admin
@@ -97,39 +91,41 @@ async function main() {
     });
 
     // Senior Manager (e.g. Head of Tech)
-    const seniorManager = await prisma.user.create({
-        data: {
-            email: 'senior@chumley.ai',
-            password: hashedPassword,
-            name: 'Sarah Director',
-            role: UserRole.SENIOR_MANAGER,
-            departmentId: tech.id, // Head of Tech
-        }
-    });
+    if (itDept) {
+        const seniorManager = await prisma.user.create({
+            data: {
+                email: 'senior@chumley.ai',
+                password: hashedPassword,
+                name: 'Sarah Director',
+                role: UserRole.SENIOR_MANAGER,
+                departmentId: itDept.id, // Head of Tech
+            }
+        });
 
-    // Manager (e.g. IT Manager) - Reports to Senior Manager
-    const manager = await prisma.user.create({
-        data: {
-            email: 'manager@chumley.ai',
-            password: hashedPassword,
-            name: 'Mike Operations',
-            role: UserRole.MANAGER,
-            departmentId: it.id,
-            managerId: seniorManager.id
-        }
-    });
+        // Manager (e.g. IT Manager) - Reports to Senior Manager
+        const manager = await prisma.user.create({
+            data: {
+                email: 'manager@chumley.ai',
+                password: hashedPassword,
+                name: 'Mike Operations',
+                role: UserRole.MANAGER,
+                departmentId: itDept.id,
+                managerId: seniorManager.id
+            }
+        });
 
-    // Department User (e.g. IT Support) - Reports to Manager
-    const user = await prisma.user.create({
-        data: {
-            email: 'user@chumley.ai',
-            password: hashedPassword,
-            name: 'John Doe',
-            role: UserRole.MEMBER,
-            departmentId: it.id,
-            managerId: manager.id
-        }
-    });
+        // Department User (e.g. IT Support) - Reports to Manager
+        const user = await prisma.user.create({
+            data: {
+                email: 'user@chumley.ai',
+                password: hashedPassword,
+                name: 'John Doe',
+                role: UserRole.MEMBER,
+                departmentId: itDept.id,
+                managerId: manager.id
+            }
+        });
+    }
 
     console.log('✅ Created Users');
 
@@ -152,9 +148,7 @@ async function main() {
                 rating: 4.8,
             },
             // Link to IT and Tech departments
-            departments: {
-                connect: [{ id: it.id }, { id: tech.id }]
-            }
+            departments: itDept ? { connect: [{ id: itDept.id }] } : undefined
         },
         {
             name: 'Office Depot Inc.',
@@ -167,9 +161,7 @@ async function main() {
                 rating: 4.2,
             },
             // Link to Admin/HR
-            departments: {
-                connect: [{ id: hr.id }]
-            }
+            departments: hr ? { connect: [{ id: hr.id }] } : undefined
         }
     ];
 

@@ -16,17 +16,17 @@ export default {
           900: '#000000',
         },
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#27549D', // Aspect logo blue (exact match)
-          600: '#1e4078', // Darker blue
-          700: '#1a3563', // Deep blue
-          800: '#152a4e',
-          900: '#0f1f39',
-          950: '#0a1424',
+          50: '#f0f4fa',
+          100: '#dde7f4',
+          200: '#bfd2eb',
+          300: '#94b6e0',
+          400: '#5A9CF6', // user Light
+          500: '#27549D', // user Dark
+          600: '#1f4384',
+          700: '#1a3563',
+          800: '#172d53',
+          900: '#17325E', // user Darkest
+          950: '#0e1b36',
         },
         accent: {
           50: '#fefff0',
@@ -44,6 +44,12 @@ export default {
       },
       fontFamily: {
         sans: ['Mont', 'sans-serif'],
+      },
+      fontWeight: {
+        medium: '350',
+        semibold: '450',
+        bold: '550',
+        extrabold: '650',
       },
     },
   },
