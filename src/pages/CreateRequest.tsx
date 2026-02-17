@@ -8,7 +8,8 @@ import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { Supplier } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
-import { type CreateRequestInput, Branch } from '../types/api';
+import { type CreateRequestInput, Branch, UserRole } from '../types/api';
+import { useAuth } from '../hooks/useAuth';
 
 import { type Category } from '../types/category';
 import { categoryService } from '../services/category.service';
@@ -22,6 +23,9 @@ interface ItemRow {
 
 export default function CreateRequest() {
     const navigate = useNavigate();
+
+    const { user } = useAuth();
+    const isMember = user?.role === UserRole.MEMBER;
 
     // Form State
     const [branch, setBranch] = useState<Branch>(Branch.CHESSINGTON);
@@ -121,7 +125,7 @@ export default function CreateRequest() {
 
         const finalCategoryId = subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId;
 
-        if (!finalCategoryId) {
+        if (!finalCategoryId && !isMember) {
             setError(subCategories.length > 0 ? 'Please select a spending subcategory' : 'Please select a spending category');
             return;
         }
@@ -132,7 +136,7 @@ export default function CreateRequest() {
                 reason: reason || undefined,
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
-                categoryId: subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId,
+                categoryId: (subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId) || undefined,
                 items: validItems,
                 branch: branch,
             };
@@ -249,37 +253,41 @@ export default function CreateRequest() {
                             </div>
 
                             <div className="space-y-4">
-                                <Select
-                                    label="Spending Category"
-                                    value={selectedCategoryId}
-                                    onChange={(val) => {
-                                        setSelectedCategoryId(val);
-                                        setSelectedSubCategoryId('');
-                                    }}
-                                    options={[
-                                        { value: '', label: 'Select category...' },
-                                        ...parentCategories.map(c => ({ value: c.id, label: c.name }))
-                                    ]}
-                                    disabled={!selectedDepartmentId}
-                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
-                                    className="w-full"
-                                />
-
-
-                                {subCategories.length > 0 && (
-                                    <div>
+                                {!isMember && (
+                                    <>
                                         <Select
-                                            label="Spending Subcategory"
-                                            value={selectedSubCategoryId}
-                                            onChange={setSelectedSubCategoryId}
+                                            label="Spending Category"
+                                            value={selectedCategoryId}
+                                            onChange={(val) => {
+                                                setSelectedCategoryId(val);
+                                                setSelectedSubCategoryId('');
+                                            }}
                                             options={[
-                                                { value: '', label: 'Select subcategory...' },
-                                                ...subCategories.map(c => ({ value: c.id, label: c.name }))
+                                                { value: '', label: 'Select category...' },
+                                                ...parentCategories.map(c => ({ value: c.id, label: c.name }))
                                             ]}
-                                            placeholder="Select a subcategory..."
+                                            disabled={!selectedDepartmentId}
+                                            placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
                                             className="w-full"
                                         />
-                                    </div>
+
+
+                                        {subCategories.length > 0 && (
+                                            <div>
+                                                <Select
+                                                    label="Spending Subcategory"
+                                                    value={selectedSubCategoryId}
+                                                    onChange={setSelectedSubCategoryId}
+                                                    options={[
+                                                        { value: '', label: 'Select subcategory...' },
+                                                        ...subCategories.map(c => ({ value: c.id, label: c.name }))
+                                                    ]}
+                                                    placeholder="Select a subcategory..."
+                                                    className="w-full"
+                                                />
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
 
@@ -288,12 +296,14 @@ export default function CreateRequest() {
                                     <label className="block text-xs font-bold text-gray-700">
                                         Supplier / Vendor <span className="text-red-500">*</span>
                                     </label>
-                                    <button
-                                        onClick={() => setShowAddSupplierModal(true)}
-                                        className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
-                                    >
-                                        <Plus className="h-3 w-3" /> New Vendor
-                                    </button>
+                                    {!isMember && (
+                                        <button
+                                            onClick={() => setShowAddSupplierModal(true)}
+                                            className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
+                                        >
+                                            <Plus className="h-3 w-3" /> New Vendor
+                                        </button>
+                                    )}
                                 </div>
                                 <Select
                                     value={selectedSupplierId}

@@ -34,6 +34,12 @@ export const createRequest = async (req: Request, res: Response) => {
     try {
         const validatedData = createRequestSchema.parse(req.body);
         const requesterId = req.user!.id; // Authenticated user
+        const userRole = req.user!.role;
+
+        // Enforce Spending Category for non-MEMBER roles (Manager, Senior Manager, Admin)
+        if (userRole !== UserRole.MEMBER && !validatedData.categoryId) {
+            return res.status(400).json({ error: 'Spending Category is required for your role' });
+        }
 
         // Calculate total amount
         const totalAmount = validatedData.items.reduce(
