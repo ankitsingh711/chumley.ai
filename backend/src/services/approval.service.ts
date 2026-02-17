@@ -213,14 +213,17 @@ export class ApprovalService {
 
             Logger.info(`Request ${requestId} routed to ${nextApprover.name} (${nextApprover.email})`);
 
-            // Send email to approver
-            await emailService.sendApprovalRequestEmail({
+            // Send email to approver (non-blocking, fire-and-forget)
+            emailService.sendApprovalRequestEmail({
                 approverEmail: nextApprover.email,
                 approverName: nextApprover.name,
                 requesterName: request.requester.name,
                 requestId: request.id,
                 totalAmount: Number(request.totalAmount),
                 manageUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}`
+            }).catch((err) => {
+                Logger.error(`Failed to send approval email for request ${requestId}:`, err);
+                // Email failure should not block request creation
             });
 
         } else {

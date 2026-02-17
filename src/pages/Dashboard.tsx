@@ -11,7 +11,7 @@ import { requestsApi } from '../services/requests.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
-import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
+import { getDateAndTime } from '../utils/dateFormat';
 
 export default function Dashboard() {
     const navigate = useNavigate();

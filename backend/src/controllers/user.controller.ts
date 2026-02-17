@@ -300,21 +300,22 @@ export const inviteUser = async (req: Request, res: Response) => {
         // Construct invitation link
         const inviteLink = `${process.env.FRONTEND_URL}/onboarding?token=${invitationToken}`;
 
-        // Send invitation email
-        const emailSent = await sendInvitationEmail({
+        // Send invitation email (non-blocking, fire-and-forget)
+        sendInvitationEmail({
             to: user.email,
             name: user.name,
             inviteLink,
             role: user.role,
             companyName: process.env.COMPANY_NAME || 'Aspect',
             invitedBy: 'Your administrator',
+        }).catch((err) => {
+            Logger.error(`Failed to send invitation email to ${user.email}:`, err);
         });
 
         res.status(201).json({
             message: 'User invited successfully',
             user,
             inviteLink,
-            emailSent,
         });
     } catch (error: any) {
         Logger.error(error);
