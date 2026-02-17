@@ -32,7 +32,9 @@ export const getSuppliers = async (req: Request, res: Response) => {
             return res.json(cached);
         }
 
-        let whereClause = {};
+        let whereClause: any = {
+            status: { not: 'Rejected' }
+        };
 
         if (user && user.role !== UserRole.SYSTEM_ADMIN) {
             Logger.info(`getSuppliers: Filtering for user ${user.id} (${user.role})`);
@@ -45,6 +47,7 @@ export const getSuppliers = async (req: Request, res: Response) => {
 
             if (fullUser?.departmentId) {
                 whereClause = {
+                    ...whereClause,
                     departments: {
                         some: {
                             id: fullUser.departmentId
@@ -55,6 +58,7 @@ export const getSuppliers = async (req: Request, res: Response) => {
                 if (user.role !== UserRole.SYSTEM_ADMIN) {
                     // Force empty if no dept & not admin
                     whereClause = {
+                        ...whereClause,
                         departments: {
                             some: {
                                 id: "non-existent-id"
@@ -220,18 +224,27 @@ export const createSupplier = async (req: Request, res: Response) => {
             },
         });
 
-        // If restricted user, notify admins
+        // If restricted user, notify admins and relevant managers
         if (isRestricted) {
-            // Find all admins
-            const admins = await prisma.user.findMany({
-                where: { role: UserRole.SYSTEM_ADMIN },
+            // Find all admins and relevant managers
+            const recipients = await prisma.user.findMany({
+                where: {
+                    OR: [
+                        { role: UserRole.SYSTEM_ADMIN },
+                        ...(fullUser?.departmentId ? [{
+                            role: { in: [UserRole.SENIOR_MANAGER, UserRole.MANAGER] },
+                            departmentId: fullUser.departmentId
+                        }] : [])
+                    ],
+                    status: 'ACTIVE'
+                }
             });
 
-            // Create notifications for admins
-            if (admins.length > 0) {
+            // Create notifications for recipients
+            if (recipients.length > 0) {
                 await prisma.notification.createMany({
-                    data: admins.map(admin => ({
-                        userId: admin.id,
+                    data: recipients.map(recipient => ({
+                        userId: recipient.id,
                         type: NotificationType.SUPPLIER_REQUEST,
                         title: 'New Supplier Request',
                         message: `${user.name} has requested to add a new supplier: ${supplier.name}`,

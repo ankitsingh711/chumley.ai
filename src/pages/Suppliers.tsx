@@ -156,15 +156,27 @@ export default function Suppliers() {
         }
     };
 
-    const handleReject = async (id: string) => {
-        if (!confirm('Are you sure you want to reject this supplier?')) return;
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
+
+    const handleReject = (id: string) => {
+        setSelectedSupplierId(id);
+        setShowRejectModal(true);
+    };
+
+    const confirmReject = async () => {
+        if (!selectedSupplierId) return;
+
         try {
-            await suppliersApi.reject(id);
-            // Remove from list or update status
-            setSuppliers(suppliers.filter(s => s.id !== id)); // Assuming rejected should allow removal or moving to rejected list
+            await suppliersApi.reject(selectedSupplierId);
+            // Remove from list
+            setSuppliers(prev => prev.filter(s => s.id !== selectedSupplierId));
+            setShowRejectModal(false);
+            setSelectedSupplierId(null);
         } catch (error) {
             console.error('Failed to reject supplier:', error);
             alert('Failed to reject supplier. You may not have permission.');
+            setShowRejectModal(false);
         }
     };
 
@@ -298,6 +310,17 @@ export default function Suppliers() {
                 confirmText="OK"
                 variant="success"
                 showCancel={false}
+            />
+
+            <ConfirmationModal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                onConfirm={confirmReject}
+                title="Reject Supplier"
+                message="Are you sure you want to reject this supplier? This action cannot be undone."
+                confirmText="Reject Supplier"
+                cancelText="Cancel"
+                variant="danger"
             />
         </div>
     );
