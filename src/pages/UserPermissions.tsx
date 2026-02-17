@@ -41,6 +41,10 @@ export default function UserPermissions() {
 
     useEffect(() => {
         if (!authLoading) {
+            // If not admin, force to profile tab
+            if (currentUser && currentUser.role !== UserRole.SYSTEM_ADMIN && activeTab === 'permissions') {
+                setActiveTab('profile');
+            }
             fetchUsers();
             fetchDepartments();
         }
@@ -256,17 +260,19 @@ export default function UserPermissions() {
                 {/* Navigation Group */}
                 <div className="space-y-1">
                     <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Settings</h3>
-                    <button
-                        onClick={() => setActiveTab('permissions')}
-                        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${activeTab === 'permissions'
-                            ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200'
-                            : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
-                            }`}
-                    >
-                        <Shield className="h-4 w-4" />
-                        <span>User Permissions</span>
-                        {activeTab === 'permissions' && <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />}
-                    </button>
+                    {currentUser?.role === UserRole.SYSTEM_ADMIN && (
+                        <button
+                            onClick={() => setActiveTab('permissions')}
+                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${activeTab === 'permissions'
+                                ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200'
+                                : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
+                                }`}
+                        >
+                            <Shield className="h-4 w-4" />
+                            <span>User Permissions</span>
+                            {activeTab === 'permissions' && <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />}
+                        </button>
+                    )}
                     <button
                         onClick={() => setActiveTab('profile')}
                         className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${activeTab === 'profile'

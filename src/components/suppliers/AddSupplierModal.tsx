@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
@@ -88,13 +89,13 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
 
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <div
-            className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto"
+            className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4 overflow-y-auto"
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-2xl shadow-xl max-w-3xl w-full my-8 max-h-[90vh] flex flex-col"
+                className="bg-white rounded-2xl shadow-xl max-w-3xl w-full my-8 max-h-[90vh] flex flex-col relative"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Modal Header */}
@@ -253,6 +254,7 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
                     </Button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
