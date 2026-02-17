@@ -50,6 +50,7 @@ export const register = async (req: Request, res: Response) => {
                 name: validatedData.name,
                 ...(validatedData.departmentId && { departmentId: validatedData.departmentId }),
             },
+            include: { department: true }
         });
 
         const token = jwt.sign(
@@ -85,6 +86,7 @@ export const login = async (req: Request, res: Response) => {
 
         const user = await prisma.user.findUnique({
             where: { email },
+            include: { department: true }
         });
 
         if (!user) {
@@ -137,6 +139,7 @@ export const acceptInvite = async (req: Request, res: Response) => {
 
         const user = await prisma.user.findUnique({
             where: { invitationToken: token },
+            include: { department: true }
         });
 
         if (!user) {
@@ -158,6 +161,7 @@ export const acceptInvite = async (req: Request, res: Response) => {
                 invitationToken: null,
                 invitationExpires: null,
             },
+            include: { department: true }
         });
 
         const jwtToken = jwt.sign(
@@ -209,6 +213,7 @@ export const getMe = async (req: Request, res: Response) => {
 
         const user = await prisma.user.findUnique({
             where: { id: userId },
+            include: { department: true }
         });
 
         if (!user) {

@@ -3,6 +3,7 @@ import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building,
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { UserPermissionsSkeleton } from '../components/skeletons/UserPermissionsSkeleton';
+import { EditProfileModal } from '../components/users/EditProfileModal';
 import { usersApi } from '../services/users.service';
 import { departmentsApi } from '../services/departments.service';
 import { useAuth } from '../hooks/useAuth';
@@ -32,6 +33,7 @@ export default function UserPermissions() {
     });
     const [inviting, setInviting] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
@@ -121,7 +123,7 @@ export default function UserPermissions() {
             // Update in list
             setUsers(users.map(u => u.id === updated.id ? updated : u));
             setModalType('success');
-            setModalMessage(`Successfully updated ${updated.name}'s role to ${updated.role}`);
+            setModalMessage(`Successfully updated ${updated.name} 's role to ${updated.role}`);
             setShowModal(true);
         } catch (error) {
             console.error('Failed to update user:', error);
@@ -558,52 +560,66 @@ export default function UserPermissions() {
                                 <div className="h-24 w-24 rounded-full bg-primary-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-primary-50">
                                     {getInitials(currentUser.name)}
                                 </div>
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-900">{currentUser.name}</h2>
-                                    <p className="text-gray-500">{currentUser.email}</p>
-                                    <div className="flex items-center gap-2 mt-3">
-                                        <RoleBadge role={currentUser.role} />
-                                        <span className="text-xs text-gray-400">•</span>
-                                        <span className="text-xs text-gray-500">{getDepartmentName(currentUser.department) || 'No Department'}</span>
+                                <div className="flex-1">
+                                    <div className="flex items-start justify-between">
+                                        <div>
+                                            <h2 className="text-xl font-bold text-gray-900">{currentUser.name}</h2>
+                                            <p className="text-gray-500">{currentUser.role} • {currentUser.email}</p>
+                                            <div className="flex items-center gap-2 mt-2">
+                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${currentUser.role === 'SYSTEM_ADMIN' ? 'bg-purple-100 text-purple-800' :
+                                                    currentUser.role === 'SENIOR_MANAGER' ? 'bg-blue-100 text-blue-800' :
+                                                        currentUser.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                    {currentUser.role.replace('_', ' ')}
+                                                </span>
+                                                <span className="text-sm text-gray-400">
+                                                    • {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'No Department')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" size="sm" onClick={() => setIsEditProfileOpen(true)}>
+                                            Edit Profile
+                                        </Button>
                                     </div>
-                                </div>
-                                <div className="ml-auto">
-                                    <Button variant="outline" size="sm">Edit Profile</Button>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+                                <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
                                     <h3 className="font-semibold text-gray-900 mb-4">Personal Info</h3>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Full Name</label>
-                                            <p className="text-sm text-gray-900 mt-1">{currentUser.name}</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
+                                            <p className="font-medium text-gray-900">{currentUser.name}</p>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Email</label>
-                                            <p className="text-sm text-gray-900 mt-1">{currentUser.email}</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
+                                            <p className="text-gray-600">{currentUser.email}</p>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Phone</label>
-                                            <p className="text-sm text-gray-400 mt-1 italic">Not set</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
+                                            <p className="text-gray-500 italic">Not set</p>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="bg-gray-50 rounded-xl border border-gray-200 p-6">
+
+                                <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
                                     <h3 className="font-semibold text-gray-900 mb-4">System Access</h3>
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Role</label>
-                                            <p className="text-sm text-gray-900 mt-1">{currentUser.role.replace('_', ' ')}</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Role</label>
+                                            <p className="font-medium text-gray-900">{currentUser.role}</p>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Department</label>
-                                            <p className="text-sm text-gray-900 mt-1">{getDepartmentName(currentUser.department) || 'None'}</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Department</label>
+                                            <p className="text-gray-600">
+                                                {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'None')}
+                                            </p>
                                         </div>
                                         <div>
-                                            <label className="text-xs font-semibold text-gray-500 uppercase">Timezone</label>
-                                            <p className="text-sm text-gray-900 mt-1">London (GMT+1)</p>
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Timezone</label>
+                                            <p className="text-gray-600">London (GMT+1)</p>
                                         </div>
                                     </div>
                                 </div>
@@ -617,6 +633,13 @@ export default function UserPermissions() {
                 )}
             </div>
 
+            {currentUser && (
+                <EditProfileModal
+                    isOpen={isEditProfileOpen}
+                    onClose={() => setIsEditProfileOpen(false)}
+                    currentUser={currentUser}
+                />
+            )}
             {/* Invite User Modal */}
             {showInviteModal && (
                 <div
