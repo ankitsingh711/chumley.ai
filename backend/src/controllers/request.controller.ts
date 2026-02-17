@@ -137,7 +137,13 @@ export const getRequests = async (req: Request, res: Response) => {
                     },
                     supplierId: true, // Add this
                     supplier: {
-                        select: { id: true, name: true }
+                        select: {
+                            id: true,
+                            name: true,
+                            contactName: true,
+                            contactEmail: true,
+                            logoUrl: true
+                        }
                     },
                     items: {
                         select: {

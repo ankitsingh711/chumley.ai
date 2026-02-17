@@ -67,29 +67,74 @@ export function RequestDetailsModal({
                         </div>
                     </div>
 
-                    {/* Requester Info */}
-                    <div>
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Requester Information</h3>
-                        <div className="bg-gray-50 rounded-lg p-4 space-y-2">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold">
-                                    {request.requester?.name?.charAt(0) || 'U'}
+                    {/* Information Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Supplier Info */}
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Supplier Information</h3>
+                            {request.supplier ? (
+                                <div className="bg-gray-50 rounded-lg p-4 space-y-2 h-full">
+                                    <div className="flex items-center gap-3">
+                                        {request.supplier.logoUrl ? (
+                                            <img
+                                                src={request.supplier.logoUrl}
+                                                alt={request.supplier.name}
+                                                className="h-10 w-10 rounded-full object-cover bg-white ring-2 ring-gray-100"
+                                            />
+                                        ) : (
+                                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold ring-2 ring-white">
+                                                {request.supplier.name.charAt(0)}
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="font-medium text-gray-900">{request.supplier.name}</p>
+                                            <p className="text-sm text-gray-500">{request.supplier.category}</p>
+                                        </div>
+                                    </div>
+                                    {(request.supplier.contactName || request.supplier.contactEmail) && (
+                                        <div className="pt-3 mt-1 border-t border-gray-200">
+                                            <p className="text-xs text-gray-500 uppercase mb-1">Contact Person</p>
+                                            {request.supplier.contactName && (
+                                                <p className="text-sm font-medium text-gray-900">{request.supplier.contactName}</p>
+                                            )}
+                                            {request.supplier.contactEmail && (
+                                                <p className="text-sm text-gray-500">{request.supplier.contactEmail}</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="font-medium text-gray-900">{request.requester?.name || 'Unknown'}</p>
-                                    <p className="text-sm text-gray-500">{request.requester?.email}</p>
-                                </div>
-                            </div>
-                            {request.requester?.department && (
-                                <div className="pt-2 border-t">
-                                    <p className="text-xs text-gray-500">Department</p>
-                                    <p className="text-sm font-medium text-gray-900">
-                                        {typeof request.requester.department === 'object'
-                                            ? (request.requester.department as any)?.name
-                                            : request.requester.department}
-                                    </p>
+                            ) : (
+                                <div className="bg-gray-50 rounded-lg p-4 h-full flex items-center justify-center text-gray-400 text-sm italic">
+                                    No supplier selected
                                 </div>
                             )}
+                        </div>
+
+                        {/* Requester Info */}
+                        <div>
+                            <h3 className="text-sm font-semibold text-gray-900 mb-3">Requester Information</h3>
+                            <div className="bg-gray-50 rounded-lg p-4 space-y-2 h-full">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold ring-2 ring-white">
+                                        {request.requester?.name?.charAt(0) || 'U'}
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-gray-900">{request.requester?.name || 'Unknown'}</p>
+                                        <p className="text-sm text-gray-500">{request.requester?.email}</p>
+                                    </div>
+                                </div>
+                                {request.requester?.department && (
+                                    <div className="pt-3 mt-1 border-t border-gray-200">
+                                        <p className="text-xs text-gray-500 uppercase mb-1">Department</p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {typeof request.requester.department === 'object'
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                ? (request.requester.department as any)?.name
+                                                : request.requester.department}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
