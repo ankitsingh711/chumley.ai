@@ -19,7 +19,6 @@ interface AddSupplierForm {
     phone: string;
     address: string;
     category: string;
-    status: string;
     logoUrl: string;
 }
 
@@ -32,13 +31,11 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
         phone: '',
         address: '',
         category: 'Software',
-        status: 'Standard',
         logoUrl: ''
     });
     const [errors, setErrors] = useState<Partial<AddSupplierForm>>({});
 
     const categories = ['Software', 'Office Supplies', 'Hardware', 'Marketing', 'Shipping & Logistics', 'Other'];
-    const statuses = ['Preferred', 'Standard', 'Review Pending'];
 
     const validateForm = () => {
         const newErrors: Partial<AddSupplierForm> = {};
@@ -61,7 +58,6 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
             const payload = {
                 name: formData.name,
                 category: formData.category,
-                status: formData.status,
                 contactName: formData.contactName,
                 contactEmail: formData.contactEmail,
                 logoUrl: formData.logoUrl,
@@ -79,7 +75,6 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
                 phone: '',
                 address: '',
                 category: 'Software',
-                status: 'Standard',
                 logoUrl: ''
             });
 
@@ -142,31 +137,17 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
                                         {errors.name && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.name}</p>}
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                                Category <span className="text-red-500">*</span>
-                                            </label>
-                                            <Select
-                                                value={formData.category}
-                                                onChange={(val) => setFormData({ ...formData, category: val })}
-                                                options={categories.map(cat => ({ value: cat, label: cat }))}
-                                                error={errors.category}
-                                                placeholder="Select Category"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                                Status
-                                            </label>
-                                            <Select
-                                                value={formData.status}
-                                                onChange={(val) => setFormData({ ...formData, status: val })}
-                                                options={statuses.map(status => ({ value: status, label: status }))}
-                                                placeholder="Select Status"
-                                            />
-                                        </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                                            Category <span className="text-red-500">*</span>
+                                        </label>
+                                        <Select
+                                            value={formData.category}
+                                            onChange={(val) => setFormData({ ...formData, category: val })}
+                                            options={categories.map(cat => ({ value: cat, label: cat }))}
+                                            error={errors.category}
+                                            placeholder="Select Category"
+                                        />
                                     </div>
 
                                     <div>
