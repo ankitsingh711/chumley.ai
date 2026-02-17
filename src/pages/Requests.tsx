@@ -11,6 +11,8 @@ import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';
 import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
 import { RequestStatus, UserRole } from '../types/api';
+import { Pagination } from '../components/Pagination';
+import { isPaginatedResponse } from '../types/pagination';
 
 export default function Requests() {
     const navigate = useNavigate();
@@ -51,11 +53,17 @@ export default function Requests() {
         onConfirm: () => { },
     });
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
+    const limit = 20;
+
     const filterModalRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         loadRequests();
-    }, []);
+    }, [currentPage]); // Refetch when page changes
 
     // Auto-open request modal if ID is in URL
     useEffect(() => {
@@ -86,8 +94,17 @@ export default function Requests() {
 
     const loadRequests = async () => {
         try {
-            const data = await requestsApi.getAll();
-            setRequests(data);
+            const response = await requestsApi.getAll(currentPage, limit);
+
+            if (isPaginatedResponse(response)) {
+                setRequests(response.data);
+                setTotal(response.meta.total);
+                setTotalPages(response.meta.totalPages);
+            } else {
+                setRequests(response);
+                setTotal(response.length);
+                setTotalPages(1);
+            }
         } catch (error) {
             console.error('Failed to load requests:', error);
         } finally {
@@ -738,6 +755,20 @@ export default function Requests() {
                     document.body
                 )
             }
+
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+                <div className="mt-6">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        total={total}
+                        limit={limit}
+                        onPageChange={(page) => setCurrentPage(page)}
+                    />
+                </div>
+            )}
+
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

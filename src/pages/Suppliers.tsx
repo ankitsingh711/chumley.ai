@@ -7,6 +7,8 @@ import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { pdfService } from '../services/pdf.service';
 import { SuppliersSkeleton } from '../components/skeletons/SuppliersSkeleton';
+import { Pagination } from '../components/Pagination';
+import { isPaginatedResponse } from '../types/pagination';
 
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
@@ -21,6 +23,12 @@ export default function Suppliers() {
     const [showAddModal, setShowAddModal] = useState(false);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
+    const limit = 20;
+
     const [activeFilter, setActiveFilter] = useState('All Vendors');
 
     const categories = ['Software', 'Office Supplies', 'Hardware', 'Marketing', 'Shipping & Logistics', 'Other'];
@@ -28,13 +36,28 @@ export default function Suppliers() {
 
     useEffect(() => {
         fetchSuppliers();
-    }, []);
+    }, [currentPage]); // Refetch when page changes
 
     const fetchSuppliers = async () => {
         try {
             setLoading(true);
-            const data = await suppliersApi.getAll();
-            const mappedData: CardSupplier[] = data.map(s => ({
+            const response = await suppliersApi.getAll(currentPage, limit);
+
+            let supplierData: any[];
+            if (isPaginatedResponse(response)) {
+                // New paginated response
+                supplierData = response.data;
+                setTotal(response.meta.total);
+                setTotalPages(response.meta.totalPages);
+                setCurrentPage(response.meta.page);
+            } else {
+                // Old non-paginated response (fallback)
+                supplierData = response;
+                setTotal(response.length);
+                setTotalPages(1);
+            }
+
+            const mappedData: CardSupplier[] = supplierData.map(s => ({
                 id: s.id,
                 name: s.name,
                 category: s.category,
@@ -46,8 +69,8 @@ export default function Suppliers() {
                     image: s.logoUrl || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(s.contactName || s.name),
                 },
                 stats: {
-                    activeOrders: s.stats?.activeOrders || 0,
-                    totalSpend: s.stats?.totalSpend ? `£${s.stats.totalSpend.toLocaleString()}` : '£0',
+                    activeOrders: s.activeOrdersCount || s.stats?.activeOrders || 0,
+                    totalSpend: s.totalSpend ? `£${s.totalSpend.toLocaleString()}` : (s.stats?.totalSpend ? `£${s.stats.totalSpend.toLocaleString()}` : '£0'),
                 },
                 lastOrder: s.lastOrderDate ? new Date(s.lastOrderDate).toLocaleDateString() : 'No orders yet'
             }));
@@ -200,6 +223,19 @@ export default function Suppliers() {
                     <p className="text-sm text-gray-500 mt-1 max-w-[200px]">{isRestricted ? 'Submit a request to add a new vendor' : 'Onboard a new vendor to your approved list'}</p>
                 </div>
             </div>
+
+            {/* Pagination */}
+            {!loading && totalPages > 1 && (
+                <div className="mt-6">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        total={total}
+                        limit={limit}
+                        onPageChange={(page) => setCurrentPage(page)}
+                    />
+                </div>
+            )}
 
             {/* Add Supplier Modal */}
             <AddSupplierModal

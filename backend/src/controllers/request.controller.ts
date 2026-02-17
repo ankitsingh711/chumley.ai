@@ -6,6 +6,8 @@ import { sendNotification } from '../utils/websocket';
 import { sendPurchaseRequestNotification, sendRejectionNotification } from '../services/email.service';
 import approvalService from '../services/approval.service';
 import prisma from '../config/db';
+import { getPaginationParams, createPaginatedResponse } from '../utils/pagination';
+import { CacheService } from '../utils/cache';
 
 
 const itemSchema = z.object({
@@ -72,6 +74,9 @@ export const createRequest = async (req: Request, res: Response) => {
         // Route to approver (Plan: 4a)
         await approvalService.routeRequest(request.id);
 
+        // Invalidate cache
+        await CacheService.invalidateRequestCache();
+
         res.status(201).json(request);
     } catch (error: any) {
         Logger.error(error);
@@ -85,47 +90,83 @@ export const createRequest = async (req: Request, res: Response) => {
 export const getRequests = async (req: Request, res: Response) => {
     try {
         const user = req.user! as any;
+        const { page, limit, skip } = getPaginationParams(req);
+
+        // Build cache key
+        const cacheKey = `requests:list:${user.id}:page${page}:limit${limit}`;
+
+        // Try cache  first
+        const cached = await CacheService.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
         // Restrict view for MEMBER, MANAGER, and SENIOR_MANAGER (System Admin sees all)
         const isRestricted = [UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role);
 
         const where: any = {};
         if (isRestricted) {
-            // Plan 6c: Dept users see only own dept data
-            // But wait, Plan 2c says "Department users see only their department vendors"
-            // Plan 6b: Senior Manager view department-specific data
-            // Plan 5: Dashboard updates implies viewing requests based on role.
-
-            // Existing logic:
-            if (isRestricted) {
-                // Plan 6c: Dept users see only own requests usually
-                // Plan 6b: Senior Manager view department-specific data
-
-                if (user.role === UserRole.MEMBER) {
-                    // Members see only their own requests
-                    where.requesterId = user.id;
-                } else if (user.departmentId) {
-                    // Managers and Senior Managers see all requests in their department
-                    where.requester = { departmentId: user.departmentId };
-                } else {
-                    // Fallback for managers without department
-                    where.requesterId = user.id;
-                }
+            if (user.role === UserRole.MEMBER) {
+                // Members see only their own requests
+                where.requesterId = user.id;
+            } else if (user.departmentId) {
+                // Managers and Senior Managers see all requests in their department
+                where.requester = { departmentId: user.departmentId };
+            } else {
+                // Fallback for managers without department
+                where.requesterId = user.id;
             }
         }
 
-        const requests = await prisma.purchaseRequest.findMany({
-            where,
-            include: {
-                requester: {
-                    select: { id: true, name: true, email: true, department: true },
+        // Get total count and paginated data in parallel
+        const [requests, total] = await Promise.all([
+            prisma.purchaseRequest.findMany({
+                where,
+                skip,
+                take: limit,
+                select: {
+                    id: true,
+                    requesterId: true,
+                    status: true,
+                    totalAmount: true,
+                    reason: true,
+                    createdAt: true,
+                    updatedAt: true,
+                    requester: {
+                        select: { id: true, name: true, email: true }
+                    },
+                    supplier: {
+                        select: { id: true, name: true }
+                    },
+                    _count: {
+                        select: { items: true }
+                    }
                 },
-                items: true,
-                supplier: { select: { id: true, name: true } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.purchaseRequest.count({ where })
+        ]);
 
-        res.json(requests);
+        // Transform to lean DTO
+        const requestsDTO = requests.map(req => ({
+            id: req.id,
+            requesterId: req.requesterId,
+            requesterName: req.requester.name,
+            status: req.status,
+            totalAmount: Number(req.totalAmount),
+            reason: req.reason,
+            createdAt: req.createdAt,
+            updatedAt: req.updatedAt,
+            itemCount: req._count.items,
+            supplier: req.supplier
+        }));
+
+        const response = createPaginatedResponse(requestsDTO, total, page, limit);
+
+        // Cache for 2 minutes
+        await CacheService.set(cacheKey, response, 120);
+
+        res.json(response);
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

@@ -3,12 +3,22 @@ import { RequestStatus, OrderStatus, UserRole } from '@prisma/client';
 import Logger from '../utils/logger';
 import { startOfMonth, subMonths, format } from 'date-fns';
 import prisma from '../config/db';
+import { CacheService } from '../utils/cache';
 
 
 export const getKPIs = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate } = req.query;
         const user = req.user as any;
+
+        // Build cache key
+        const cacheKey = `kpis:${user?.id || 'all'}:${startDate || 'none'}:${endDate || 'none'}`;
+
+        // Try cache first - CRITICAL for performance
+        const cached = await CacheService.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
 
         // Build date filter
         const dateFilter: any = {};
@@ -131,7 +141,7 @@ export const getKPIs = async (req: Request, res: Response) => {
             avgProcessingTime = totalDays / completedRequests.length;
         }
 
-        res.json({
+        const result = {
             totalRequests,
             pendingRequests,
             approvedRequests,
@@ -140,7 +150,12 @@ export const getKPIs = async (req: Request, res: Response) => {
             totalSpend,
             departmentSpend,
             avgProcessingTime,
-        });
+        };
+
+        // Cache for 5 minutes
+        await CacheService.set(cacheKey, result, 300);
+
+        res.json(result);
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -151,6 +166,15 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
     try {
         const { startDate, endDate } = req.query;
         const user = req.user as any;
+
+        // Build cache key
+        const cacheKey = `monthly-spend:${user?.id || 'all'}:${startDate || 'none'}:${endDate || 'none'}`;
+
+        // Try cache first
+        const cached = await CacheService.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
 
         // Default to last 6 months if no date range provided
         let start = subMonths(new Date(), 6);
@@ -211,6 +235,9 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
             month,
             spend
         }));
+
+        // Cache for 1 hour (spend data changes less frequently)
+        await CacheService.set(cacheKey, chartData, 3600);
 
         res.json(chartData);
     } catch (error) {

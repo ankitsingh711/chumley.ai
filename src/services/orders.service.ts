@@ -4,10 +4,12 @@ import type {
     CreateOrderInput,
     UpdateOrderStatusInput,
 } from '../types/api';
+import type { PaginatedResponse } from '../types/pagination';
 
 export const ordersApi = {
-    getAll: async (): Promise<PurchaseOrder[]> => {
-        const response = await apiClient.get<PurchaseOrder[]>('/orders');
+    getAll: async (page?: number, limit = 20): Promise<PurchaseOrder[] | PaginatedResponse<PurchaseOrder>> => {
+        const url = page ? `/orders?page=${page}&limit=${limit}` : '/orders';
+        const response = await apiClient.get<PurchaseOrder[] | PaginatedResponse<PurchaseOrder>>(url);
         return response.data;
     },
 

@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
@@ -44,19 +44,19 @@ model Department {
   budget      Decimal  @default(0.00) @db.Decimal(15, 2)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
-  users              User[]
-  categories         SpendingCategory[]
-  additionalUserRoles UserDepartmentRole[]
-  suppliers          Supplier[]
 
-  parentId    String?
-  parent      Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  children    Department[] @relation("DepartmentHierarchy")
+  users               User[]
+  categories          SpendingCategory[]
+  additionalUserRoles UserDepartmentRole[]
+  suppliers           Supplier[]
+
+  parentId String?
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  children Department[] @relation("DepartmentHierarchy")
 }
 
 model SpendingCategory {
-  id           String  @id @default(uuid())
+  id           String   @id @default(uuid())
   name         String
   description  String?
   parentId     String?
@@ -64,77 +64,77 @@ model SpendingCategory {
   branch       Branch
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
-  department   Department         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  parent       SpendingCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  children     SpendingCategory[] @relation("CategoryHierarchy")
-  requests     PurchaseRequest[]
-  
+
+  department Department         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  parent     SpendingCategory?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children   SpendingCategory[] @relation("CategoryHierarchy")
+  requests   PurchaseRequest[]
+
   @@index([departmentId])
   @@index([parentId])
   @@index([branch])
 }
 
 model User {
-  id                String            @id @default(uuid())
-  email             String            @unique
+  id                String     @id @default(uuid())
+  email             String     @unique
   password          String
   name              String
-  role              UserRole          @default(MEMBER)
-  status            UserStatus        @default(PENDING)
-  invitationToken   String?           @unique
+  role              UserRole   @default(MEMBER)
+  status            UserStatus @default(PENDING)
+  invitationToken   String?    @unique
   invitationExpires DateTime?
   departmentId      String?
   managerId         String?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  
-  department        Department?          @relation(fields: [departmentId], references: [id])
-  manager            User?                @relation("ManagerReportee", fields: [managerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  reportees          User[]               @relation("ManagerReportee")
-  additionalRoles    UserDepartmentRole[]
-  
-  auditLogs          AuditLog[]
-  interactions       InteractionLog[]
-  messages           Message[]
-  approvals          PurchaseRequest[]    @relation("Approver")
-  requests           PurchaseRequest[]
-  approvalHistory    ApprovalHistory[]
-  contracts          Contract[]
-  notifications      Notification[]
-  
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  department      Department?          @relation(fields: [departmentId], references: [id])
+  manager         User?                @relation("ManagerReportee", fields: [managerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  reportees       User[]               @relation("ManagerReportee")
+  additionalRoles UserDepartmentRole[]
+
+  auditLogs       AuditLog[]
+  interactions    InteractionLog[]
+  messages        Message[]
+  approvals       PurchaseRequest[] @relation("Approver")
+  requests        PurchaseRequest[]
+  approvalHistory ApprovalHistory[]
+  contracts       Contract[]
+  notifications   Notification[]
+
+  reviews            Review[]
+  requestedSuppliers Supplier[] @relation("SupplierRequester")
+
   @@index([departmentId])
   @@index([managerId])
-  
-  reviews            Review[]
-  requestedSuppliers Supplier[]        @relation("SupplierRequester")
 }
 
 model UserDepartmentRole {
-  id           String     @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
   departmentId String
   role         UserRole
-  createdAt    DateTime   @default(now())
-  
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  
+  createdAt    DateTime @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
   @@unique([userId, departmentId])
   @@index([userId])
   @@index([departmentId])
 }
 
 model Supplier {
-  id           String            @id @default(uuid())
+  id           String             @id @default(uuid())
   name         String
   category     String
-  status       String            @default("Pending")
+  status       String             @default("Pending")
   contactName  String?
   contactEmail String?
   logoUrl      String?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   interactions InteractionLog[]
   messages     Message[]
   documents    SupplierDocument[]
@@ -144,8 +144,12 @@ model Supplier {
   details      SupplierDetails?
   reviews      Review[]
   requesterId  String?
-  requester    User?             @relation("SupplierRequester", fields: [requesterId], references: [id])
+  requester    User?              @relation("SupplierRequester", fields: [requesterId], references: [id])
   departments  Department[]
+
+  @@index([status])
+  @@index([category])
+  @@index([createdAt])
 }
 
 model SupplierDetails {
@@ -162,29 +166,29 @@ model SupplierDetails {
   internalNotes String?  @db.Text
   rating        Decimal? @db.Decimal(3, 2)
   reviewCount   Int?     @default(0)
-  
+
   // Performance Metrics
-  deliveryDelayAverage Int?     @default(0) // in days
-  qualityScore         Int?     @default(100) // 0-100
-  communicationScore   Int?     @default(100) // 0-100
-  
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  supplier      Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  deliveryDelayAverage Int? @default(0) // in days
+  qualityScore         Int? @default(100) // 0-100
+  communicationScore   Int? @default(100) // 0-100
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  supplier  Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
 }
 
 model SupplierDocument {
-  id           String   @id @default(uuid())
-  supplierId   String
-  title        String
-  type         String   // e.g., 'Tax', 'Insurance', 'Contract', 'Certification'
-  url          String
-  expiryDate   DateTime?
-  status       String   // 'Valid', 'Expiring Soon', 'Expired'
-  uploadDate   DateTime @default(now())
-  
-  supplier     Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  
+  id         String    @id @default(uuid())
+  supplierId String
+  title      String
+  type       String // e.g., 'Tax', 'Insurance', 'Contract', 'Certification'
+  url        String
+  expiryDate DateTime?
+  status     String // 'Valid', 'Expiring Soon', 'Expired'
+  uploadDate DateTime  @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
   @@index([supplierId])
 }
 
@@ -221,30 +225,30 @@ model InteractionLog {
 }
 
 model PurchaseRequest {
-  id                   String         @id @default(uuid())
+  id                   String        @id @default(uuid())
   requesterId          String
-  status               RequestStatus  @default(IN_PROGRESS)
-  totalAmount          Decimal        @db.Decimal(10, 2)
+  status               RequestStatus @default(IN_PROGRESS)
+  totalAmount          Decimal       @db.Decimal(10, 2)
   reason               String?
   categoryId           String?
   currentApproverId    String?
-  createdAt            DateTime       @default(now())
-  updatedAt            DateTime       @updatedAt
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
   approverId           String?
   supplierId           String?
   budgetCategory       String?
   deliveryLocation     String?
   expectedDeliveryDate DateTime?
-  branch               Branch         @default(CHESSINGTON)
-  
-  order                PurchaseOrder?
-  approver             User?              @relation("Approver", fields: [approverId], references: [id])
-  requester            User               @relation(fields: [requesterId], references: [id])
-  supplier             Supplier?          @relation(fields: [supplierId], references: [id])
-  category             SpendingCategory?  @relation(fields: [categoryId], references: [id])
-  items                RequestItem[]
-  approvalHistory      ApprovalHistory[]
-  attachments          Attachment[]
+  branch               Branch        @default(CHESSINGTON)
+
+  order           PurchaseOrder?
+  approver        User?             @relation("Approver", fields: [approverId], references: [id])
+  requester       User              @relation(fields: [requesterId], references: [id])
+  supplier        Supplier?         @relation(fields: [supplierId], references: [id])
+  category        SpendingCategory? @relation(fields: [categoryId], references: [id])
+  items           RequestItem[]
+  approvalHistory ApprovalHistory[]
+  attachments     Attachment[]
 
   @@index([approverId], map: "PurchaseRequest_approverId_fkey")
   @@index([requesterId], map: "PurchaseRequest_requesterId_fkey")
@@ -252,34 +256,37 @@ model PurchaseRequest {
   @@index([categoryId])
   @@index([currentApproverId])
   @@index([branch])
+  @@index([status])
+  @@index([createdAt])
+  @@index([status, createdAt])
 }
 
 model ApprovalHistory {
-  id         String          @id @default(uuid())
+  id         String   @id @default(uuid())
   requestId  String
   approverId String
-  action     String          // APPROVED, REJECTED, FORWARDED
-  comments   String?         @db.Text
-  createdAt  DateTime        @default(now())
-  
-  request    PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  approver   User            @relation(fields: [approverId], references: [id])
-  
+  action     String // APPROVED, REJECTED, FORWARDED
+  comments   String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  request  PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  approver User            @relation(fields: [approverId], references: [id])
+
   @@index([requestId])
   @@index([approverId])
 }
 
 model Attachment {
-  id         String          @id @default(uuid())
+  id         String   @id @default(uuid())
   requestId  String
   filename   String
   fileUrl    String
   fileSize   Int
   mimeType   String
-  uploadedAt DateTime        @default(now())
-  
-  request    PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  
+  uploadedAt DateTime @default(now())
+
+  request PurchaseRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
   @@index([requestId])
 }
 
@@ -347,40 +354,40 @@ enum ContractStatus {
 }
 
 model Contract {
-  id                String          @id @default(uuid())
-  contractNumber    String          @unique
-  title             String
-  supplierId        String
-  ownerId           String
-  status            ContractStatus  @default(DRAFT)
-  
+  id             String         @id @default(uuid())
+  contractNumber String         @unique
+  title          String
+  supplierId     String
+  ownerId        String
+  status         ContractStatus @default(DRAFT)
+
   // Contract Terms
-  startDate         DateTime
-  endDate           DateTime
-  renewalDate       DateTime?
-  autoRenew         Boolean         @default(false)
-  noticePeriodDays  Int             @default(30)
-  
+  startDate        DateTime
+  endDate          DateTime
+  renewalDate      DateTime?
+  autoRenew        Boolean   @default(false)
+  noticePeriodDays Int       @default(30)
+
   // Financial
-  totalValue        Decimal         @db.Decimal(12, 2)
-  currency          String          @default("GBP")
-  paymentTerms      String?
-  
+  totalValue   Decimal @db.Decimal(12, 2)
+  currency     String  @default("GBP")
+  paymentTerms String?
+
   // Documents
-  documentUrl       String?
-  documentName      String?
-  
+  documentUrl  String?
+  documentName String?
+
   // Details
-  description       String?         @db.Text
-  terms             String?         @db.Text
-  notes             String?         @db.Text
-  
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  
-  supplier          Supplier        @relation(fields: [supplierId], references: [id])
-  owner             User            @relation(fields: [ownerId], references: [id])
-  
+  description String? @db.Text
+  terms       String? @db.Text
+  notes       String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+  owner    User     @relation(fields: [ownerId], references: [id])
+
   @@index([supplierId])
   @@index([ownerId])
   @@index([status])
@@ -388,16 +395,16 @@ model Contract {
 }
 
 model Review {
-  id          String   @id @default(uuid())
-  supplierId  String
-  userId      String
-  rating      Int      // 1-5
-  comment     String   @db.Text
-  createdAt   DateTime @default(now())
-  
-  supplier    Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id         String   @id @default(uuid())
+  supplierId String
+  userId     String
+  rating     Int // 1-5
+  comment    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  supplier Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([supplierId])
   @@index([userId])
 }
@@ -411,9 +418,9 @@ model Notification {
   metadata  Json?
   read      Boolean          @default(false)
   createdAt DateTime         @default(now())
-  
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId, read])
   @@index([createdAt])
 }

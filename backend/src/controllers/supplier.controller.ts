@@ -3,6 +3,8 @@ import { RequestStatus, UserRole, NotificationType } from '@prisma/client';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
+import { getPaginationParams, createPaginatedResponse, PaginatedResponse } from '../utils/pagination';
+import { CacheService } from '../utils/cache';
 
 
 const createSupplierSchema = z.object({
@@ -19,6 +21,17 @@ const updateSupplierSchema = createSupplierSchema.partial();
 export const getSuppliers = async (req: Request, res: Response) => {
     try {
         const user = req.user;
+        const { page, limit, skip } = getPaginationParams(req);
+
+        // Build cache key based on user and pagination
+        const cacheKey = `suppliers:list:${user?.id}:page${page}:limit${limit}`;
+
+        // Try cache first
+        const cached = await CacheService.get<PaginatedResponse<any>>(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
         let whereClause = {};
 
         if (user && user.role !== UserRole.SYSTEM_ADMIN) {
@@ -55,47 +68,84 @@ export const getSuppliers = async (req: Request, res: Response) => {
             Logger.info(`getSuppliers: No filtering (System Admin or no user)`);
         }
 
-        const suppliers = await prisma.supplier.findMany({
-            where: whereClause,
-            orderBy: { createdAt: 'desc' },
-            include: {
-                orders: {
-                    select: {
-                        status: true,
-                        totalAmount: true,
-                        createdAt: true,
-                    }
-                },
-                departments: { select: { id: true, name: true } }
-            }
+        // Get total count and paginated data in parallel
+        const [suppliers, total] = await Promise.all([
+            prisma.supplier.findMany({
+                where: whereClause,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                select: {
+                    id: true,
+                    name: true,
+                    category: true,
+                    status: true,
+                    contactEmail: true,
+                    contactName: true,
+                    logoUrl: true,
+                    createdAt: true,
+                    // Use aggregations for counts/sums
+                    _count: {
+                        select: { orders: true }
+                    },
+                    orders: {
+                        where: { status: { notIn: ['CANCELLED', 'COMPLETED'] } },
+                        select: { id: true }
+                    },
+                    departments: { select: { id: true, name: true } }
+                }
+            }),
+            prisma.supplier.count({ where: whereClause })
+        ]);
+
+        // Get stats in batch using aggregation
+        const supplierIds = suppliers.map(s => s.id);
+        const orderStats = await prisma.purchaseOrder.groupBy({
+            by: ['supplierId'],
+            where: {
+                supplierId: { in: supplierIds },
+                status: { not: 'CANCELLED' }
+            },
+            _sum: { totalAmount: true },
+            _max: { createdAt: true }
         });
 
-        const suppliersWithStats = suppliers.map(supplier => {
-            const s = supplier as any;
-            const activeOrders = s.orders ? s.orders.filter((o: any) =>
-                o.status !== 'CANCELLED' && o.status !== 'COMPLETED'
-            ).length : 0;
+        // Create stats map for O(1) lookup
+        const statsMap = new Map(
+            orderStats.map(stat => [
+                stat.supplierId,
+                {
+                    totalSpend: Number(stat._sum.totalAmount || 0),
+                    lastOrderDate: stat._max.createdAt
+                }
+            ])
+        );
 
-            const totalSpend = s.orders ? s.orders.reduce((acc: number, curr: any) => {
-                return curr.status !== 'CANCELLED' ? acc + Number(curr.totalAmount) : acc;
-            }, 0) : 0;
-
-            const lastOrderDate = supplier.orders.length > 0
-                ? supplier.orders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt
-                : null;
+        // Transform to lean DTO
+        const suppliersDTO = suppliers.map(supplier => {
+            const stats = statsMap.get(supplier.id) || { totalSpend: 0, lastOrderDate: null };
 
             return {
-                ...supplier,
-                orders: undefined, // remove raw orders from list response
-                stats: {
-                    activeOrders,
-                    totalSpend,
-                },
-                lastOrderDate,
+                id: supplier.id,
+                name: supplier.name,
+                category: supplier.category,
+                status: supplier.status,
+                contactEmail: supplier.contactEmail,
+                contactName: supplier.contactName,
+                logoUrl: supplier.logoUrl,
+                createdAt: supplier.createdAt,
+                activeOrdersCount: supplier.orders.length,
+                totalSpend: stats.totalSpend,
+                lastOrderDate: stats.lastOrderDate,
             };
         });
 
-        res.json(suppliersWithStats);
+        const response = createPaginatedResponse(suppliersDTO, total, page, limit);
+
+        // Cache for 10 minutes
+        await CacheService.set(cacheKey, response, 600);
+
+        res.json(response);
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -190,6 +240,9 @@ export const createSupplier = async (req: Request, res: Response) => {
                 });
             }
         }
+
+        // Invalidate cache
+        await CacheService.invalidateSupplierCache();
 
         Logger.info(`Supplier created: ${supplier.name} with status ${status}`);
         res.status(201).json(supplier);
@@ -293,6 +346,9 @@ export const updateSupplier = async (req: Request, res: Response) => {
             data: validatedData,
         });
 
+        // Invalidate cache
+        await CacheService.invalidateSupplierCache(id);
+
         Logger.info(`Supplier updated: ${id}`);
         res.json(supplier);
     } catch (error: any) {
@@ -313,6 +369,10 @@ export const deleteSupplier = async (req: Request, res: Response) => {
         await prisma.supplier.delete({
             where: { id },
         });
+
+        // Invalidate cache
+        await CacheService.invalidateSupplierCache(id);
+
         Logger.info(`Supplier deleted: ${id}`);
         res.status(204).send();
     } catch (error: any) {

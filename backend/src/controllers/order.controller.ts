@@ -4,6 +4,8 @@ import { z } from 'zod';
 import Logger from '../utils/logger';
 import budgetMonitorService from '../services/budget-monitor.service';
 import prisma from '../config/db';
+import { getPaginationParams, createPaginatedResponse } from '../utils/pagination';
+import { CacheService } from '../utils/cache';
 
 
 const createOrderSchema = z.object({
@@ -91,6 +93,17 @@ export const createOrder = async (req: Request, res: Response) => {
 export const getOrders = async (req: Request, res: Response) => {
     try {
         const user = req.user! as any;
+        const { page, limit, skip } = getPaginationParams(req);
+
+        // Build cache key
+        const cacheKey = `orders:list:${user.id}:page${page}:limit${limit}`;
+
+        // Try cache first
+        const cached = await CacheService.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
         // Restrict view for MEMBER, MANAGER, and SENIOR_MANAGER (System Admin sees all)
         const isRestricted = [UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role);
 
@@ -111,15 +124,50 @@ export const getOrders = async (req: Request, res: Response) => {
             }
         }
 
-        const orders = await prisma.purchaseOrder.findMany({
-            where,
-            include: {
-                supplier: { select: { name: true } },
-                request: { select: { requester: { select: { name: true } } } },
-            },
-            orderBy: { createdAt: 'desc' },
-        });
-        res.json(orders);
+        const [orders, total] = await Promise.all([
+            prisma.purchaseOrder.findMany({
+                where,
+                skip,
+                take: limit,
+                select: {
+                    id: true,
+                    requestId: true,
+                    supplierId: true,
+                    status: true,
+                    totalAmount: true,
+                    issuedAt: true,
+                    createdAt: true,
+                    supplier: { select: { id: true, name: true } },
+                    request: {
+                        select: {
+                            requester: { select: { id: true, name: true } }
+                        }
+                    }
+                },
+                orderBy: { createdAt: 'desc' },
+            }),
+            prisma.purchaseOrder.count({ where })
+        ]);
+
+        // Transform to DTO
+        const ordersDTO = orders.map(order => ({
+            id: order.id,
+            requestId: order.requestId,
+            supplierId: order.supplierId,
+            supplierName: order.supplier.name,
+            requesterName: order.request.requester.name,
+            status: order.status,
+            totalAmount: Number(order.totalAmount),
+            issuedAt: order.issuedAt,
+            createdAt: order.createdAt
+        }));
+
+        const response = createPaginatedResponse(ordersDTO, total, page, limit);
+
+        // Cache for 5 minutes
+        await CacheService.set(cacheKey, response, 300);
+
+        res.json(response);
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

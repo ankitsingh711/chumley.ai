@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
+import compression from 'compression';
 import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import router from './routes';
@@ -16,6 +17,7 @@ configurePassport();
 
 // Middleware
 app.use(helmet());
+app.use(compression()); // Compress all responses
 app.use(cookieParser()); // Use cookie-parser before CORS if needed, or generally just before routes
 app.use(cors({
     origin: [process.env.FRONTEND_URL || 'https://chumley-ai.vercel.app', 'http://localhost:5173'], // Allow both production and local dev

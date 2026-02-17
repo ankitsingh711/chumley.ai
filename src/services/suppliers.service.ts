@@ -12,10 +12,12 @@ import type {
     SupplierDocument,
     Review,
 } from '../types/api';
+import type { PaginatedResponse } from '../types/pagination';
 
 export const suppliersApi = {
-    getAll: async (): Promise<Supplier[]> => {
-        const response = await apiClient.get<Supplier[]>('/suppliers');
+    getAll: async (page?: number, limit = 20): Promise<Supplier[] | PaginatedResponse<Supplier>> => {
+        const url = page ? `/suppliers?page=${page}&limit=${limit}` : '/suppliers';
+        const response = await apiClient.get<Supplier[] | PaginatedResponse<Supplier>>(url);
         return response.data;
     },
 
