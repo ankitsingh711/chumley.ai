@@ -8,6 +8,13 @@ export default {
     extend: {
       colors: {
         // Aspect brand colors - matching logo
+        gray: {
+          500: '#000000',
+          600: '#000000',
+          700: '#000000',
+          800: '#000000',
+          900: '#000000',
+        },
         primary: {
           50: '#eff6ff',
           100: '#dbeafe',
