@@ -3,6 +3,8 @@ import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/departments.service';
+import { useAuth } from '../../hooks/useAuth';
+import { UserRole } from '../../types/api';
 
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
@@ -24,6 +26,7 @@ const COLORS = [
 
 export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
     const navigate = useNavigate();
+    const { user } = useAuth();
     // Default limit for illustration since we don't have it in DB yet
     const DEFAULT_LIMIT = 50000;
 
@@ -68,14 +71,16 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 text-primary-600 hover:text-primary-700"
-                    onClick={() => navigate('/budgets')}
-                >
-                    View All
-                </Button>
+                {user?.role === UserRole.SYSTEM_ADMIN && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-primary-600 hover:text-primary-700"
+                        onClick={() => navigate('/budgets')}
+                    >
+                        View All
+                    </Button>
+                )}
             </div>
 
             <div className="space-y-6">

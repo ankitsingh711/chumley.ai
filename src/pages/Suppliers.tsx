@@ -15,8 +15,10 @@ import { UserRole } from '../types/api';
 
 export default function Suppliers() {
     const { user } = useAuth();
-    // Only SYSTEM_ADMIN can add suppliers directly; everyone else requests
-    const isRestricted = user?.role !== UserRole.SYSTEM_ADMIN;
+    // SYSTEM_ADMIN, SENIOR_MANAGER, and MANAGER can add suppliers directly
+    const isRestricted = user?.role !== UserRole.SYSTEM_ADMIN &&
+        user?.role !== UserRole.SENIOR_MANAGER &&
+        user?.role !== UserRole.MANAGER;
 
     const [suppliers, setSuppliers] = useState<CardSupplier[]>([]);
     const [loading, setLoading] = useState(true);
