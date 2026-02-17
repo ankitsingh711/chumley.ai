@@ -1,10 +1,12 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/departments.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
+import { ChevronDown } from 'lucide-react';
+import { reportsApi } from '../../services/reports.service';
 
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
@@ -24,11 +26,17 @@ const COLORS = [
     'bg-primary-500',
 ];
 
+
 export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
     const navigate = useNavigate();
     const { user } = useAuth();
     // Default limit for illustration since we don't have it in DB yet
     const DEFAULT_LIMIT = 50000;
+
+    // State for expanded department
+    const [expandedDept, setExpandedDept] = useState<string | null>(null);
+    const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
+    const [loadingBreakdown, setLoadingBreakdown] = useState<Record<string, boolean>>({});
 
     // Create a map of department spend for easy lookup
     const spendMap = departmentSpend;
@@ -43,6 +51,7 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
             const spendFromMap = spendMap[dept.name] || 0;
 
             return {
+                id: dept.id,
                 name: dept.name,
                 category: dept.description || 'General Budget', // Use description as the subtitle
                 limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
@@ -55,6 +64,7 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
         Object.entries(spendMap).forEach(([name, amount]) => {
             if (!trackedDepartments.find(d => d.name === name)) {
                 trackedDepartments.push({
+                    id: `unassigned-${name}`,
                     name,
                     category: 'Unassigned / Other',
                     limit: DEFAULT_LIMIT,
@@ -66,6 +76,28 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
 
         return trackedDepartments.sort((a, b) => b.spent - a.spent);
     }, [departments, spendMap]);
+
+    const handleExpand = async (deptId: string) => {
+        if (expandedDept === deptId) {
+            setExpandedDept(null);
+            return;
+        }
+
+        setExpandedDept(deptId);
+
+        // Fetch breakdown if not already loaded and it's a real department (has a UUID)
+        if (!breakdownData[deptId] && !deptId.startsWith('unassigned-')) {
+            setLoadingBreakdown(prev => ({ ...prev, [deptId]: true }));
+            try {
+                const data = await reportsApi.getDepartmentSpendBreakdown(deptId);
+                setBreakdownData(prev => ({ ...prev, [deptId]: data }));
+            } catch (error) {
+                console.error(`Failed to fetch breakdown for department ${deptId}`, error);
+            } finally {
+                setLoadingBreakdown(prev => ({ ...prev, [deptId]: false }));
+            }
+        }
+    };
 
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
@@ -90,13 +122,22 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
                     sortedDepartments.map((dept) => {
                         const percentage = Math.round((dept.spent / dept.limit) * 100);
                         const remaining = dept.limit - dept.spent;
+                        const isExpanded = expandedDept === dept.id;
+                        const isLoading = loadingBreakdown[dept.id];
+                        const breakdown = breakdownData[dept.id] || [];
 
                         return (
-                            <div key={dept.name}>
-                                <div className="mb-2 flex items-end justify-between">
-                                    <div>
-                                        <p className="font-medium text-gray-900">{dept.name}</p>
-                                        <p className="text-xs text-gray-500">{dept.category}</p>
+                            <div key={dept.id} className="group">
+                                <div
+                                    className="mb-2 flex items-end justify-between cursor-pointer"
+                                    onClick={() => handleExpand(dept.id)}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isExpanded && "rotate-180")} />
+                                        <div>
+                                            <p className="font-medium text-gray-900">{dept.name}</p>
+                                            <p className="text-xs text-gray-500">{dept.category}</p>
+                                        </div>
                                     </div>
                                     <div className="text-right">
                                         <p className={cn("text-sm font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
@@ -106,17 +147,45 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
                                     </div>
                                 </div>
 
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 mb-2">
                                     <div
                                         className={cn("h-full rounded-full transition-all duration-500", dept.color)}
                                         style={{ width: `${Math.min(percentage, 100)}%` }}
                                     />
                                 </div>
 
-                                <div className="mt-1 flex justify-between text-[10px] text-gray-400">
+                                <div className="flex justify-between text-[10px] text-gray-400">
                                     <span>Spent: £{dept.spent.toLocaleString()}</span>
                                     <span>Limit: £{dept.limit.toLocaleString()}</span>
                                 </div>
+
+                                {/* Breakdown Dropdown */}
+                                {isExpanded && (
+                                    <div className="mt-4 pl-6 pr-2 py-3 bg-gray-50 rounded-md text-sm animate-in slide-in-from-top-2 duration-200">
+                                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Category Breakdown</h4>
+
+                                        {isLoading ? (
+                                            <div className="flex justify-center py-2">
+                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-primary-600"></div>
+                                            </div>
+                                        ) : breakdown.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {breakdown.map((item, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center text-xs">
+                                                        <span className="text-gray-600">{item.category}</span>
+                                                        <span className="font-medium text-gray-900">£{item.amount.toLocaleString()}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center text-xs font-semibold">
+                                                    <span>Total</span>
+                                                    <span>£{breakdown.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <p className="text-xs text-gray-400 italic">No detailed spend data available.</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         );
                     })

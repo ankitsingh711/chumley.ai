@@ -239,7 +239,98 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
         // Cache for 1 hour (spend data changes less frequently)
         await CacheService.set(cacheKey, chartData, 3600);
 
+
         res.json(chartData);
+    } catch (error) {
+        Logger.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+export const getDepartmentSpendBreakdown = async (req: Request, res: Response) => {
+    try {
+        const { departmentId, startDate, endDate } = req.query;
+        const user = req.user as any;
+
+        // Validation: Ensure departmentId is provided
+        if (!departmentId) {
+            return res.status(400).json({ error: 'Department ID is required' });
+        }
+
+        // RBAC: Check if user has access to this department's data
+        if (
+            user.role !== UserRole.SYSTEM_ADMIN &&
+            user.departmentId !== departmentId
+        ) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        // Build cache key
+        const cacheKey = `dept-spend-breakdown:${departmentId}:${startDate || 'none'}:${endDate || 'none'}`;
+
+        // Try cache first
+        const cached = await CacheService.get(cacheKey);
+        if (cached) {
+            return res.json(cached);
+        }
+
+        // Date filters
+        const dateFilter: any = {};
+        if (startDate) {
+            dateFilter.gte = new Date(startDate as string);
+        }
+        if (endDate) {
+            const end = new Date(endDate as string);
+            end.setHours(23, 59, 59, 999);
+            dateFilter.lte = end;
+        }
+
+        const dateWhere = Object.keys(dateFilter).length > 0 ? { createdAt: dateFilter } : {};
+
+        // Fetch orders for this department
+        const orders = await prisma.purchaseOrder.findMany({
+            where: {
+                status: { not: OrderStatus.CANCELLED },
+                ...dateWhere,
+                request: {
+                    requester: {
+                        departmentId: String(departmentId)
+                    }
+                }
+            },
+            include: {
+                request: {
+                    select: {
+                        budgetCategory: true,
+                        category: { select: { name: true } }
+                    }
+                }
+            }
+        });
+
+        // Group by category
+        const categorySpend: Record<string, number> = {};
+
+        orders.forEach(order => {
+            // Priority: budgetCategory > request.category.name > "Unassigned"
+            const categoryName =
+                order.request?.budgetCategory ||
+                order.request?.category?.name ||
+                'Unassigned';
+
+            categorySpend[categoryName] = (categorySpend[categoryName] || 0) + Number(order.totalAmount);
+        });
+
+        // Format as array
+        const result = Object.entries(categorySpend)
+            .map(([category, amount]) => ({ category, amount }))
+            .sort((a, b) => b.amount - a.amount);
+
+        // Cache for 5 minutes
+        await CacheService.set(cacheKey, result, 300);
+
+        res.json(result);
+
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });

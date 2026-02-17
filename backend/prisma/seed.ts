@@ -57,75 +57,71 @@ async function main() {
     console.log('✅ Hierarchy Seeded:', stats);
 
     // 4. Create Users (Fetch depts first)
-    const hr = await prisma.department.findFirst({ where: { name: 'HR & Recruitment' } }); // Updated name from JSON
-    const fleet = await prisma.department.findFirst({ where: { name: 'Fleet' } });
-    const marketing = await prisma.department.findFirst({ where: { name: 'Marketing' } });
-    const tech = await prisma.department.findFirst({ where: { name: 'Tech' } }); // Top level? JSON has Tech under Chessington/Royston.
-    // Wait, the JSON structure has Branches at top level: Chessington, Royston.
-    // department names are keys under "Staff Cost" or seemingly the keys under Branch.
-    // Looking at JSON: Chessington -> Tech -> ...
-    // The keys under Branch seem to be "Tech", "Sector Group", "Trade Group", "Support", "Fleet", "Assets", etc.
-    // These look like Categories or Departments?
-    // In seedHierarchyData:
-    // for (const [departmentName, departmentData] of Object.entries(branchData))
-    // It treats the keys under branch as Departments.
-    // So "Tech", "Sector Group", "Trade Group" are Departments.
-
-    // Let's fetch them
-    const itDept = await prisma.department.findFirst({ where: { name: 'Tech' } }); // "Tech" is a department in JSON
-
-    if (!hr || !fleet || !marketing || !itDept) {
-        console.warn('⚠️ Some departments not found for user assignment. Using available ones or skipping.');
-    }
-
+    // 4. Create Users (Fetch depts first)
+    const allDepartments = await prisma.department.findMany();
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     // System Admin
-    const admin = await prisma.user.create({
+    await prisma.user.create({
         data: {
             email: 'admin@chumley.ai',
             password: hashedPassword,
-            name: 'System Admin', // Permissions: Full access
+            name: 'System Admin',
             role: UserRole.SYSTEM_ADMIN,
         }
     });
+    console.log('👤 Created System Admin: admin@chumley.ai');
 
-    // Senior Manager (e.g. Head of Tech)
-    if (itDept) {
-        const seniorManager = await prisma.user.create({
+    // Create hierarchy users for each department
+    for (const dept of allDepartments) {
+        // Sanitize department name for email (e.g., "HR & Recruitment" -> "hr.recruitment")
+        // Remove special chars, replace spaces with dots, lowercase
+        const cleanName = dept.name.toLowerCase()
+            .replace(/&/g, 'and')
+            .replace(/[^a-z0-9]+/g, '.')
+            .replace(/^\.+|\.+$/g, ''); // Trim dots
+
+        // Senior Manager (Head of Department)
+        const head = await prisma.user.create({
             data: {
-                email: 'senior@chumley.ai',
+                email: `head.${cleanName}@chumley.ai`,
                 password: hashedPassword,
-                name: 'Sarah Director',
+                name: `Head of ${dept.name}`,
                 role: UserRole.SENIOR_MANAGER,
-                departmentId: itDept.id, // Head of Tech
+                departmentId: dept.id,
             }
         });
 
-        // Manager (e.g. IT Manager) - Reports to Senior Manager
+        // Manager (Reports to Head)
         const manager = await prisma.user.create({
             data: {
-                email: 'manager@chumley.ai',
+                email: `manager.${cleanName}@chumley.ai`,
                 password: hashedPassword,
-                name: 'Mike Operations',
+                name: `Manager ${dept.name}`,
                 role: UserRole.MANAGER,
-                departmentId: itDept.id,
-                managerId: seniorManager.id
+                departmentId: dept.id,
+                managerId: head.id
             }
         });
 
-        // Department User (e.g. IT Support) - Reports to Manager
-        const user = await prisma.user.create({
+        // Member (Reports to Manager)
+        await prisma.user.create({
             data: {
-                email: 'user@chumley.ai',
+                email: `member.${cleanName}@chumley.ai`,
                 password: hashedPassword,
-                name: 'John Doe',
+                name: `Member ${dept.name}`,
                 role: UserRole.MEMBER,
-                departmentId: itDept.id,
+                departmentId: dept.id,
                 managerId: manager.id
             }
         });
     }
+
+    console.log(`✅ Created Users for ${allDepartments.length} departments`);
+
+    // Helper for suppliers below
+    const itDept = allDepartments.find(d => d.name === 'Tech') || allDepartments[0];
+    const hr = allDepartments.find(d => d.name === 'HR & Recruitment') || allDepartments[0];
 
     console.log('✅ Created Users');
 
