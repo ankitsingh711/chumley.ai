@@ -460,11 +460,11 @@ export default function SupplierProfile() {
                         </TabsContent>
 
                         <TabsContent value="orders" className="pt-6">
-                            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                                <div className="p-6 border-b border-gray-100 flex justify-between items-center rounded-t-xl">
                                     <h3 className="font-semibold text-gray-900">Purchase Orders History</h3>
                                     <div className="flex gap-2">
-                                        <Button variant="outline" size="sm" onClick={() => {
+                                        <Button variant="outline" onClick={() => {
                                             if (!supplier.requests) return;
                                             const headers = ['Order ID', 'Date', 'Items', 'Amount', 'Status'];
                                             const rows = supplier.requests.map(req => [
@@ -500,7 +500,7 @@ export default function SupplierProfile() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto rounded-b-xl">
                                     <table className="w-full text-sm text-left">
                                         <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-100">
                                             <tr>
