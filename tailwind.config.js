@@ -43,13 +43,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Mont', 'sans-serif'],
-      },
-      fontWeight: {
-        medium: '350',
-        semibold: '450',
-        bold: '550',
-        extrabold: '650',
+        sans: ['Montserrat', 'sans-serif'],
       },
     },
   },
