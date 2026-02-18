@@ -163,12 +163,7 @@ export default function CreateRequest() {
                 isOpen={showAddSupplierModal}
                 onClose={() => setShowAddSupplierModal(false)}
                 onSuccess={handleSupplierAdded}
-                isRestricted={false} // Users creating requests can add suppliers? Maybe restricted? 
-            // Plan says "Add new vendor functionality". 
-            // The Suppliers page logic says "Only SYSTEM_ADMIN can add directly".
-            // I should probably check the user role here too.
-            // But for now, let's pass true/false based on logic or default.
-            // Actually, I'll use the proper check if I can access user context.
+                isRestricted={user?.role !== UserRole.SYSTEM_ADMIN}
             />
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -296,14 +291,13 @@ export default function CreateRequest() {
                                     <label className="block text-xs font-bold text-gray-700">
                                         Supplier / Vendor <span className="text-red-500">*</span>
                                     </label>
-                                    {!isMember && (
-                                        <button
-                                            onClick={() => setShowAddSupplierModal(true)}
-                                            className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
-                                        >
-                                            <Plus className="h-3 w-3" /> New Vendor
-                                        </button>
-                                    )}
+
+                                    <button
+                                        onClick={() => setShowAddSupplierModal(true)}
+                                        className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
+                                    >
+                                        <Plus className="h-3 w-3" /> New Vendor
+                                    </button>
                                 </div>
                                 <Select
                                     value={selectedSupplierId}
