@@ -12,6 +12,7 @@ import { departmentsApi, type Department } from '../services/departments.service
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
+import { getCategorySpendTotals, getTotalSpend } from '../data/financialDataHelpers';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -20,6 +21,10 @@ export default function Dashboard() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Hardcoded financial data for department spend (2025)
+    const hardcodedDepartmentSpend = getCategorySpendTotals(2025);
+    const hardcodedTotalSpend = getTotalSpend(2025);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -27,7 +32,16 @@ export default function Dashboard() {
                     reportsApi.getKPIs(),
                     departmentsApi.getAll(),
                 ]);
-                setMetrics(kpiData);
+
+                // TODO: Uncomment below to use API data instead of hardcoded data
+                // setMetrics(kpiData);
+
+                // Using hardcoded financial data for department spend
+                setMetrics({
+                    ...kpiData,
+                    departmentSpend: hardcodedDepartmentSpend,
+                    totalSpend: hardcodedTotalSpend,
+                });
                 setDepartments(departmentsData);
 
                 const response = await requestsApi.getAll();

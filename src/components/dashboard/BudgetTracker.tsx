@@ -6,7 +6,9 @@ import type { Department } from '../../services/departments.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
 import { ChevronDown } from 'lucide-react';
-import { reportsApi } from '../../services/reports.service';
+// TODO: Uncomment to use API data instead of hardcoded data
+// import { reportsApi } from '../../services/reports.service';
+import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
@@ -36,7 +38,6 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
     // State for expanded department
     const [expandedDept, setExpandedDept] = useState<string | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
-    const [loadingBreakdown, setLoadingBreakdown] = useState<Record<string, boolean>>({});
 
     // Create a map of department spend for easy lookup
     const spendMap = departmentSpend;
@@ -77,7 +78,22 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
         return trackedDepartments.sort((a, b) => b.spent - a.spent);
     }, [departments, spendMap]);
 
-    const handleExpand = async (deptId: string) => {
+    // TODO: Uncomment below to use API breakdown data instead of hardcoded data
+    // const handleExpand = async (deptId: string) => {
+    //     if (expandedDept === deptId) { setExpandedDept(null); return; }
+    //     setExpandedDept(deptId);
+    //     if (!breakdownData[deptId] && !deptId.startsWith('unassigned-')) {
+    //         try {
+    //             const data = await reportsApi.getDepartmentSpendBreakdown(deptId);
+    //             setBreakdownData(prev => ({ ...prev, [deptId]: data }));
+    //         } catch (error) {
+    //             console.error(`Failed to fetch breakdown for department ${deptId}`, error);
+    //         }
+    //     }
+    // };
+
+    // Using hardcoded breakdown data
+    const handleExpand = (deptId: string) => {
         if (expandedDept === deptId) {
             setExpandedDept(null);
             return;
@@ -85,17 +101,11 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
 
         setExpandedDept(deptId);
 
-        // Fetch breakdown if not already loaded and it's a real department (has a UUID)
-        if (!breakdownData[deptId] && !deptId.startsWith('unassigned-')) {
-            setLoadingBreakdown(prev => ({ ...prev, [deptId]: true }));
-            try {
-                const data = await reportsApi.getDepartmentSpendBreakdown(deptId);
-                setBreakdownData(prev => ({ ...prev, [deptId]: data }));
-            } catch (error) {
-                console.error(`Failed to fetch breakdown for department ${deptId}`, error);
-            } finally {
-                setLoadingBreakdown(prev => ({ ...prev, [deptId]: false }));
-            }
+        if (!breakdownData[deptId]) {
+            const dept = sortedDepartments.find(d => d.id === deptId);
+            const deptName = dept?.name || deptId.replace('unassigned-', '');
+            const data = getCategoryBreakdown(deptName, 2025);
+            setBreakdownData(prev => ({ ...prev, [deptId]: data }));
         }
     };
 
@@ -123,7 +133,6 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
                         const percentage = Math.round((dept.spent / dept.limit) * 100);
                         const remaining = dept.limit - dept.spent;
                         const isExpanded = expandedDept === dept.id;
-                        const isLoading = loadingBreakdown[dept.id];
                         const breakdown = breakdownData[dept.id] || [];
 
                         return (
@@ -164,11 +173,7 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
                                     <div className="mt-4 pl-6 pr-2 py-3 bg-gray-50 rounded-md text-sm animate-in slide-in-from-top-2 duration-200">
                                         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Category Breakdown</h4>
 
-                                        {isLoading ? (
-                                            <div className="flex justify-center py-2">
-                                                <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-primary-600"></div>
-                                            </div>
-                                        ) : breakdown.length > 0 ? (
+                                        {breakdown.length > 0 ? (
                                             <div className="space-y-2">
                                                 {breakdown.map((item, idx) => (
                                                     <div key={idx} className="flex justify-between items-center text-xs">
