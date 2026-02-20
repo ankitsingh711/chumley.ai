@@ -1,15 +1,16 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X } from 'lucide-react';
+import { useEffect, useState, Fragment } from 'react';
+import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X, ChevronDown, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Menu, Transition } from '@headlessui/react';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
 import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
 import { departmentsApi, type Department } from '../services/departments.service';
-import { reportsApi } from '../services/reports.service';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
+import { getCategorySpendTotals } from '../data/financialDataHelpers';
 
 interface DepartmentBudget extends Department {
     spent: number;
@@ -35,8 +36,10 @@ const COLORS = [
 export default function DepartmentBudgets() {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
+    const [baseDepartments, setBaseDepartments] = useState<Department[]>([]);
     const [departments, setDepartments] = useState<DepartmentBudget[]>([]);
     const [loading, setLoading] = useState(true);
+    const [budgetTimeframe, setBudgetTimeframe] = useState<number | string | undefined>(2025);
     const [totalStats, setTotalStats] = useState({
         totalBudget: 0,
         totalSpent: 0,
@@ -70,55 +73,58 @@ export default function DepartmentBudgets() {
     };
 
     useEffect(() => {
-        loadData();
+        const loadInitialData = async () => {
+            try {
+                setLoading(true);
+                const depts = await departmentsApi.getAll();
+                setBaseDepartments(depts);
+            } catch (error) {
+                console.error('Failed to load department budgets:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadInitialData();
     }, []);
 
-    const loadData = async () => {
-        try {
-            setLoading(true);
-            const [depts, kpiData] = await Promise.all([
-                departmentsApi.getAll(),
-                reportsApi.getKPIs()
-            ]);
+    useEffect(() => {
+        if (!baseDepartments.length) return;
 
-            // Get department spend from KPI endpoint
-            const departmentSpendMap = kpiData.departmentSpend || {};
+        // Get spending data for current timeframe
+        const departmentSpendMap = getCategorySpendTotals(budgetTimeframe);
 
-            const processedDepts = depts.map((dept) => {
-                // Use actual budget from DB or default to 0
-                const budget = dept.budget && Number(dept.budget) > 0 ? Number(dept.budget) : 0;
+        const processedDepts = baseDepartments.map((dept) => {
+            // Use actual budget from DB or default to 0
+            const budget = dept.budget && Number(dept.budget) > 0 ? Number(dept.budget) : 0;
 
-                // Use real spending data from KPI endpoint
-                const spent = departmentSpendMap[dept.name] || 0;
+            // Use real spending data based on timeframe
+            const spent = departmentSpendMap[dept.name] || 0;
 
-                return {
-                    ...dept,
-                    budget, // Store as number for calculation
-                    spent,
-                    metrics: {
-                        pendingCount: 0,
-                        userCount: (dept as any).metrics?.userCount || (dept as any).users?.length || 0
-                    }
-                };
-            });
+            return {
+                ...dept,
+                budget, // Store as number for calculation
+                spent,
+                metrics: {
+                    pendingCount: 0,
+                    userCount: (dept as any).metrics?.userCount || (dept as any).users?.length || 0
+                }
+            };
+        });
 
-            setDepartments(processedDepts);
+        // Sort by spent descending
+        processedDepts.sort((a, b) => b.spent - a.spent);
 
-            const totalLimit = processedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
-            const totalSpent = processedDepts.reduce((sum, d) => sum + d.spent, 0);
+        setDepartments(processedDepts);
 
-            setTotalStats({
-                totalBudget: totalLimit,
-                totalSpent,
-                utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
-            });
+        const totalLimit = processedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
+        const totalSpent = processedDepts.reduce((sum, d) => sum + d.spent, 0);
 
-        } catch (error) {
-            console.error('Failed to load department budgets:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        setTotalStats({
+            totalBudget: totalLimit,
+            totalSpent,
+            utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
+        });
+    }, [baseDepartments, budgetTimeframe]);
 
     const handleEditClick = (dept: DepartmentBudget) => {
         setEditingDept(dept);
@@ -135,20 +141,10 @@ export default function DepartmentBudgets() {
 
             await departmentsApi.update(editingDept.id, { budget: newBudget });
 
-            // Update local state
-            const updatedDepts = departments.map(d =>
+            // Update baseDepartments so the effect re-runs
+            setBaseDepartments(prev => prev.map(d =>
                 d.id === editingDept.id ? { ...d, budget: newBudget } : d
-            );
-            setDepartments(updatedDepts);
-
-            // Recalculate totals
-            const totalLimit = updatedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
-            const totalSpent = updatedDepts.reduce((sum, d) => sum + d.spent, 0);
-            setTotalStats({
-                totalBudget: totalLimit,
-                totalSpent,
-                utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
-            });
+            ));
 
             setEditingDept(null);
         } catch (error) {
@@ -164,14 +160,135 @@ export default function DepartmentBudgets() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center gap-4">
-                <Button variant="ghost" className="p-2" onClick={() => navigate('/')}>
-                    <ArrowLeft className="h-5 w-5" />
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Departmental Budget Tracking</h1>
-                    <p className="text-sm text-gray-500">Overview of budget allocation and consumption across all departments</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                    <Button variant="ghost" className="p-2" onClick={() => navigate('/')}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-bold text-gray-900">Departmental Budget Tracking</h1>
+                        <p className="text-sm text-gray-500">Overview of budget allocation and consumption across all departments</p>
+                    </div>
                 </div>
+
+                <Menu as="div" className="relative inline-block text-left">
+                    <Menu.Button
+                        className="flex items-center gap-2 px-4 py-2 text-sm bg-white rounded-xl hover:bg-slate-50 focus:outline-none transition-all duration-200 border border-slate-200 shadow-sm ui-open:border-blue-500 ui-open:ring-4 ui-open:ring-blue-500/10"
+                    >
+                        <span className="font-semibold text-slate-700">
+                            {budgetTimeframe === 2025 ? '2025' :
+                                budgetTimeframe === 2024 ? '2024' :
+                                    typeof budgetTimeframe === 'string' ? budgetTimeframe.replace('-', ' ') :
+                                        'All Time'}
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200 ui-open:rotate-180 ui-open:text-blue-500" />
+                    </Menu.Button>
+
+                    <Transition
+                        as={Fragment}
+                        enter="transition ease-out duration-100"
+                        enterFrom="transform opacity-0 scale-95"
+                        enterTo="transform opacity-100 scale-100"
+                        leave="transition ease-in duration-75"
+                        leaveFrom="transform opacity-100 scale-100"
+                        leaveTo="transform opacity-0 scale-95"
+                    >
+                        <Menu.Items className="absolute right-0 mt-2 w-52 z-20 origin-top-right bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden focus:outline-none max-h-[350px] overflow-y-auto ring-1 ring-black/5">
+                            <div className="flex flex-col py-1.5">
+                                {/* Yearly Section */}
+                                <div className="px-4 pt-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yearly</div>
+                                <div className="px-1.5 space-y-0.5">
+                                    {[
+                                        { label: '2025', value: 2025 },
+                                        { label: '2024', value: 2024 }
+                                    ].map((option) => (
+                                        <Menu.Item key={option.label}>
+                                            {({ active }: { active: boolean }) => (
+                                                <button
+                                                    onClick={() => setBudgetTimeframe(option.value)}
+                                                    className={cn(
+                                                        "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                        budgetTimeframe === option.value
+                                                            ? "bg-blue-50 text-blue-700 font-semibold"
+                                                            : active
+                                                                ? "bg-slate-50 text-slate-900 font-medium"
+                                                                : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                                                    )}
+                                                >
+                                                    <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                        {budgetTimeframe === option.value && (
+                                                            <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                                        )}
+                                                    </span>
+                                                    <span>{option.label}</span>
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    ))}
+                                </div>
+
+                                <div className="h-px bg-slate-100 w-full my-2" />
+
+                                {/* Monthly Section */}
+                                <div className="px-4 pt-1 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly (2025)</div>
+                                <div className="px-1.5 space-y-0.5">
+                                    {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
+                                        <Menu.Item key={month}>
+                                            {({ active }: { active: boolean }) => (
+                                                <button
+                                                    onClick={() => setBudgetTimeframe(month)}
+                                                    className={cn(
+                                                        "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                        budgetTimeframe === month
+                                                            ? "bg-blue-50 text-blue-700 font-semibold"
+                                                            : active
+                                                                ? "bg-slate-50 text-slate-900 font-medium"
+                                                                : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                                                    )}
+                                                >
+                                                    <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                        {budgetTimeframe === month && (
+                                                            <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                                        )}
+                                                    </span>
+                                                    <span>{month.replace('-', ' ')}</span>
+                                                </button>
+                                            )}
+                                        </Menu.Item>
+                                    ))}
+                                </div>
+
+                                <div className="h-px bg-slate-100 w-full my-2" />
+
+                                {/* All Time Section */}
+                                <div className="px-1.5 pb-1">
+                                    <Menu.Item>
+                                        {({ active }: { active: boolean }) => (
+                                            <button
+                                                onClick={() => setBudgetTimeframe(undefined)}
+                                                className={cn(
+                                                    "w-full text-left px-2.5 py-2.5 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                    budgetTimeframe === undefined
+                                                        ? "bg-blue-50 text-blue-700 font-semibold"
+                                                        : active
+                                                            ? "bg-slate-50 text-slate-900 font-medium"
+                                                            : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                                                )}
+                                            >
+                                                <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                    {budgetTimeframe === undefined && (
+                                                        <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                                    )}
+                                                </span>
+                                                <span>All Time</span>
+                                            </button>
+                                        )}
+                                    </Menu.Item>
+                                </div>
+                            </div>
+                        </Menu.Items>
+                    </Transition>
+                </Menu>
             </div>
 
             {/* High Level Stats */}
