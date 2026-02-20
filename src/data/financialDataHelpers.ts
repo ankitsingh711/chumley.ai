@@ -18,12 +18,12 @@ const allEntries: FinancialEntry[] = allRawData.map(([date, category, subCategor
 }));
 
 /**
- * Get total spend per category (top-level department) across all time
+ * Get total spend per category (top-level department) across a date range
  * Returns Record<categoryName, totalAmount>
  */
-export function getCategorySpendTotals(timeframe?: number | string, departmentFilter?: string): Record<string, number> {
+export function getCategorySpendTotals(dateRange?: { start?: string; end?: string }, departmentFilter?: string): Record<string, number> {
     const result: Record<string, number> = {};
-    let entries = timeframe ? filterByTimeframe(allEntries, timeframe) : allEntries;
+    let entries = dateRange ? filterByDateRange(allEntries, dateRange) : allEntries;
     if (departmentFilter) {
         entries = entries.filter(e => e.category.toLowerCase() === departmentFilter.toLowerCase());
     }
@@ -37,8 +37,8 @@ export function getCategorySpendTotals(timeframe?: number | string, departmentFi
  * Get breakdown for a specific category (department)
  * Returns array of { category: subCategoryName, amount }
  */
-export function getCategoryBreakdown(categoryName: string, timeframe?: number | string): { category: string; amount: number }[] {
-    const entries = timeframe ? filterByTimeframe(allEntries, timeframe) : allEntries;
+export function getCategoryBreakdown(categoryName: string, dateRange?: { start?: string; end?: string }): { category: string; amount: number }[] {
+    const entries = dateRange ? filterByDateRange(allEntries, dateRange) : allEntries;
     const subTotals: Record<string, number> = {};
     entries
         .filter(e => e.category === categoryName)
@@ -70,8 +70,8 @@ export function getMonthlyCategorySpend(categoryName: string): { month: string; 
 /**
  * Get total spend across all categories
  */
-export function getTotalSpend(timeframe?: number | string, departmentFilter?: string): number {
-    let entries = timeframe ? filterByTimeframe(allEntries, timeframe) : allEntries;
+export function getTotalSpend(dateRange?: { start?: string; end?: string }, departmentFilter?: string): number {
+    let entries = dateRange ? filterByDateRange(allEntries, dateRange) : allEntries;
     if (departmentFilter) {
         entries = entries.filter(e => e.category.toLowerCase() === departmentFilter.toLowerCase());
     }
@@ -100,13 +100,17 @@ export function getAllCategories(): string[] {
 
 // --- Helpers ---
 
-function filterByTimeframe(entries: FinancialEntry[], timeframe: number | string): FinancialEntry[] {
-    if (typeof timeframe === 'number') {
-        const suffix = String(timeframe).slice(-2);
-        return entries.filter(e => e.date.endsWith(`-${suffix}`));
-    }
-    // If it's a string, it maps to exactly a specific month (e.g. "Jan-25")
-    return entries.filter(e => e.date === timeframe);
+function filterByDateRange(entries: FinancialEntry[], { start, end }: { start?: string; end?: string }): FinancialEntry[] {
+    if (!start && !end) return entries;
+
+    const startDate = start ? new Date(start) : new Date('2000-01-01');
+    const endDate = end ? new Date(end) : new Date('2100-01-01');
+    endDate.setHours(23, 59, 59, 999);
+
+    return entries.filter(e => {
+        const d = parseDate(e.date);
+        return d >= startDate && d <= endDate;
+    });
 }
 
 function parseDate(dateStr: string): Date {

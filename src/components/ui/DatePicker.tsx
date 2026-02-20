@@ -98,7 +98,7 @@ export function DatePicker({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 4, scale: 0.98 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-50 mt-2 p-0 shadow-xl rounded-xl"
+                        className="absolute z-50 mt-2 right-0 sm:left-auto p-0 shadow-xl rounded-xl"
                     >
                         <Calendar
                             value={dateValue}

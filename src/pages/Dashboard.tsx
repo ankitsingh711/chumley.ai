@@ -1,10 +1,11 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Wallet, FileClock, ShoppingBag, TrendingUp } from 'lucide-react';
+import { Wallet, FileClock, ShoppingBag, TrendingUp, Calendar, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/dashboard/StatCard';
 import { BudgetTracker } from '../components/dashboard/BudgetTracker';
 import { RequestBreakdown } from '../components/dashboard/RequestBreakdown';
 import { Button } from '../components/ui/Button';
+import { DatePicker } from '../components/ui/DatePicker';
 import { DashboardSkeleton } from '../components/skeletons/DashboardSkeleton';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
@@ -23,6 +24,9 @@ export default function Dashboard() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>({});
 
     // Determine the department filter for restricted roles
     const userRole = user?.role;
@@ -34,12 +38,6 @@ export default function Dashboard() {
 
     const departmentFilter = isRestrictedRole && departmentName ? departmentName : undefined;
 
-    // Timeframe filter state
-    const [budgetTimeframe, setBudgetTimeframe] = useState<number | string | undefined>(2025);
-
-    // Hardcoded financial data for department spend based on selected timeframe
-    const hardcodedDepartmentSpend = getCategorySpendTotals(budgetTimeframe, departmentFilter);
-    const hardcodedTotalSpend = getTotalSpend(budgetTimeframe, departmentFilter);
 
     // Filter departments array for BudgetTracker so it doesn't show others as £0
     const filteredDepartments = useMemo(() => {
@@ -49,47 +47,71 @@ export default function Dashboard() {
         return departments;
     }, [departments, departmentFilter]);
 
+    const loadDashboard = async (startDate?: string, endDate?: string) => {
+        try {
+            setLoading(true);
+            const [kpiData, departmentsData] = await Promise.all([
+                reportsApi.getKPIs(startDate, endDate),
+                departmentsApi.getAll(),
+            ]);
+
+            // Calculate hardcoded financial data for the given date range
+            const dateRangeOpt = (startDate || endDate) ? { start: startDate, end: endDate } : undefined;
+            const hardcodedDepartmentSpend = getCategorySpendTotals(dateRangeOpt, departmentFilter);
+            const hardcodedTotalSpend = getTotalSpend(dateRangeOpt, departmentFilter);
+
+            // Using hardcoded financial data for department spend
+            setMetrics(prev => ({
+                ...(prev || kpiData),
+                ...kpiData,
+                departmentSpend: hardcodedDepartmentSpend,
+                totalSpend: hardcodedTotalSpend,
+            }));
+            setDepartments(departmentsData);
+
+            const response = await requestsApi.getAll();
+            const allRequests = isPaginatedResponse(response) ? response.data : response;
+            setRecentRequests(allRequests.slice(0, 5));
+        } catch (error) {
+            console.error('Failed to fetch dashboard data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [kpiData, departmentsData] = await Promise.all([
-                    reportsApi.getKPIs(),
-                    departmentsApi.getAll(),
-                ]);
-
-                // TODO: Uncomment below to use API data instead of hardcoded data
-                // setMetrics(kpiData);
-
-                // Using hardcoded financial data for department spend
-                setMetrics(prev => ({
-                    ...(prev || kpiData),
-                    departmentSpend: hardcodedDepartmentSpend,
-                    totalSpend: hardcodedTotalSpend,
-                }));
-                setDepartments(departmentsData);
-
-                const response = await requestsApi.getAll();
-                const allRequests = isPaginatedResponse(response) ? response.data : response;
-                setRecentRequests(allRequests.slice(0, 5)); // Show only 5 most recent
-            } catch (error) {
-                console.error('Failed to fetch dashboard data:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
+        loadDashboard();
     }, []);
 
-    // Effect to update hardcoded metrics when timeframe changes (since real API isn't used for spend breakdown here)
-    useEffect(() => {
-        if (metrics) {
-            setMetrics(prev => prev ? ({
-                ...prev,
-                departmentSpend: getCategorySpendTotals(budgetTimeframe, departmentFilter),
-                totalSpend: getTotalSpend(budgetTimeframe, departmentFilter),
-            }) : null);
+    const applyDateRange = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        // Reset the custom date range inputs when a preset is selected
+        setDateRange({ start: '', end: '' });
+        setActiveDateRange({ start: startStr, end: endStr });
+        setShowDatePicker(false);
+        loadDashboard(startStr, endStr);
+    };
+
+    const applyCustomDateRange = () => {
+        if (dateRange.start && dateRange.end) {
+            setActiveDateRange({ start: dateRange.start, end: dateRange.end });
+            setShowDatePicker(false);
+            loadDashboard(dateRange.start, dateRange.end);
         }
-    }, [budgetTimeframe, departmentFilter]);
+    };
+
+    const clearDateRange = () => {
+        setDateRange({ start: '', end: '' });
+        setActiveDateRange({});
+        setShowDatePicker(false);
+        loadDashboard();
+    };
+
 
     if (loading) {
         return <DashboardSkeleton />;
@@ -97,6 +119,68 @@ export default function Dashboard() {
 
     return (
         <div className="space-y-6">
+            {/* Dashboard Header with Date Range */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+                    {(activeDateRange.start || activeDateRange.end) && (
+                        <p className="text-sm text-gray-500 mt-1">
+                            Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
+                            <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
+                        </p>
+                    )}
+                </div>
+                <div className="relative">
+                    <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
+                        <Calendar className="mr-2 h-4 w-4" /> Date Range
+                    </Button>
+
+                    {showDatePicker && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-900">Select Date Range</h3>
+                                <button onClick={() => setShowDatePicker(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-2 mb-4">
+                                <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
+                                <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
+                                <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
+                                <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
+                            </div>
+
+                            <div className="border-t pt-4">
+                                <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <DatePicker
+                                        value={dateRange.start}
+                                        onChange={(val) => setDateRange({ ...dateRange, start: val })}
+                                        placeholder="Start Date"
+                                        className="text-sm w-full"
+                                    />
+                                    <DatePicker
+                                        value={dateRange.end}
+                                        onChange={(val) => setDateRange({ ...dateRange, end: val })}
+                                        placeholder="End Date"
+                                        className="text-sm w-full"
+                                    />
+                                </div>
+                                <Button
+                                    onClick={applyCustomDateRange}
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    disabled={!dateRange.start || !dateRange.end}
+                                >
+                                    Apply Custom Range
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
             {/* Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <StatCard
@@ -136,8 +220,6 @@ export default function Dashboard() {
                     <BudgetTracker
                         departmentSpend={metrics?.departmentSpend}
                         departments={filteredDepartments}
-                        timeframe={budgetTimeframe}
-                        onTimeframeChange={setBudgetTimeframe}
                     />
                 </div>
 
