@@ -6,6 +6,8 @@ import type { Department } from '../../services/departments.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
 import { ChevronDown, Check } from 'lucide-react';
+import { Menu, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
 // TODO: Uncomment to use API data instead of hardcoded data
 // import { reportsApi } from '../../services/reports.service';
 import { getCategoryBreakdown } from '../../data/financialDataHelpers';
@@ -45,7 +47,6 @@ export const BudgetTracker = memo(function BudgetTracker({
     // State for expanded department
     const [expandedDept, setExpandedDept] = useState<string | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Create a map of department spend for easy lookup
     const spendMap = departmentSpend;
@@ -131,107 +132,115 @@ export const BudgetTracker = memo(function BudgetTracker({
                 <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
                 <div className="flex items-center gap-2">
                     {onTimeframeChange && (
-                        <div className="relative">
-                            <button
-                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                        <Menu as="div" className="relative inline-block text-left">
+                            <Menu.Button
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white rounded-lg hover:bg-gray-50 focus:outline-none transition-colors border-2 border-gray-200 ui-open:border-blue-700"
                             >
-                                <span className="font-medium text-gray-700">
+                                <span className="font-bold text-gray-900">
                                     {timeframe === 2025 ? '2025' :
                                         timeframe === 2024 ? '2024' :
                                             typeof timeframe === 'string' ? timeframe.replace('-', ' ') :
                                                 'All Time'}
                                 </span>
-                                <ChevronDown className={cn("h-4 w-4 text-gray-500 transition-transform", isDropdownOpen && "rotate-180")} />
-                            </button>
+                                <ChevronDown className="h-4 w-4 text-gray-900 transition-transform ui-open:rotate-180" />
+                            </Menu.Button>
 
-                            {isDropdownOpen && (
-                                <>
-                                    <div
-                                        className="fixed inset-0 z-10"
-                                        onClick={() => setIsDropdownOpen(false)}
-                                    />
-                                    <div className="absolute right-0 mt-2 w-48 z-20 bg-[#404040] rounded-xl shadow-lg border border-gray-600 overflow-hidden text-white animate-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto">
-                                        <div className="py-2">
-                                            {/* Yearly Section */}
-                                            <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Yearly</div>
-                                            {[
-                                                { label: '2025', value: 2025 },
-                                                { label: '2024', value: 2024 }
-                                            ].map((option) => (
-                                                <button
-                                                    key={option.label}
-                                                    onClick={() => {
-                                                        onTimeframeChange(option.value);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
-                                                        timeframe === option.value
-                                                            ? "bg-[#5b96f7] text-white"
-                                                            : "hover:bg-white/10"
-                                                    )}
-                                                >
-                                                    <span className="w-5 relative flex items-center justify-center">
-                                                        {timeframe === option.value && (
-                                                            <Check className="h-4 w-4" strokeWidth={3} />
+                            <Transition
+                                as={Fragment}
+                                enter="transition ease-out duration-100"
+                                enterFrom="transform opacity-0 scale-95"
+                                enterTo="transform opacity-100 scale-100"
+                                leave="transition ease-in duration-75"
+                                leaveFrom="transform opacity-100 scale-100"
+                                leaveTo="transform opacity-0 scale-95"
+                            >
+                                <Menu.Items className="absolute right-0 mt-2 w-48 z-20 origin-top-right bg-[#3f3f3f] rounded-xl shadow-xl border border-gray-600 overflow-hidden text-white focus:outline-none max-h-[350px] overflow-y-auto">
+                                    <div className="flex flex-col">
+                                        {/* Yearly Section */}
+                                        <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Yearly</div>
+                                        {[
+                                            { label: '2025', value: 2025 },
+                                            { label: '2024', value: 2024 }
+                                        ].map((option) => (
+                                            <Menu.Item key={option.label}>
+                                                {({ active }: { active: boolean }) => (
+                                                    <button
+                                                        onClick={() => onTimeframeChange(option.value)}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 text-sm flex items-center transition-colors font-medium",
+                                                            active ? "bg-white/10" : "",
+                                                            timeframe === option.value
+                                                                ? "bg-[#5b96f7] text-white"
+                                                                : "text-gray-200"
                                                         )}
-                                                    </span>
-                                                    <span>{option.label}</span>
-                                                </button>
-                                            ))}
-
-                                            {/* Monthly Section */}
-                                            <div className="px-4 py-1 mt-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-600/50 pt-2">Monthly (2025)</div>
-                                            {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
-                                                <button
-                                                    key={month}
-                                                    onClick={() => {
-                                                        onTimeframeChange(month);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                    className={cn(
-                                                        "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
-                                                        timeframe === month
-                                                            ? "bg-[#5b96f7] text-white"
-                                                            : "hover:bg-white/10"
-                                                    )}
-                                                >
-                                                    <span className="w-5 relative flex items-center justify-center">
-                                                        {timeframe === month && (
-                                                            <Check className="h-4 w-4" strokeWidth={3} />
-                                                        )}
-                                                    </span>
-                                                    <span>{month.replace('-', ' ')}</span>
-                                                </button>
-                                            ))}
-
-                                            {/* All Time Section */}
-                                            <div className="px-4 py-1 mt-2 border-t border-gray-600/50 pt-2" />
-                                            <button
-                                                onClick={() => {
-                                                    onTimeframeChange(undefined);
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className={cn(
-                                                    "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
-                                                    timeframe === undefined
-                                                        ? "bg-[#5b96f7] text-white"
-                                                        : "hover:bg-white/10"
+                                                    >
+                                                        <span className="w-6 flex-shrink-0 flex items-center justify-start">
+                                                            {timeframe === option.value && (
+                                                                <Check className="h-4 w-4" strokeWidth={3} />
+                                                            )}
+                                                        </span>
+                                                        <span>{option.label}</span>
+                                                    </button>
                                                 )}
-                                            >
-                                                <span className="w-5 relative flex items-center justify-center">
-                                                    {timeframe === undefined && (
-                                                        <Check className="h-4 w-4" strokeWidth={3} />
+                                            </Menu.Item>
+                                        ))}
+
+                                        <div className="h-px bg-[#2f2f2f] w-full" />
+
+                                        {/* Monthly Section */}
+                                        <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Monthly (2025)</div>
+                                        {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
+                                            <Menu.Item key={month}>
+                                                {({ active }: { active: boolean }) => (
+                                                    <button
+                                                        onClick={() => onTimeframeChange(month)}
+                                                        className={cn(
+                                                            "w-full text-left px-3 py-2 text-sm flex items-center transition-colors font-medium",
+                                                            active ? "bg-white/10" : "",
+                                                            timeframe === month
+                                                                ? "bg-[#5b96f7] text-white"
+                                                                : "text-gray-200"
+                                                        )}
+                                                    >
+                                                        <span className="w-6 flex-shrink-0 flex items-center justify-start">
+                                                            {timeframe === month && (
+                                                                <Check className="h-4 w-4" strokeWidth={3} />
+                                                            )}
+                                                        </span>
+                                                        <span>{month.replace('-', ' ')}</span>
+                                                    </button>
+                                                )}
+                                            </Menu.Item>
+                                        ))}
+
+                                        <div className="h-px bg-[#2f2f2f] w-full mt-1" />
+
+                                        {/* All Time Section */}
+                                        <Menu.Item>
+                                            {({ active }: { active: boolean }) => (
+                                                <button
+                                                    onClick={() => onTimeframeChange(undefined)}
+                                                    className={cn(
+                                                        "w-full text-left px-3 py-2.5 text-sm flex items-center transition-colors font-medium mt-1 mb-1",
+                                                        active ? "bg-white/10" : "",
+                                                        timeframe === undefined
+                                                            ? "bg-[#5b96f7] text-white"
+                                                            : "text-gray-200"
                                                     )}
-                                                </span>
-                                                <span>All Time</span>
-                                            </button>
-                                        </div>
+                                                >
+                                                    <span className="w-6 flex-shrink-0 flex items-center justify-start">
+                                                        {timeframe === undefined && (
+                                                            <Check className="h-4 w-4" strokeWidth={3} />
+                                                        )}
+                                                    </span>
+                                                    <span>All Time</span>
+                                                </button>
+                                            )}
+                                        </Menu.Item>
                                     </div>
-                                </>
-                            )}
-                        </div>
+                                </Menu.Items>
+                            </Transition>
+                        </Menu>
                     )}
                     {user?.role === UserRole.SYSTEM_ADMIN && (
                         <Button
