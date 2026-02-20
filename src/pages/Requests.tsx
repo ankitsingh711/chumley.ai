@@ -58,7 +58,7 @@ export default function Requests() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
-    const limit = 20;
+    const limit = 10;
 
     const filterModalRef = useRef<HTMLDivElement>(null);
 

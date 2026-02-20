@@ -24,7 +24,7 @@ export interface PaginatedResponse<T> {
  */
 export function getPaginationParams(
     req: Request,
-    defaultLimit: number = 20,
+    defaultLimit: number = 10,
     maxLimit: number = 100
 ): PaginationParams {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);

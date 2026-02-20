@@ -7,7 +7,7 @@ import type {
 import type { PaginatedResponse } from '../types/pagination';
 
 export const ordersApi = {
-    getAll: async (page?: number, limit = 20): Promise<PurchaseOrder[] | PaginatedResponse<PurchaseOrder>> => {
+    getAll: async (page?: number, limit = 10): Promise<PurchaseOrder[] | PaginatedResponse<PurchaseOrder>> => {
         const url = page ? `/orders?page=${page}&limit=${limit}` : '/orders';
         const response = await apiClient.get<PurchaseOrder[] | PaginatedResponse<PurchaseOrder>>(url);
         return response.data;

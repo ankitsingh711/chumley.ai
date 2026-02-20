@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search, Download, Eye, Send, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Pagination } from '../components/Pagination';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { PurchaseOrdersSkeleton } from '../components/skeletons/PurchaseOrdersSkeleton';
 import { ordersApi } from '../services/orders.service';
@@ -21,6 +22,12 @@ export default function PurchaseOrders() {
     const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [updating, setUpdating] = useState<string | null>(null);
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [total, setTotal] = useState(0);
+    const limit = 10;
 
     // Modal State
     const [confirmModal, setConfirmModal] = useState<{
@@ -51,14 +58,21 @@ export default function PurchaseOrders() {
 
     useEffect(() => {
         loadOrders();
-    }, []);
+    }, [currentPage]);
 
     const loadOrders = async () => {
         setLoading(true);
         try {
-            const response = await ordersApi.getAll();
-            const data = isPaginatedResponse(response) ? response.data : response;
-            setOrders(data);
+            const response = await ordersApi.getAll(currentPage, limit);
+            if (isPaginatedResponse(response)) {
+                setOrders(response.data);
+                setTotal(response.meta.total);
+                setTotalPages(response.meta.totalPages);
+            } else {
+                setOrders(response);
+                setTotal(response.length);
+                setTotalPages(1);
+            }
         } catch (error) {
             console.error('Failed to load orders:', error);
         } finally {
@@ -383,6 +397,17 @@ export default function PurchaseOrders() {
                     </table>
                 )}
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    total={total}
+                    limit={limit}
+                    onPageChange={setCurrentPage}
+                />
+            )}
 
             {/* Order Details Modal */}
             {selectedOrder && createPortal(
