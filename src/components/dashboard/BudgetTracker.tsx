@@ -134,15 +134,15 @@ export const BudgetTracker = memo(function BudgetTracker({
                     {onTimeframeChange && (
                         <Menu as="div" className="relative inline-block text-left">
                             <Menu.Button
-                                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white rounded-lg hover:bg-gray-50 focus:outline-none transition-colors border-2 border-gray-200 ui-open:border-blue-700"
+                                className="flex items-center gap-2 px-4 py-2 text-sm bg-white rounded-xl hover:bg-slate-50 focus:outline-none transition-all duration-200 border border-slate-200 shadow-sm ui-open:border-blue-500 ui-open:ring-4 ui-open:ring-blue-500/10"
                             >
-                                <span className="font-bold text-gray-900">
+                                <span className="font-semibold text-slate-700">
                                     {timeframe === 2025 ? '2025' :
                                         timeframe === 2024 ? '2024' :
                                             typeof timeframe === 'string' ? timeframe.replace('-', ' ') :
                                                 'All Time'}
                                 </span>
-                                <ChevronDown className="h-4 w-4 text-gray-900 transition-transform ui-open:rotate-180" />
+                                <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200 ui-open:rotate-180 ui-open:text-blue-500" />
                             </Menu.Button>
 
                             <Transition
@@ -154,89 +154,98 @@ export const BudgetTracker = memo(function BudgetTracker({
                                 leaveFrom="transform opacity-100 scale-100"
                                 leaveTo="transform opacity-0 scale-95"
                             >
-                                <Menu.Items className="absolute right-0 mt-2 w-48 z-20 origin-top-right bg-[#3f3f3f] rounded-xl shadow-xl border border-gray-600 overflow-hidden text-white focus:outline-none max-h-[350px] overflow-y-auto">
-                                    <div className="flex flex-col">
+                                <Menu.Items className="absolute right-0 mt-2 w-52 z-20 origin-top-right bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden focus:outline-none max-h-[350px] overflow-y-auto ring-1 ring-black/5">
+                                    <div className="flex flex-col py-1.5">
                                         {/* Yearly Section */}
-                                        <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Yearly</div>
-                                        {[
-                                            { label: '2025', value: 2025 },
-                                            { label: '2024', value: 2024 }
-                                        ].map((option) => (
-                                            <Menu.Item key={option.label}>
-                                                {({ active }: { active: boolean }) => (
-                                                    <button
-                                                        onClick={() => onTimeframeChange(option.value)}
-                                                        className={cn(
-                                                            "w-full text-left px-3 py-2 text-sm flex items-center transition-colors font-medium",
-                                                            active ? "bg-white/10" : "",
-                                                            timeframe === option.value
-                                                                ? "bg-[#5b96f7] text-white"
-                                                                : "text-gray-200"
-                                                        )}
-                                                    >
-                                                        <span className="w-6 flex-shrink-0 flex items-center justify-start">
-                                                            {timeframe === option.value && (
-                                                                <Check className="h-4 w-4" strokeWidth={3} />
+                                        <div className="px-4 pt-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yearly</div>
+                                        <div className="px-1.5 space-y-0.5">
+                                            {[
+                                                { label: '2025', value: 2025 },
+                                                { label: '2024', value: 2024 }
+                                            ].map((option) => (
+                                                <Menu.Item key={option.label}>
+                                                    {({ active }: { active: boolean }) => (
+                                                        <button
+                                                            onClick={() => onTimeframeChange(option.value)}
+                                                            className={cn(
+                                                                "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                                timeframe === option.value
+                                                                    ? "bg-blue-50 text-blue-700 font-semibold"
+                                                                    : active
+                                                                        ? "bg-slate-50 text-slate-900 font-medium"
+                                                                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
                                                             )}
-                                                        </span>
-                                                        <span>{option.label}</span>
-                                                    </button>
-                                                )}
-                                            </Menu.Item>
-                                        ))}
+                                                        >
+                                                            <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                                {timeframe === option.value && (
+                                                                    <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                                                )}
+                                                            </span>
+                                                            <span>{option.label}</span>
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            ))}
+                                        </div>
 
-                                        <div className="h-px bg-[#2f2f2f] w-full" />
+                                        <div className="h-px bg-slate-100 w-full my-2" />
 
                                         {/* Monthly Section */}
-                                        <div className="px-3 pt-3 pb-1 text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Monthly (2025)</div>
-                                        {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
-                                            <Menu.Item key={month}>
+                                        <div className="px-4 pt-1 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly (2025)</div>
+                                        <div className="px-1.5 space-y-0.5">
+                                            {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
+                                                <Menu.Item key={month}>
+                                                    {({ active }: { active: boolean }) => (
+                                                        <button
+                                                            onClick={() => onTimeframeChange(month)}
+                                                            className={cn(
+                                                                "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                                timeframe === month
+                                                                    ? "bg-blue-50 text-blue-700 font-semibold"
+                                                                    : active
+                                                                        ? "bg-slate-50 text-slate-900 font-medium"
+                                                                        : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
+                                                            )}
+                                                        >
+                                                            <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                                {timeframe === month && (
+                                                                    <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
+                                                                )}
+                                                            </span>
+                                                            <span>{month.replace('-', ' ')}</span>
+                                                        </button>
+                                                    )}
+                                                </Menu.Item>
+                                            ))}
+                                        </div>
+
+                                        <div className="h-px bg-slate-100 w-full my-2" />
+
+                                        {/* All Time Section */}
+                                        <div className="px-1.5 pb-1">
+                                            <Menu.Item>
                                                 {({ active }: { active: boolean }) => (
                                                     <button
-                                                        onClick={() => onTimeframeChange(month)}
+                                                        onClick={() => onTimeframeChange(undefined)}
                                                         className={cn(
-                                                            "w-full text-left px-3 py-2 text-sm flex items-center transition-colors font-medium",
-                                                            active ? "bg-white/10" : "",
-                                                            timeframe === month
-                                                                ? "bg-[#5b96f7] text-white"
-                                                                : "text-gray-200"
+                                                            "w-full text-left px-2.5 py-2.5 text-sm flex items-center rounded-lg transition-all duration-200 group",
+                                                            timeframe === undefined
+                                                                ? "bg-blue-50 text-blue-700 font-semibold"
+                                                                : active
+                                                                    ? "bg-slate-50 text-slate-900 font-medium"
+                                                                    : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
                                                         )}
                                                     >
-                                                        <span className="w-6 flex-shrink-0 flex items-center justify-start">
-                                                            {timeframe === month && (
-                                                                <Check className="h-4 w-4" strokeWidth={3} />
+                                                        <span className="w-7 flex-shrink-0 flex items-center justify-start">
+                                                            {timeframe === undefined && (
+                                                                <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
                                                             )}
                                                         </span>
-                                                        <span>{month.replace('-', ' ')}</span>
+                                                        <span>All Time</span>
                                                     </button>
                                                 )}
                                             </Menu.Item>
-                                        ))}
-
-                                        <div className="h-px bg-[#2f2f2f] w-full mt-1" />
-
-                                        {/* All Time Section */}
-                                        <Menu.Item>
-                                            {({ active }: { active: boolean }) => (
-                                                <button
-                                                    onClick={() => onTimeframeChange(undefined)}
-                                                    className={cn(
-                                                        "w-full text-left px-3 py-2.5 text-sm flex items-center transition-colors font-medium mt-1 mb-1",
-                                                        active ? "bg-white/10" : "",
-                                                        timeframe === undefined
-                                                            ? "bg-[#5b96f7] text-white"
-                                                            : "text-gray-200"
-                                                    )}
-                                                >
-                                                    <span className="w-6 flex-shrink-0 flex items-center justify-start">
-                                                        {timeframe === undefined && (
-                                                            <Check className="h-4 w-4" strokeWidth={3} />
-                                                        )}
-                                                    </span>
-                                                    <span>All Time</span>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
+                                        </div>
                                     </div>
                                 </Menu.Items>
                             </Transition>
