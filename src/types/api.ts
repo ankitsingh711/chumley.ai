@@ -381,7 +381,8 @@ export interface KPIMetrics {
 export interface MonthlySpendData {
     month: string;
     spend: number;
-    requestCount: number;
+    requestCount?: number;
+    [department: string]: string | number | undefined;
 }
 
 export interface ApiError {

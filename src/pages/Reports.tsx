@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { pdfService } from '../services/pdf.service';
 import { Download, Calendar, Filter, X, Check, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
 import { StatCard } from '../components/dashboard/StatCard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
@@ -139,9 +139,39 @@ export default function Reports() {
         loadData();
     };
 
+    const departments = useMemo(() => {
+        const depts = new Set<string>();
+        spendData.forEach(item => {
+            Object.keys(item).forEach(key => {
+                if (key !== 'month' && key !== 'spend' && key !== 'requestCount') {
+                    depts.add(key);
+                }
+            });
+        });
+        return Array.from(depts);
+    }, [spendData]);
+
     if (loading) {
         return <ReportsSkeleton />;
     }
+
+    const DEPARTMENT_COLORS: Record<string, string> = {
+        'Marketing': '#f97316', // Orange
+        'Support': '#ec4899',   // Pink
+        'Chumley': '#3b82f6',   // Blue
+        'Fleet': '#8b5cf6',     // Purple
+        'Finance': '#84cc16',   // Lime Green
+        'Sector Group': '#eab308', // Yellow
+        'Trade Group': '#14b8a6',  // Teal
+        'HR & Recruitment': '#22c55e', // Green
+        'Assets': '#a855f7', // Light purple
+        'Sales': '#94a3b8', // Gray fallback
+        'Unassigned': '#cbd5e1', // Light Gray
+    };
+
+    const FALLBACK_COLORS = [
+        '#6366f1', '#f43f5e', '#06b6d4', '#10b981', '#f59e0b', '#d946ef'
+    ];
 
     const breakdownData = [
         { name: 'Approved', value: metrics?.approvedRequests || 0, color: '#10b981' },
@@ -257,18 +287,47 @@ export default function Reports() {
                     </div>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={spendData}>
+                            <AreaChart data={spendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
-                                    <linearGradient id="colorSpend" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#5080CE" stopOpacity={0.1} />
-                                        <stop offset="95%" stopColor="#5080CE" stopOpacity={0} />
-                                    </linearGradient>
+                                    {departments.map((dept, index) => {
+                                        const color = DEPARTMENT_COLORS[dept] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+                                        return (
+                                            <linearGradient key={dept} id={`color${dept.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.8} />
+                                                <stop offset="95%" stopColor={color} stopOpacity={0.2} />
+                                            </linearGradient>
+                                        );
+                                    })}
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
-                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-                                <Tooltip />
-                                <Area type="monotone" dataKey="spend" stroke="#5080CE" strokeWidth={2} fillOpacity={1} fill="url(#colorSpend)" />
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fontSize: 12, fill: '#9ca3af' }}
+                                    tickFormatter={(val) => val >= 1000000 ? `£${(val / 1000000).toFixed(1)}M` : `£${(val / 1000).toFixed(0)}k`}
+                                />
+                                <Tooltip
+                                    formatter={(value: any, name: any) => [`£${Number(value || 0).toLocaleString()}`, name]}
+                                    labelStyle={{ color: '#374151', fontWeight: 'bold', marginBottom: '4px' }}
+                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                />
+                                {departments.map((dept, index) => {
+                                    const color = DEPARTMENT_COLORS[dept] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+                                    return (
+                                        <Area
+                                            key={dept}
+                                            type="monotone"
+                                            dataKey={dept}
+                                            stackId="1"
+                                            stroke={color}
+                                            strokeWidth={2}
+                                            fillOpacity={1}
+                                            fill={`url(#color${dept.replace(/[^a-zA-Z0-9]/g, '')})`}
+                                        />
+                                    );
+                                })}
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>

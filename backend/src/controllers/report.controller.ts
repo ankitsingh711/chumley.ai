@@ -214,27 +214,46 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
 
         const orders = await prisma.purchaseOrder.findMany({
             where,
-            select: {
-                createdAt: true,
-                totalAmount: true,
+            include: {
+                request: {
+                    select: {
+                        budgetCategory: true,
+                        requester: {
+                            select: { department: true }
+                        }
+                    }
+                }
             },
             orderBy: {
                 createdAt: 'asc'
             }
         });
 
-        const spendByMonth: Record<string, number> = {};
+        const spendByMonth: Record<string, any> = {};
 
         orders.forEach(order => {
             const month = format(order.createdAt, 'MMM yyyy');
             const amount = Number(order.totalAmount);
-            spendByMonth[month] = (spendByMonth[month] || 0) + amount;
+
+            // Prioritize budgetCategory, fallback to department name
+            const budgetCategory = order.request?.budgetCategory;
+            // Handle case where department might be a string or object with name property, 
+            // but prisma strongly types relations usually so we expect an object or null
+            const objDeptName = typeof order.request?.requester?.department === 'object' && order.request?.requester?.department !== null
+                ? (order.request?.requester?.department as any).name
+                : order.request?.requester?.department;
+
+            const category = budgetCategory || objDeptName || 'Unassigned';
+
+            if (!spendByMonth[month]) {
+                spendByMonth[month] = { month, spend: 0 };
+            }
+
+            spendByMonth[month].spend += amount;
+            spendByMonth[month][category] = (spendByMonth[month][category] || 0) + amount;
         });
 
-        const chartData = Object.entries(spendByMonth).map(([month, spend]) => ({
-            month,
-            spend
-        }));
+        const chartData = Object.values(spendByMonth);
 
         // Cache for 1 hour (spend data changes less frequently)
         await CacheService.set(cacheKey, chartData, 3600);

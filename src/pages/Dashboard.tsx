@@ -34,9 +34,12 @@ export default function Dashboard() {
 
     const departmentFilter = isRestrictedRole && departmentName ? departmentName : undefined;
 
-    // Hardcoded financial data for department spend (2025)
-    const hardcodedDepartmentSpend = getCategorySpendTotals(2025, departmentFilter);
-    const hardcodedTotalSpend = getTotalSpend(2025, departmentFilter);
+    // Timeframe filter state
+    const [budgetTimeframe, setBudgetTimeframe] = useState<number | undefined>(2025);
+
+    // Hardcoded financial data for department spend based on selected timeframe
+    const hardcodedDepartmentSpend = getCategorySpendTotals(budgetTimeframe, departmentFilter);
+    const hardcodedTotalSpend = getTotalSpend(budgetTimeframe, departmentFilter);
 
     // Filter departments array for BudgetTracker so it doesn't show others as £0
     const filteredDepartments = useMemo(() => {
@@ -58,11 +61,11 @@ export default function Dashboard() {
                 // setMetrics(kpiData);
 
                 // Using hardcoded financial data for department spend
-                setMetrics({
-                    ...kpiData,
+                setMetrics(prev => ({
+                    ...(prev || kpiData),
                     departmentSpend: hardcodedDepartmentSpend,
                     totalSpend: hardcodedTotalSpend,
-                });
+                }));
                 setDepartments(departmentsData);
 
                 const response = await requestsApi.getAll();
@@ -76,6 +79,17 @@ export default function Dashboard() {
         };
         fetchData();
     }, []);
+
+    // Effect to update hardcoded metrics when timeframe changes (since real API isn't used for spend breakdown here)
+    useEffect(() => {
+        if (metrics) {
+            setMetrics(prev => prev ? ({
+                ...prev,
+                departmentSpend: getCategorySpendTotals(budgetTimeframe, departmentFilter),
+                totalSpend: getTotalSpend(budgetTimeframe, departmentFilter),
+            }) : null);
+        }
+    }, [budgetTimeframe, departmentFilter]);
 
     if (loading) {
         return <DashboardSkeleton />;
@@ -122,6 +136,8 @@ export default function Dashboard() {
                     <BudgetTracker
                         departmentSpend={metrics?.departmentSpend}
                         departments={filteredDepartments}
+                        year={budgetTimeframe}
+                        onYearChange={setBudgetTimeframe}
                     />
                 </div>
 

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/departments.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Check } from 'lucide-react';
 // TODO: Uncomment to use API data instead of hardcoded data
 // import { reportsApi } from '../../services/reports.service';
 import { getCategoryBreakdown } from '../../data/financialDataHelpers';
@@ -13,6 +13,8 @@ import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
     departments?: Department[];
+    year?: number | undefined;
+    onYearChange?: (year: number | undefined) => void;
 }
 
 const COLORS = [
@@ -29,7 +31,12 @@ const COLORS = [
 ];
 
 
-export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {}, departments = [] }: BudgetTrackerProps) {
+export const BudgetTracker = memo(function BudgetTracker({
+    departmentSpend = {},
+    departments = [],
+    year,
+    onYearChange
+}: BudgetTrackerProps) {
     const navigate = useNavigate();
     const { user } = useAuth();
     // Default limit for illustration since we don't have it in DB yet
@@ -38,6 +45,7 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
     // State for expanded department
     const [expandedDept, setExpandedDept] = useState<string | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     // Create a map of department spend for easy lookup
     const spendMap = departmentSpend;
@@ -104,25 +112,87 @@ export const BudgetTracker = memo(function BudgetTracker({ departmentSpend = {},
         if (!breakdownData[deptId]) {
             const dept = sortedDepartments.find(d => d.id === deptId);
             const deptName = dept?.name || deptId.replace('unassigned-', '');
-            const data = getCategoryBreakdown(deptName, 2025);
+            // Pass the year from props to filter the breakdown correctly
+            const data = getCategoryBreakdown(deptName, year);
             setBreakdownData(prev => ({ ...prev, [deptId]: data }));
         }
     };
 
+    // When timeframe changes, we should clear cached breakdown data
+    // so it refetches cleanly when re-expanding
+    useMemo(() => {
+        setBreakdownData({});
+        setExpandedDept(null);
+    }, [year]);
+
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex items-center justify-between">
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
-                {user?.role === UserRole.SYSTEM_ADMIN && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 text-primary-600 hover:text-primary-700"
-                        onClick={() => navigate('/budgets')}
-                    >
-                        View All
-                    </Button>
-                )}
+                <div className="flex items-center gap-2">
+                    {onYearChange && (
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                                className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
+                            >
+                                <span className="font-medium text-gray-700">
+                                    {year === 2025 ? '2025' : year === 2024 ? '2024' : 'All Time'}
+                                </span>
+                                <ChevronDown className={cn("h-4 w-4 text-gray-500 transition-transform", isDropdownOpen && "rotate-180")} />
+                            </button>
+
+                            {isDropdownOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setIsDropdownOpen(false)}
+                                    />
+                                    <div className="absolute right-0 mt-2 w-40 z-20 bg-[#404040] rounded-xl shadow-lg border border-gray-600 overflow-hidden text-white animate-in slide-in-from-top-2 duration-200">
+                                        <div className="py-1">
+                                            {[
+                                                { label: '2025', value: 2025 },
+                                                { label: '2024', value: 2024 },
+                                                { label: 'All Time', value: undefined }
+                                            ].map((option) => (
+                                                <button
+                                                    key={option.label}
+                                                    onClick={() => {
+                                                        onYearChange(option.value);
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
+                                                        year === option.value
+                                                            ? "bg-[#5b96f7] text-white"
+                                                            : "hover:bg-white/10"
+                                                    )}
+                                                >
+                                                    <span className="w-5 relative flex items-center justify-center">
+                                                        {year === option.value && (
+                                                            <Check className="h-4 w-4" strokeWidth={3} />
+                                                        )}
+                                                    </span>
+                                                    <span>{option.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                    {user?.role === UserRole.SYSTEM_ADMIN && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 text-primary-600 hover:text-primary-700 whitespace-nowrap"
+                            onClick={() => navigate('/budgets')}
+                        >
+                            View All
+                        </Button>
+                    )}
+                </div>
             </div>
 
             <div className="space-y-6">
