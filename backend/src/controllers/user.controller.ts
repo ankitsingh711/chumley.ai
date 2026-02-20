@@ -135,25 +135,44 @@ export const updateUser = async (req: Request, res: Response) => {
         }
 
 
+        // Allow user to update their own profile
+        const isSelfUpdate = currentUser.id === id;
+
         // RBAC Checks
         if (requester.role !== 'SYSTEM_ADMIN') {
             if (requester.role === 'MANAGER' || requester.role === 'SENIOR_MANAGER') {
-                // Must be in same department
-                if (targetUser.departmentId !== requester.departmentId) {
-                    return res.status(403).json({ error: 'You can only manage users in your department' });
+                if (!isSelfUpdate) {
+                    // Must be in same department
+                    if (targetUser.departmentId !== requester.departmentId) {
+                        return res.status(403).json({ error: 'You can only manage users in your department' });
+                    }
+                    // Cannot update role to System Admin
+                    if (validatedData.role === 'SYSTEM_ADMIN') {
+                        return res.status(403).json({ error: 'Cannot promote users to System Admin' });
+                    }
+                    // Cannot update a System Admin
+                    if (targetUser.role === 'SYSTEM_ADMIN') {
+                        return res.status(403).json({ error: 'Client not authorized to update System Admin' });
+                    }
                 }
-                // Cannot update role to System Admin
-                if (validatedData.role === 'SYSTEM_ADMIN') {
-                    return res.status(403).json({ error: 'Cannot promote users to System Admin' });
-                }
-                // Cannot update a System Admin
-                if (targetUser.role === 'SYSTEM_ADMIN') {
-                    return res.status(403).json({ error: 'Client not authorized to update System Admin' });
-                }
-
             } else {
-                // Members cannot update
-                return res.status(403).json({ error: 'Forbidden' });
+                // Members can only update themselves
+                if (!isSelfUpdate) {
+                    return res.status(403).json({ error: 'Forbidden' });
+                }
+            }
+
+            // Prevent any non-System Admin from changing their OWN role or department
+            if (isSelfUpdate) {
+                if (validatedData.role && validatedData.role !== targetUser.role) {
+                    return res.status(403).json({ error: 'You cannot change your own role' });
+                }
+                if (validatedData.departmentId && validatedData.departmentId !== targetUser.departmentId) {
+                    return res.status(403).json({ error: 'You cannot change your own department' });
+                }
+                if (validatedData.status && validatedData.status !== targetUser.status) {
+                    return res.status(403).json({ error: 'You cannot change your own status' });
+                }
             }
         }
 

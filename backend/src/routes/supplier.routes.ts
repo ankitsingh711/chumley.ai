@@ -18,14 +18,13 @@ import {
     rejectSupplier
 } from '../controllers/supplier.controller';
 import { authenticate } from '../middleware/auth.middleware';
-import { cacheMiddleware } from '../middleware/cache.middleware';
 
 const router = Router();
 
 router.use(authenticate);
 
-router.get('/', cacheMiddleware(60), getSuppliers);
-router.get('/:id', cacheMiddleware(60), getSupplierById);
+router.get('/', getSuppliers);
+router.get('/:id', getSupplierById);
 router.get('/:id/details', getSupplierDetails);
 router.get('/:id/messages', getSupplierMessages);
 router.get('/:id/interactions', getSupplierInteractions);

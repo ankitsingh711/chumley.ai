@@ -17,6 +17,7 @@ export const EditProfileModal = ({ isOpen, onClose, currentUser }: EditProfileMo
     const [name, setName] = useState(currentUser.name);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showSuccess, setShowSuccess] = useState(false);
 
     const dispatch = useAppDispatch();
 
@@ -24,6 +25,7 @@ export const EditProfileModal = ({ isOpen, onClose, currentUser }: EditProfileMo
         if (isOpen) {
             setName(currentUser.name);
             setError(null);
+            setShowSuccess(false);
             document.body.style.overflow = 'hidden';
         } else {
             document.body.style.overflow = 'unset';
@@ -44,19 +46,12 @@ export const EditProfileModal = ({ isOpen, onClose, currentUser }: EditProfileMo
                 name: name.trim(),
             };
 
-            // Only add password if changing
-            // Note: The backend update endpoint might not support password update directly via updateUser 
-            // depending on implementation. Let's assume simplest case: only Name for now based on plan.
-            // If plan was just name, let's stick to name. The prompt mentioned "Edit functionality profile here".
-            // Usually profile edit includes name. Password change is often separate.
-            // I'll include Name editing first.
-
             await usersApi.update(currentUser.id, updates);
 
             // Refresh global auth state
             await dispatch(checkAuth()).unwrap();
 
-            onClose();
+            setShowSuccess(true);
         } catch (err: any) {
             console.error('Failed to update profile:', err);
             setError(err.response?.data?.error || 'Failed to update profile');
@@ -66,6 +61,28 @@ export const EditProfileModal = ({ isOpen, onClose, currentUser }: EditProfileMo
     };
 
     if (!isOpen) return null;
+
+    if (showSuccess) {
+        return createPortal(
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
+                <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 text-center animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Profile Updated</h3>
+                    <p className="text-sm text-gray-500 mb-6">
+                        Your profile changes have been saved successfully.
+                    </p>
+                    <Button className="w-full bg-primary-600 hover:bg-primary-700 text-white" onClick={onClose}>
+                        Done
+                    </Button>
+                </div>
+            </div>,
+            document.body
+        );
+    }
 
     return createPortal(
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4" onClick={onClose}>
