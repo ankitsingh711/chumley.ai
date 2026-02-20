@@ -35,7 +35,7 @@ export default function Dashboard() {
     const departmentFilter = isRestrictedRole && departmentName ? departmentName : undefined;
 
     // Timeframe filter state
-    const [budgetTimeframe, setBudgetTimeframe] = useState<number | undefined>(2025);
+    const [budgetTimeframe, setBudgetTimeframe] = useState<number | string | undefined>(2025);
 
     // Hardcoded financial data for department spend based on selected timeframe
     const hardcodedDepartmentSpend = getCategorySpendTotals(budgetTimeframe, departmentFilter);
@@ -136,8 +136,8 @@ export default function Dashboard() {
                     <BudgetTracker
                         departmentSpend={metrics?.departmentSpend}
                         departments={filteredDepartments}
-                        year={budgetTimeframe}
-                        onYearChange={setBudgetTimeframe}
+                        timeframe={budgetTimeframe}
+                        onTimeframeChange={setBudgetTimeframe}
                     />
                 </div>
 

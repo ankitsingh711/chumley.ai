@@ -13,8 +13,8 @@ import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
     departments?: Department[];
-    year?: number | undefined;
-    onYearChange?: (year: number | undefined) => void;
+    timeframe?: number | string | undefined;
+    onTimeframeChange?: (timeframe: number | string | undefined) => void;
 }
 
 const COLORS = [
@@ -34,8 +34,8 @@ const COLORS = [
 export const BudgetTracker = memo(function BudgetTracker({
     departmentSpend = {},
     departments = [],
-    year,
-    onYearChange
+    timeframe,
+    onTimeframeChange
 }: BudgetTrackerProps) {
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -112,8 +112,8 @@ export const BudgetTracker = memo(function BudgetTracker({
         if (!breakdownData[deptId]) {
             const dept = sortedDepartments.find(d => d.id === deptId);
             const deptName = dept?.name || deptId.replace('unassigned-', '');
-            // Pass the year from props to filter the breakdown correctly
-            const data = getCategoryBreakdown(deptName, year);
+            // Pass the timeframe from props to filter the breakdown correctly
+            const data = getCategoryBreakdown(deptName, timeframe);
             setBreakdownData(prev => ({ ...prev, [deptId]: data }));
         }
     };
@@ -123,21 +123,24 @@ export const BudgetTracker = memo(function BudgetTracker({
     useMemo(() => {
         setBreakdownData({});
         setExpandedDept(null);
-    }, [year]);
+    }, [timeframe]);
 
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
                 <div className="flex items-center gap-2">
-                    {onYearChange && (
+                    {onTimeframeChange && (
                         <div className="relative">
                             <button
                                 onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                                 className="flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary-500 transition-colors"
                             >
                                 <span className="font-medium text-gray-700">
-                                    {year === 2025 ? '2025' : year === 2024 ? '2024' : 'All Time'}
+                                    {timeframe === 2025 ? '2025' :
+                                        timeframe === 2024 ? '2024' :
+                                            typeof timeframe === 'string' ? timeframe.replace('-', ' ') :
+                                                'All Time'}
                                 </span>
                                 <ChevronDown className={cn("h-4 w-4 text-gray-500 transition-transform", isDropdownOpen && "rotate-180")} />
                             </button>
@@ -148,34 +151,82 @@ export const BudgetTracker = memo(function BudgetTracker({
                                         className="fixed inset-0 z-10"
                                         onClick={() => setIsDropdownOpen(false)}
                                     />
-                                    <div className="absolute right-0 mt-2 w-40 z-20 bg-[#404040] rounded-xl shadow-lg border border-gray-600 overflow-hidden text-white animate-in slide-in-from-top-2 duration-200">
-                                        <div className="py-1">
+                                    <div className="absolute right-0 mt-2 w-48 z-20 bg-[#404040] rounded-xl shadow-lg border border-gray-600 overflow-hidden text-white animate-in slide-in-from-top-2 duration-200 max-h-[300px] overflow-y-auto">
+                                        <div className="py-2">
+                                            {/* Yearly Section */}
+                                            <div className="px-4 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Yearly</div>
                                             {[
                                                 { label: '2025', value: 2025 },
-                                                { label: '2024', value: 2024 },
-                                                { label: 'All Time', value: undefined }
+                                                { label: '2024', value: 2024 }
                                             ].map((option) => (
                                                 <button
                                                     key={option.label}
                                                     onClick={() => {
-                                                        onYearChange(option.value);
+                                                        onTimeframeChange(option.value);
                                                         setIsDropdownOpen(false);
                                                     }}
                                                     className={cn(
                                                         "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
-                                                        year === option.value
+                                                        timeframe === option.value
                                                             ? "bg-[#5b96f7] text-white"
                                                             : "hover:bg-white/10"
                                                     )}
                                                 >
                                                     <span className="w-5 relative flex items-center justify-center">
-                                                        {year === option.value && (
+                                                        {timeframe === option.value && (
                                                             <Check className="h-4 w-4" strokeWidth={3} />
                                                         )}
                                                     </span>
                                                     <span>{option.label}</span>
                                                 </button>
                                             ))}
+
+                                            {/* Monthly Section */}
+                                            <div className="px-4 py-1 mt-2 text-xs font-semibold text-gray-400 uppercase tracking-wider border-t border-gray-600/50 pt-2">Monthly (2025)</div>
+                                            {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
+                                                <button
+                                                    key={month}
+                                                    onClick={() => {
+                                                        onTimeframeChange(month);
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className={cn(
+                                                        "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
+                                                        timeframe === month
+                                                            ? "bg-[#5b96f7] text-white"
+                                                            : "hover:bg-white/10"
+                                                    )}
+                                                >
+                                                    <span className="w-5 relative flex items-center justify-center">
+                                                        {timeframe === month && (
+                                                            <Check className="h-4 w-4" strokeWidth={3} />
+                                                        )}
+                                                    </span>
+                                                    <span>{month.replace('-', ' ')}</span>
+                                                </button>
+                                            ))}
+
+                                            {/* All Time Section */}
+                                            <div className="px-4 py-1 mt-2 border-t border-gray-600/50 pt-2" />
+                                            <button
+                                                onClick={() => {
+                                                    onTimeframeChange(undefined);
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className={cn(
+                                                    "w-full text-left px-4 py-2 text-sm flex items-center transition-colors font-medium",
+                                                    timeframe === undefined
+                                                        ? "bg-[#5b96f7] text-white"
+                                                        : "hover:bg-white/10"
+                                                )}
+                                            >
+                                                <span className="w-5 relative flex items-center justify-center">
+                                                    {timeframe === undefined && (
+                                                        <Check className="h-4 w-4" strokeWidth={3} />
+                                                    )}
+                                                </span>
+                                                <span>All Time</span>
+                                            </button>
                                         </div>
                                     </div>
                                 </>
