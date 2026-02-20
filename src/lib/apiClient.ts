@@ -14,6 +14,18 @@ class ApiClient {
             withCredentials: true, // Send cookies with requests
         });
 
+        // Request interceptor to add token
+        this.client.interceptors.request.use(
+            (config) => {
+                const token = localStorage.getItem('authToken');
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+                return config;
+            },
+            (error) => Promise.reject(error)
+        );
+
         // Response interceptor for error handling
         this.client.interceptors.response.use(
             (response) => response,

@@ -70,7 +70,7 @@ export const register = async (req: Request, res: Response) => {
         const { password, ...userWithoutPassword } = user;
 
         setAuthCookie(res, token);
-        res.status(201).json({ user: userWithoutPassword });
+        res.status(201).json({ user: userWithoutPassword, token });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -116,7 +116,7 @@ export const login = async (req: Request, res: Response) => {
         const { password: _, ...userWithoutPassword } = user;
 
         setAuthCookie(res, token);
-        res.status(200).json({ user: userWithoutPassword });
+        res.status(200).json({ user: userWithoutPassword, token });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -181,7 +181,7 @@ export const acceptInvite = async (req: Request, res: Response) => {
         const { password: _, ...userWithoutPassword } = updatedUser;
 
         setAuthCookie(res, jwtToken);
-        res.json({ user: userWithoutPassword });
+        res.json({ user: userWithoutPassword, token: jwtToken });
     } catch (error: any) {
         Logger.error(error);
         if (error instanceof z.ZodError) {
@@ -251,8 +251,8 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
         Logger.info(`User logged in via Google: ${user.email}`);
 
         setAuthCookie(res, token);
-        // Redirect to frontend without token in query params
-        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback`);
+        // Redirect to frontend with token in query params for Safari compatibility
+        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`);
     } catch (error) {
         Logger.error(error);
         res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
