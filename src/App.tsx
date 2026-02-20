@@ -3,8 +3,10 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AppInitializer } from './AppInitializer';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
+import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { Layout } from './components/layout/Layout';
 import { SkeletonLoader } from './components/skeletons/SkeletonLoader';
+import { UserRole } from './types/api';
 
 // Lazy load all page components for optimal code splitting
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -44,14 +46,26 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={
+              <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER]}>
+                <Dashboard />
+              </RoleProtectedRoute>
+            } />
             <Route path="/requests" element={<Requests />} />
             <Route path="/requests/:id" element={<Requests />} />
             <Route path="/requests/new" element={<CreateRequest />} />
-            <Route path="/orders" element={<PurchaseOrders />} />
+            <Route path="/orders" element={
+              <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER]}>
+                <PurchaseOrders />
+              </RoleProtectedRoute>
+            } />
             <Route path="/suppliers" element={<Suppliers />} />
             <Route path="/suppliers/:id" element={<SupplierProfile />} />
-            <Route path="/reports" element={<Reports />} />
+            <Route path="/reports" element={
+              <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER]}>
+                <Reports />
+              </RoleProtectedRoute>
+            } />
             <Route path="/budgets" element={<AdminRoute><DepartmentBudgets /></AdminRoute>} />
             <Route path="/contracts" element={<AdminRoute><Contracts /></AdminRoute>} />
             <Route path="/catalog" element={<AdminRoute><Catalog /></AdminRoute>} />

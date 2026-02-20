@@ -44,9 +44,9 @@ export function Sidebar() {
             return ['/', '/requests', '/orders', '/suppliers', '/reports'].includes(item.path);
         }
 
-        // Manager: Dashboard, Requests, Orders, Suppliers
+        // Manager: Dashboard, Requests, Orders, Suppliers, Reports
         if (user?.role === UserRole.MANAGER) {
-            return ['/', '/requests', '/orders', '/suppliers'].includes(item.path);
+            return ['/', '/requests', '/orders', '/suppliers', '/reports'].includes(item.path);
         }
 
         // Member: Requests, Suppliers

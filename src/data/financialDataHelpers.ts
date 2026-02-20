@@ -21,9 +21,12 @@ const allEntries: FinancialEntry[] = allRawData.map(([date, category, subCategor
  * Get total spend per category (top-level department) across all time
  * Returns Record<categoryName, totalAmount>
  */
-export function getCategorySpendTotals(year?: number): Record<string, number> {
+export function getCategorySpendTotals(year?: number, departmentFilter?: string): Record<string, number> {
     const result: Record<string, number> = {};
-    const entries = year ? filterByYear(allEntries, year) : allEntries;
+    let entries = year ? filterByYear(allEntries, year) : allEntries;
+    if (departmentFilter) {
+        entries = entries.filter(e => e.category.toLowerCase() === departmentFilter.toLowerCase());
+    }
     entries.forEach(e => {
         result[e.category] = (result[e.category] || 0) + e.amount;
     });
@@ -67,8 +70,11 @@ export function getMonthlyCategorySpend(categoryName: string): { month: string; 
 /**
  * Get total spend across all categories
  */
-export function getTotalSpend(year?: number): number {
-    const entries = year ? filterByYear(allEntries, year) : allEntries;
+export function getTotalSpend(year?: number, departmentFilter?: string): number {
+    let entries = year ? filterByYear(allEntries, year) : allEntries;
+    if (departmentFilter) {
+        entries = entries.filter(e => e.category.toLowerCase() === departmentFilter.toLowerCase());
+    }
     return entries.reduce((sum, e) => sum + e.amount, 0);
 }
 

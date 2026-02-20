@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Wallet, FileClock, ShoppingBag, TrendingUp } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { StatCard } from '../components/dashboard/StatCard';
@@ -13,6 +13,8 @@ import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
 import { getCategorySpendTotals, getTotalSpend } from '../data/financialDataHelpers';
+import { useAuth } from '../hooks/useAuth';
+import { UserRole } from '../types/api';
 
 export default function Dashboard() {
     const navigate = useNavigate();
@@ -20,10 +22,29 @@ export default function Dashboard() {
     const [recentRequests, setRecentRequests] = useState<PurchaseRequest[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
+
+    // Determine the department filter for restricted roles
+    const userRole = user?.role;
+    const isRestrictedRole = userRole === UserRole.MANAGER || userRole === UserRole.SENIOR_MANAGER;
+    // Extract the department name (either string or object)
+    const departmentName = typeof user?.department === 'string'
+        ? user.department
+        : user?.department?.name;
+
+    const departmentFilter = isRestrictedRole && departmentName ? departmentName : undefined;
 
     // Hardcoded financial data for department spend (2025)
-    const hardcodedDepartmentSpend = getCategorySpendTotals(2025);
-    const hardcodedTotalSpend = getTotalSpend(2025);
+    const hardcodedDepartmentSpend = getCategorySpendTotals(2025, departmentFilter);
+    const hardcodedTotalSpend = getTotalSpend(2025, departmentFilter);
+
+    // Filter departments array for BudgetTracker so it doesn't show others as £0
+    const filteredDepartments = useMemo(() => {
+        if (departmentFilter) {
+            return departments.filter(d => d.name.toLowerCase() === departmentFilter.toLowerCase());
+        }
+        return departments;
+    }, [departments, departmentFilter]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -100,7 +121,7 @@ export default function Dashboard() {
                 <div className="lg:col-span-2">
                     <BudgetTracker
                         departmentSpend={metrics?.departmentSpend}
-                        departments={departments}
+                        departments={filteredDepartments}
                     />
                 </div>
 
