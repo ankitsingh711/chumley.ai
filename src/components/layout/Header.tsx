@@ -15,6 +15,7 @@ interface SearchResult {
     title: string;
     subtitle: string;
     url: string;
+    state?: any;
 }
 
 interface HeaderProps {
@@ -132,7 +133,8 @@ export function Header({ onChatToggle }: HeaderProps) {
                         type: 'order',
                         title: `Order #${order.id.slice(0, 8)}`,
                         subtitle: `£${Number(order.totalAmount).toLocaleString()} • ${order.status}`,
-                        url: `/orders`
+                        url: `/orders`,
+                        state: { openOrderId: order.id }
                     });
                 });
 
@@ -146,7 +148,7 @@ export function Header({ onChatToggle }: HeaderProps) {
     };
 
     const handleResultClick = (result: SearchResult) => {
-        navigate(result.url);
+        navigate(result.url, { state: result.state });
         setSearchQuery('');
         setShowResults(false);
     };

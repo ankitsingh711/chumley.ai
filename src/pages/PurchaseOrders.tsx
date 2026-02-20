@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, Download, Eye, Send, CheckCircle, FileText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/Pagination';
@@ -15,6 +16,8 @@ import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 export default function PurchaseOrders() {
     const { user } = useAuth();
+    const location = useLocation();
+    const navigate = useNavigate();
     const isMember = user?.role === UserRole.MEMBER;
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -59,6 +62,27 @@ export default function PurchaseOrders() {
     useEffect(() => {
         loadOrders();
     }, [currentPage]);
+
+    // Auto-open order from search navigation
+    useEffect(() => {
+        if (location.state?.openOrderId) {
+            const orderId = location.state.openOrderId;
+
+            // Clear state immediately to prevent reopening modal on page refresh
+            navigate(location.pathname, { replace: true, state: {} });
+
+            // Fetch order and open modal
+            ordersApi.getById(orderId)
+                .then(order => {
+                    if (order) {
+                        setSelectedOrder(order);
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to auto-open order:', err);
+                });
+        }
+    }, [location.state, navigate]);
 
     const loadOrders = async () => {
         setLoading(true);
