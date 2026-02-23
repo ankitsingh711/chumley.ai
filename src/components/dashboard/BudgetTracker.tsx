@@ -13,7 +13,7 @@ import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
     departments?: Department[];
-    timeframe?: number | string | undefined;
+    dateRange?: { start?: string; end?: string };
 }
 
 const COLORS = [
@@ -33,10 +33,21 @@ const COLORS = [
 export const BudgetTracker = memo(function BudgetTracker({
     departmentSpend = {},
     departments = [],
-    timeframe,
+    dateRange,
 }: BudgetTrackerProps) {
     const navigate = useNavigate();
     const { user } = useAuth();
+
+    // Monthly budget limits as requested
+    const BUDGET_LIMITS: Record<string, number> = {
+        'Marketing': 350000,
+        'Chumley': 135000,
+        'Finance': 40000,
+        'HR & Recruitment': 10000,
+        'Fleet': 200000,
+        'Support': 300000,
+    };
+
     // Default limit for illustration since we don't have it in DB yet
     const DEFAULT_LIMIT = 50000;
 
@@ -60,7 +71,7 @@ export const BudgetTracker = memo(function BudgetTracker({
                 id: dept.id,
                 name: dept.name,
                 category: dept.description || 'General Budget', // Use description as the subtitle
-                limit: DEFAULT_LIMIT, // Placeholder until limits are in DB
+                limit: BUDGET_LIMITS[dept.name] || DEFAULT_LIMIT, // Placeholder until limits are in DB
                 color: COLORS[index % COLORS.length],
                 spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
             };
@@ -73,7 +84,7 @@ export const BudgetTracker = memo(function BudgetTracker({
                     id: `unassigned-${name}`,
                     name,
                     category: 'Unassigned / Other',
-                    limit: DEFAULT_LIMIT,
+                    limit: BUDGET_LIMITS[name] || DEFAULT_LIMIT,
                     color: 'bg-gray-400',
                     spent: amount
                 });
@@ -109,18 +120,18 @@ export const BudgetTracker = memo(function BudgetTracker({
         if (!breakdownData[deptId]) {
             const dept = sortedDepartments.find(d => d.id === deptId);
             const deptName = dept?.name || deptId.replace('unassigned-', '');
-            // Pass the timeframe from props to filter the breakdown correctly
-            const data = getCategoryBreakdown(deptName, timeframe);
+            // Pass the dateRange from props to filter the breakdown correctly
+            const data = getCategoryBreakdown(deptName, dateRange);
             setBreakdownData(prev => ({ ...prev, [deptId]: data }));
         }
     };
 
-    // When timeframe changes, we should clear cached breakdown data
+    // When dateRange changes, we should clear cached breakdown data
     // so it refetches cleanly when re-expanding
     useMemo(() => {
         setBreakdownData({});
         setExpandedDept(null);
-    }, [timeframe]);
+    }, [dateRange?.start, dateRange?.end]);
 
     return (
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">

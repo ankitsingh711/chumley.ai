@@ -220,6 +220,7 @@ export default function Dashboard() {
                     <BudgetTracker
                         departmentSpend={metrics?.departmentSpend}
                         departments={filteredDepartments}
+                        dateRange={activeDateRange}
                     />
                 </div>
 
