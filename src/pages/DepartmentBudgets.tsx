@@ -90,8 +90,24 @@ export default function DepartmentBudgets() {
     useEffect(() => {
         if (!baseDepartments.length) return;
 
+        // Convert timeframe to dateRange
+        let dateRange: { start?: string; end?: string } | undefined;
+        if (typeof budgetTimeframe === 'number') {
+            dateRange = { start: `${budgetTimeframe}-01-01`, end: `${budgetTimeframe}-12-31` };
+        } else if (typeof budgetTimeframe === 'string') {
+            const [monthStr, yearStr] = budgetTimeframe.split('-');
+            const months: Record<string, string> = {
+                Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
+                Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12'
+            };
+            const month = months[monthStr];
+            const year = `20${yearStr}`;
+            const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+            dateRange = { start: `${year}-${month}-01`, end: `${year}-${month}-${lastDay}` };
+        }
+
         // Get spending data for current timeframe
-        const departmentSpendMap = getCategorySpendTotals(budgetTimeframe);
+        const departmentSpendMap = getCategorySpendTotals(dateRange);
 
         const processedDepts = baseDepartments.map((dept) => {
             // Use actual budget from DB or default to 0
