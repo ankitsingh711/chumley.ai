@@ -123,4 +123,23 @@ function parseDate(dateStr: string): Date {
     return new Date(fullYear, months[mon] || 0, 1);
 }
 
+/**
+ * Returns the { start, end } date strings for the most recent month in allEntries.
+ * Use this as the dashboard default when no date filter has been applied yet.
+ */
+export function getLatestMonthRange(): { start: string; end: string } {
+    const latest = allEntries.reduce((max, e) => {
+        const d = parseDate(e.date);
+        return d > max ? d : max;
+    }, new Date(0));
+
+    const yyyy = latest.getFullYear();
+    const mm = String(latest.getMonth() + 1).padStart(2, '0');
+    const lastDay = new Date(yyyy, latest.getMonth() + 1, 0).getDate();
+    return {
+        start: `${yyyy}-${mm}-01`,
+        end: `${yyyy}-${mm}-${String(lastDay).padStart(2, '0')}`,
+    };
+}
+
 export { allEntries };

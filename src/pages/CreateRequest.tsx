@@ -65,6 +65,15 @@ export default function CreateRequest() {
         try {
             const data = await departmentsApi.getAll();
             setDepartments(data);
+
+            // Auto-select department if user is restricted to a single one
+            if (user?.role !== UserRole.SYSTEM_ADMIN && user?.departmentId) {
+                // Verify the user's department is in the loaded list
+                const userDept = data.find(d => d.id === user.departmentId);
+                if (userDept) {
+                    setSelectedDepartmentId(userDept.id);
+                }
+            }
         } catch (err) {
             console.error('Failed to load departments', err);
         }
@@ -239,10 +248,16 @@ export default function CreateRequest() {
                                         setSelectedSubCategoryId('');
                                     }}
                                     options={[
-                                        { value: '', label: 'Select Department...' },
-                                        ...departments.map(dept => ({ value: dept.id, label: dept.name }))
+                                        ...(user?.role === UserRole.SYSTEM_ADMIN ? [{ value: '', label: 'Select Department...' }] : []),
+                                        ...departments
+                                            .filter(dept => {
+                                                if (user?.role === UserRole.SYSTEM_ADMIN) return true;
+                                                return dept.id === user?.departmentId;
+                                            })
+                                            .map(dept => ({ value: dept.id, label: dept.name }))
                                     ]}
-                                    placeholder="Select Department..."
+                                    placeholder={user?.role === UserRole.SYSTEM_ADMIN ? "Select Department..." : undefined}
+                                    disabled={user?.role !== UserRole.SYSTEM_ADMIN}
                                     error={departments.length === 0 ? 'Loading departments...' : undefined}
                                 />
                             </div>

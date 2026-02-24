@@ -13,7 +13,7 @@ import { departmentsApi, type Department } from '../services/departments.service
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
-import { getCategorySpendTotals, getTotalSpend } from '../data/financialDataHelpers';
+import { getCategorySpendTotals, getTotalSpend, getLatestMonthRange } from '../data/financialDataHelpers';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
 
@@ -26,7 +26,7 @@ export default function Dashboard() {
     const { user } = useAuth();
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>({});
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getLatestMonthRange);
 
     // Determine the department filter for restricted roles
     const userRole = user?.role;
@@ -80,7 +80,8 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
-        loadDashboard();
+        const { start, end } = getLatestMonthRange();
+        loadDashboard(start, end);
     }, []);
 
     const applyDateRange = (days: number) => {
@@ -294,10 +295,12 @@ export default function Dashboard() {
                         </tbody>
                     </table>
                 </div>
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100">
-                    <Button variant="primary" className="w-full sm:w-auto" onClick={() => navigate('/requests/new')}>
-                        + New Request
-                    </Button>
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 pb-safe">
+                    {user?.role !== UserRole.SYSTEM_ADMIN && (
+                        <Button variant="primary" className="w-full sm:w-auto" onClick={() => navigate('/requests/new')}>
+                            + New Request
+                        </Button>
+                    )}
                 </div>
             </div>
         </div>

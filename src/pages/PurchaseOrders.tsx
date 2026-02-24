@@ -7,8 +7,9 @@ import { Pagination } from '../components/Pagination';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { PurchaseOrdersSkeleton } from '../components/skeletons/PurchaseOrdersSkeleton';
 import { ordersApi } from '../services/orders.service';
+import { requestsApi } from '../services/requests.service';
 import { pdfService } from '../services/pdf.service';
-import type { PurchaseOrder } from '../types/api';
+import type { PurchaseOrder, RequestItem } from '../types/api';
 import { OrderStatus, UserRole } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { useAuth } from '../hooks/useAuth';
@@ -244,38 +245,76 @@ export default function PurchaseOrders() {
         );
     };
 
-    const handleDownloadPDF = (order: PurchaseOrder) => {
-        // Note: Assuming orders have items. If not, we might need to fetch them or just show summary.
-        // The current type definition and API response for getAll might not include items.
-        // For the single order view, we might want to ensure we have items.
-        // If items are not available on the list view object, we might need to fetch details first or just export summary.
-        // Let's assume for now we are exporting the order details we have.
+    const handleDownloadPDF = async (order: PurchaseOrder) => {
+        try {
+            setUpdating(order.id);
+            // We need the items which are stored on the original request
+            const request = await requestsApi.getById(order.requestId);
 
-        // If items are not available, let's just export the summary for now or fetch if needed.
-        // But for a single PO PDF, usually you want the line items.
-        // If the 'order' object from the list doesn't have items, we should probably fetch it.
-        // However, looking at the previous code (handleView), it seems to use the object passed to it.
-        // Let's create a summary PDF for the single order if items are missing, or generic details.
+            const totalGross = Number(order.totalAmount);
+            const totalNet = totalGross / 1.2;
+            const totalVat = totalGross - totalNet;
 
-        // Actually, let's just export the same summary row but maybe transponsed or just a single row table for now
-        // OR better, let's fetch the full order details if we want to print a real PO.
-        // But to keep it simple and consistent with the "Download CSV" which just dumps the row:
+            const documentData = {
+                id: order.id.slice(0, 8).toUpperCase(),
+                date: order.issuedAt ? formatDateTime(order.issuedAt) : formatDateTime(order.createdAt),
+                type: 'Order' as const,
+                supplier: {
+                    name: order.supplier?.name || 'Unknown Supplier',
+                    address: order.supplier?.contactEmail || ''
+                },
+                delivery: {
+                    recipient: request?.requester?.name || 'Aspect Representative',
+                    address: request?.deliveryLocation || '',
+                    date: request?.expectedDeliveryDate ? new Date(request.expectedDeliveryDate).toLocaleDateString() : 'N/A'
+                },
+                items: (request?.items || []).map((item: RequestItem) => {
+                    const gross = Number(item.totalPrice);
+                    const net = gross / 1.2;
+                    const vat = gross - net;
+                    return {
+                        code: item.id ? item.id.slice(0, 6).toUpperCase() : '-',
+                        description: item.description,
+                        qty: Number(item.quantity),
+                        net,
+                        vat,
+                        gross
+                    };
+                }),
+                totals: {
+                    net: totalNet,
+                    vat: totalVat,
+                    gross: totalGross
+                }
+            };
 
-        const summaryHeaders = ['PO ID', 'Supplier', 'Date Issued', 'Total Amount', 'Status'];
-        const summaryRow = [
-            order.id.slice(0, 8),
-            order.supplier?.name || 'Unknown',
-            order.issuedAt ? formatDateTime(order.issuedAt) : 'Not issued',
-            `£${Number(order.totalAmount).toLocaleString()}`,
-            order.status
-        ];
+            // If no items available, add a fallback row
+            if (documentData.items.length === 0) {
+                documentData.items.push({
+                    code: 'MISC',
+                    description: 'Purchase Order Summary',
+                    qty: 1,
+                    net: totalNet,
+                    vat: totalVat,
+                    gross: totalGross
+                });
+            }
 
-        pdfService.exportToPDF(
-            `Purchase Order #${order.id.slice(0, 8)}`,
-            summaryHeaders,
-            [summaryRow],
-            `purchase_order_${order.id.slice(0, 8)}`
-        );
+            pdfService.exportPurchaseDocumentPDF(documentData, `purchase_order_${order.id.slice(0, 8)}`);
+        } catch (error) {
+            console.error('Failed to generate PDF:', error);
+            setConfirmModal({
+                isOpen: true,
+                title: 'Export Error',
+                message: 'Failed to load order details for PDF generation.',
+                variant: 'danger',
+                confirmText: 'OK',
+                showCancel: false,
+                onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+            });
+        } finally {
+            setUpdating(null);
+        }
     };
 
     const getStatusColor = (status: string) => {

@@ -262,6 +262,72 @@ export default function Requests() {
         );
     };
 
+    const handleDownloadPDF = (request: PurchaseRequest) => {
+        try {
+            const totalGross = Number(request.totalAmount) || 0;
+            const totalNet = totalGross / 1.2;
+            const totalVat = totalGross - totalNet;
+
+            const documentData = {
+                id: request.id.slice(0, 8).toUpperCase(),
+                date: formatDateTime(request.createdAt),
+                type: 'Request' as const,
+                supplier: {
+                    name: request.supplier?.name || 'Pending Supplier Selection',
+                    address: request.supplier?.contactEmail || ''
+                },
+                delivery: {
+                    recipient: request.requester?.name || 'Aspect Representative',
+                    address: request.deliveryLocation || '',
+                    date: request.expectedDeliveryDate ? new Date(request.expectedDeliveryDate).toLocaleDateString() : 'N/A'
+                },
+                items: (request.items || []).map(item => {
+                    const gross = Number(item.totalPrice) || 0;
+                    const net = gross / 1.2;
+                    const vat = gross - net;
+                    return {
+                        code: item.id ? item.id.slice(0, 6).toUpperCase() : '-',
+                        description: item.description,
+                        qty: Number(item.quantity) || 1,
+                        net,
+                        vat,
+                        gross
+                    };
+                }),
+                totals: {
+                    net: totalNet,
+                    vat: totalVat,
+                    gross: totalGross
+                }
+            };
+
+            // If no items available, add a fallback row
+            if (documentData.items.length === 0) {
+                documentData.items.push({
+                    code: 'MISC',
+                    description: 'Purchase Request Summary',
+                    qty: 1,
+                    net: totalNet,
+                    vat: totalVat,
+                    gross: totalGross
+                });
+            }
+
+            pdfService.exportPurchaseDocumentPDF(documentData, `purchase_request_${request.id.slice(0, 8)}`);
+        } catch (error) {
+            console.error('Failed to generate PDF:', error);
+            setConfirmModal({
+                isOpen: true,
+                title: 'Export Error',
+                message: 'Failed to generate PDF for this request.',
+                variant: 'danger',
+                confirmText: 'OK',
+                showCancel: false,
+                onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+            });
+        }
+    };
+
     // Apply status filter
     let filteredRequests = filter === 'all'
         ? requests
@@ -360,7 +426,9 @@ export default function Requests() {
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={handleExportCSV}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
                     <Button variant="outline" onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" /> Export PDF</Button>
-                    <Button onClick={() => navigate('/requests/new')}><Plus className="mr-2 h-4 w-4" /> New Request</Button>
+                    {user?.role !== UserRole.SYSTEM_ADMIN && (
+                        <Button onClick={() => navigate('/requests/new')}><Plus className="mr-2 h-4 w-4" /> New Request</Button>
+                    )}
                 </div>
             </div>
 
@@ -792,7 +860,7 @@ export default function Requests() {
                                             }}
                                             className="flex-1 bg-green-600 hover:bg-green-700"
                                         >
-                                            <Check className="mr-2 h-4 w-4" /> Approve Request
+                                            <Check className="mr-2 h-4 w-4" /> Approve
                                         </Button>
                                         <Button
                                             onClick={() => {
@@ -802,10 +870,16 @@ export default function Requests() {
                                             variant="outline"
                                             className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
                                         >
-                                            <X className="mr-2 h-4 w-4" /> Reject Request
+                                            <X className="mr-2 h-4 w-4" /> Reject
                                         </Button>
                                     </div>
                                 )}
+
+                                <div className="pt-4 border-t flex flex-wrap gap-3">
+                                    <Button onClick={() => handleDownloadPDF(selectedRequest)} variant="outline" className="flex-1">
+                                        <FileText className="mr-2 h-4 w-4" /> Download PDF
+                                    </Button>
+                                </div>
 
                                 {/* Create PO Action for Approved Requests */}
                                 {selectedRequest.status === RequestStatus.APPROVED && (

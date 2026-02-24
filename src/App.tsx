@@ -53,7 +53,11 @@ function App() {
             } />
             <Route path="/requests" element={<Requests />} />
             <Route path="/requests/:id" element={<Requests />} />
-            <Route path="/requests/new" element={<CreateRequest />} />
+            <Route path="/requests/new" element={
+              <RoleProtectedRoute allowedRoles={[UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER]} fallbackPath="/requests">
+                <CreateRequest />
+              </RoleProtectedRoute>
+            } />
             <Route path="/orders" element={
               <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER]}>
                 <PurchaseOrders />
