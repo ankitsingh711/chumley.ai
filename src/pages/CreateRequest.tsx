@@ -25,7 +25,6 @@ export default function CreateRequest() {
     const navigate = useNavigate();
 
     const { user } = useAuth();
-    const isMember = user?.role === UserRole.MEMBER;
 
     // Form State
     const [branch, setBranch] = useState<Branch>(Branch.CHESSINGTON);
@@ -134,7 +133,7 @@ export default function CreateRequest() {
 
         const finalCategoryId = subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId;
 
-        if (!finalCategoryId && !isMember) {
+        if (!finalCategoryId) {
             setError(subCategories.length > 0 ? 'Please select a spending subcategory' : 'Please select a spending category');
             return;
         }
@@ -263,41 +262,36 @@ export default function CreateRequest() {
                             </div>
 
                             <div className="space-y-4">
-                                {!isMember && (
-                                    <>
+                                <Select
+                                    label="Spending Category"
+                                    value={selectedCategoryId}
+                                    onChange={(val) => {
+                                        setSelectedCategoryId(val);
+                                        setSelectedSubCategoryId('');
+                                    }}
+                                    options={[
+                                        { value: '', label: 'Select category...' },
+                                        ...parentCategories.map(c => ({ value: c.id, label: c.name }))
+                                    ]}
+                                    disabled={!selectedDepartmentId}
+                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
+                                    className="w-full"
+                                />
+
+                                {subCategories.length > 0 && (
+                                    <div>
                                         <Select
-                                            label="Spending Category"
-                                            value={selectedCategoryId}
-                                            onChange={(val) => {
-                                                setSelectedCategoryId(val);
-                                                setSelectedSubCategoryId('');
-                                            }}
+                                            label="Spending Subcategory"
+                                            value={selectedSubCategoryId}
+                                            onChange={setSelectedSubCategoryId}
                                             options={[
-                                                { value: '', label: 'Select category...' },
-                                                ...parentCategories.map(c => ({ value: c.id, label: c.name }))
+                                                { value: '', label: 'Select subcategory...' },
+                                                ...subCategories.map(c => ({ value: c.id, label: c.name }))
                                             ]}
-                                            disabled={!selectedDepartmentId}
-                                            placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
+                                            placeholder="Select a subcategory..."
                                             className="w-full"
                                         />
-
-
-                                        {subCategories.length > 0 && (
-                                            <div>
-                                                <Select
-                                                    label="Spending Subcategory"
-                                                    value={selectedSubCategoryId}
-                                                    onChange={setSelectedSubCategoryId}
-                                                    options={[
-                                                        { value: '', label: 'Select subcategory...' },
-                                                        ...subCategories.map(c => ({ value: c.id, label: c.name }))
-                                                    ]}
-                                                    placeholder="Select a subcategory..."
-                                                    className="w-full"
-                                                />
-                                            </div>
-                                        )}
-                                    </>
+                                    </div>
                                 )}
                             </div>
 
