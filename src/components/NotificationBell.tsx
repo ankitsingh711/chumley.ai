@@ -58,7 +58,7 @@ export default function NotificationBell() {
 
     const handleNavigateFromModal = (notification: Notification) => {
         if (notification.metadata?.requestId) {
-            navigate('/requests');
+            navigate(`/requests/${notification.metadata.requestId}`);
         }
     };
 

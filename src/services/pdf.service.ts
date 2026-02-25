@@ -46,34 +46,63 @@ class PdfService {
             format: 'a4'
         });
 
-        // Add Title
-        doc.setFontSize(18);
-        doc.text(title, 14, 22);
+        const margin = 14;
+        const blueColor = [26, 53, 99] as [number, number, number]; // #1A3563
 
-        // Add Date
-        doc.setFontSize(11);
-        doc.setTextColor(100);
-        const dateStr = format(new Date(), 'MMM dd, yyyy HH:mm');
-        doc.text(`Generated on: ${dateStr}`, 14, 30);
+        // --- Header ---
+        doc.setFontSize(22);
+        doc.setTextColor(blueColor[0], blueColor[1], blueColor[2]);
+        doc.setFont("helvetica", "bold");
+        doc.text(title.toUpperCase(), margin, 25);
 
-        // Add Table
+        // Add Aspect Logo
+        if (pureAspectLogoBase64) {
+            const logoX = orientation === 'l' ? 240 : 145;
+            doc.addImage(pureAspectLogoBase64, 'PNG', logoX, 17, 45, 11);
+        }
+
+        // --- Date info ---
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.text("Generated:", margin, 38);
+        doc.setFont("helvetica", "normal");
+        const dateStr = format(new Date(), 'dd/MM/yyyy, HH:mm');
+        doc.text(dateStr, margin + 24, 38);
+
+        doc.setFont("helvetica", "bold");
+        doc.text("Total Records:", margin, 43);
+        doc.setFont("helvetica", "normal");
+        doc.text(data.length.toString(), margin + 30, 43);
+
+        // --- Table ---
         autoTable(doc, {
             head: [columns],
             body: data,
-            startY: 40,
+            startY: 50,
+            theme: 'grid',
             styles: {
-                fontSize: 10,
-                cellPadding: 3,
+                font: 'helvetica',
+                fontSize: 9,
+                cellPadding: { top: 4, right: 3, bottom: 4, left: 3 },
+                textColor: [0, 0, 0],
+                lineColor: [220, 220, 220],
+                lineWidth: 0.1,
             },
             headStyles: {
-                fillColor: [66, 139, 202], // Adjust color to match theme if needed
+                fillColor: blueColor,
                 textColor: 255,
                 fontStyle: 'bold',
+                lineColor: blueColor,
+                lineWidth: 0.1,
+            },
+            bodyStyles: {
+                fillColor: [255, 255, 255],
             },
             alternateRowStyles: {
-                fillColor: [245, 245, 245],
+                fillColor: [248, 249, 252],
             },
-            margin: { top: 40 },
+            margin: { left: margin, right: margin },
         });
 
         // Save
@@ -209,7 +238,7 @@ class PdfService {
                 fillColor: [255, 255, 255],
             },
             columnStyles: {
-                0: { cellWidth: 12 },            // Line
+                0: { cellWidth: 16 },            // Line
                 1: { cellWidth: 35 },            // Item code
                 2: { cellWidth: 'auto' },        // Description
                 3: { cellWidth: 15, halign: 'right' }, // Qty

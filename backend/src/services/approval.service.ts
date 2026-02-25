@@ -1,7 +1,9 @@
-import { UserRole, RequestStatus, User } from '@prisma/client';
+import { UserRole, RequestStatus, User, NotificationType } from '@prisma/client';
 import Logger from '../utils/logger';
 import emailService from './email.service';
 import prisma from '../config/db';
+import notificationService from './notification.service';
+import { sendNotification } from '../utils/websocket';
 
 
 export class ApprovalService {
@@ -223,8 +225,10 @@ export class ApprovalService {
                 manageUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}`
             }).catch((err) => {
                 Logger.error(`Failed to send approval email for request ${requestId}:`, err);
-                // Email failure should not block request creation
             });
+
+            // Send in-app notifications to relevant users
+            await this.notifyRelevantUsers(request, request.requester);
 
         } else {
             // Auto-approve if no approver needed (e.g., Senior Manager's own request)
@@ -237,8 +241,91 @@ export class ApprovalService {
             });
 
             Logger.info(`Request ${requestId} auto-approved (no approver needed)`);
+        }
+    }
 
-            // Should success email be sent here? Maybe later.
+    /**
+     * Notify managers, senior managers, and admins about a new purchase request
+     */
+    private async notifyRelevantUsers(
+        request: any,
+        requester: any
+    ): Promise<void> {
+        try {
+            const requesterDeptId = requester.departmentId;
+            const requestShortId = request.id.slice(0, 8);
+            const totalFormatted = `£${Number(request.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+            const title = 'New Purchase Request';
+            const message = `${requester.name} submitted a purchase request #${requestShortId} for ${totalFormatted}`;
+
+            // Find all users who should be notified:
+            // 1. Managers and Senior Managers in the requester's department
+            // 2. All System Admins
+            const usersToNotify = await prisma.user.findMany({
+                where: {
+                    id: { not: requester.id }, // Don't notify the requester themselves
+                    OR: [
+                        // Managers / Senior Managers in same department
+                        {
+                            departmentId: requesterDeptId,
+                            role: { in: [UserRole.MANAGER, UserRole.SENIOR_MANAGER] }
+                        },
+                        // All System Admins
+                        {
+                            role: UserRole.SYSTEM_ADMIN
+                        }
+                    ]
+                },
+                select: { id: true, name: true }
+            });
+
+            // Also check users with additional roles in this department
+            const additionalRoleUsers = await prisma.userDepartmentRole.findMany({
+                where: {
+                    departmentId: requesterDeptId,
+                    role: { in: [UserRole.MANAGER, UserRole.SENIOR_MANAGER] },
+                    userId: { not: requester.id }
+                },
+                select: { userId: true }
+            });
+
+            // Combine and deduplicate user IDs
+            const userIdSet = new Set<string>();
+            usersToNotify.forEach(u => userIdSet.add(u.id));
+            additionalRoleUsers.forEach(u => userIdSet.add(u.userId));
+
+            // Send notifications to each user
+            for (const userId of userIdSet) {
+                // Persist notification in DB
+                try {
+                    await notificationService.createNotification({
+                        userId,
+                        type: NotificationType.SYSTEM_ALERT,
+                        title,
+                        message,
+                        metadata: { requestId: request.id, requesterId: requester.id, totalAmount: Number(request.totalAmount) }
+                    });
+                } catch (dbErr) {
+                    Logger.error(`Failed to create DB notification for user ${userId}:`, dbErr);
+                }
+
+                // Send real-time websocket notification
+                sendNotification(userId, {
+                    id: `notif-${Date.now()}-${Math.random()}`,
+                    type: 'request_created',
+                    title,
+                    message,
+                    userId,
+                    createdAt: new Date(),
+                    read: false,
+                    metadata: { requestId: request.id, requesterId: requester.id }
+                });
+            }
+
+            Logger.info(`Sent new request notifications to ${userIdSet.size} users for request ${request.id}`);
+        } catch (error) {
+            Logger.error(`Failed to send request creation notifications:`, error);
+            // Non-blocking: don't throw, just log
         }
     }
 }
