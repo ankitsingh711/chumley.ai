@@ -5,17 +5,6 @@ const prisma = new PrismaClient();
 const fullHierarchy = {
     "Chessington": {
         "Tech": {
-            "Staff Cost": {
-                "Chumley": {
-                    "AI": [],
-                    "Software": [],
-                    "Analytics": []
-                },
-                "IT": {
-                    "Hardware & Networking": [],
-                    "Website": []
-                }
-            },
             "Software Development": {
                 "Chumley": {
                     "AI": [],
@@ -39,57 +28,9 @@ const fullHierarchy = {
                 }
             }
         },
-        "Sector Group": {
-            "Staff Cost": {
-                "Insurance": {
-                    "Utilities": [],
-                    "All": []
-                },
-                "Corporate": {
-                    "Real Estate & Property": [],
-                    "All": [],
-                    "Healthcare & Education": [],
-                    "Hospitality & Leisure": [],
-                    "Charity & Religious": [],
-                    "Retail & Consumer Services": [],
-                    "Industrial & Manufacturing": [],
-                    "Corporate": []
-                },
-                "Homeowner": {
-                    "All": [],
-                    "Homeowner SW": [],
-                    "Homeowner NW": [],
-                    "Homeowner E": [],
-                    "Homeowner C & PL": []
-                }
-            }
-        },
-        "Trade Group": {
-            "Staff Cost": {
-                "All": {
-                    "Trade Support": []
-                },
-                "Trade Group": {
-                    "Trade Manager": [],
-                    "Trade Support": []
-                }
-            }
-        },
+        "Sector Group": {},
+        "Trade Group": {},
         "Support": {
-            "Staff Cost": {
-                "Contact Centre": {
-                    "All": [],
-                    "Contact Centre": []
-                },
-                "Scheduling": {
-                    "All": [],
-                    "Scheduling": []
-                },
-                "OOH Team": {
-                    "All": [],
-                    "OOH Team": []
-                }
-            },
             "NI": {
                 "Tech": {
                     "Chumley": {
@@ -177,10 +118,6 @@ const fullHierarchy = {
                 }
             },
             "Marketing": {
-                "Staff Cost": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
                 "Paid Search": {
                     "PPC": []
                 },
@@ -195,10 +132,6 @@ const fullHierarchy = {
                     "Bank Charges": [],
                     "HMRC Interest & Charges": []
                 },
-                "Staff Cost": {
-                    "Purchase & Ledger": [],
-                    "Credit Control": []
-                },
                 "Fees": {
                     "Professional": [],
                     "Audit & Accountancy": []
@@ -206,11 +139,6 @@ const fullHierarchy = {
                 "Software": []
             },
             "HR & Recruitment": {
-                "Staff Cost": {
-                    "HR": [],
-                    "Recruitment": [],
-                    "All": []
-                },
                 "Training": {
                     "Engineers": [],
                     "Staff": []
@@ -259,10 +187,7 @@ const fullHierarchy = {
                 "All": [],
                 "Trade Group": []
             },
-            "Staff Cost": {
-                "All": [],
-                "Trade Group": []
-            }
+
         },
         "Assets": {
             "Aspect-Owned": {
@@ -439,17 +364,6 @@ const fullHierarchy = {
     },
     "Royston": {
         "Tech": {
-            "Staff Cost": {
-                "Chumley": {
-                    "AI": [],
-                    "Software": [],
-                    "Analytics": []
-                },
-                "IT": {
-                    "Hardware & Networking": [],
-                    "Website": []
-                }
-            },
             "Software Development": {
                 "Chumley": {
                     "AI": [],
@@ -473,57 +387,9 @@ const fullHierarchy = {
                 }
             }
         },
-        "Sector Group": {
-            "Staff Cost": {
-                "Insurance": {
-                    "Utilities": [],
-                    "All": []
-                },
-                "Corporate": {
-                    "Real Estate & Property": [],
-                    "All": [],
-                    "Healthcare & Education": [],
-                    "Hospitality & Leisure": [],
-                    "Charity & Religious": [],
-                    "Retail & Consumer Services": [],
-                    "Industrial & Manufacturing": [],
-                    "Corporate": []
-                },
-                "Homeowner": {
-                    "All": [],
-                    "Homeowner SW": [],
-                    "Homeowner NW": [],
-                    "Homeowner E": [],
-                    "Homeowner C & PL": []
-                }
-            }
-        },
-        "Trade Group": {
-            "Staff Cost": {
-                "All": {
-                    "Trade Support": []
-                },
-                "Trade Group": {
-                    "Trade Manager": [],
-                    "Trade Support": []
-                }
-            }
-        },
+        "Sector Group": {},
+        "Trade Group": {},
         "Support": {
-            "Staff Cost": {
-                "Contact Centre": {
-                    "All": [],
-                    "Contact Centre": []
-                },
-                "Scheduling": {
-                    "All": [],
-                    "Scheduling": []
-                },
-                "OOH Team": {
-                    "All": [],
-                    "OOH Team": []
-                }
-            },
             "NI": {
                 "Tech": {
                     "Chumley": {
@@ -611,10 +477,6 @@ const fullHierarchy = {
                 }
             },
             "Marketing": {
-                "Staff Cost": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
                 "Paid Search": {
                     "PPC": []
                 },
@@ -629,10 +491,6 @@ const fullHierarchy = {
                     "Bank Charges": [],
                     "HMRC Interest & Charges": []
                 },
-                "Staff Cost": {
-                    "Purchase & Ledger": [],
-                    "Credit Control": []
-                },
                 "Fees": {
                     "Professional": [],
                     "Audit & Accountancy": []
@@ -640,11 +498,6 @@ const fullHierarchy = {
                 "Software": []
             },
             "HR & Recruitment": {
-                "Staff Cost": {
-                    "HR": [],
-                    "Recruitment": [],
-                    "All": []
-                },
                 "Training": {
                     "Engineers": [],
                     "Staff": []
@@ -693,10 +546,7 @@ const fullHierarchy = {
                 "All": [],
                 "Trade Group": []
             },
-            "Staff Cost": {
-                "All": [],
-                "Trade Group": []
-            }
+
         },
         "Assets": {
             "Aspect-Owned": {
