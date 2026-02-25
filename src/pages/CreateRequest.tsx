@@ -88,8 +88,8 @@ export default function CreateRequest() {
         }
     }, [branch, selectedDepartmentId]);
 
-    const parentCategories = categories.filter(c => !c.parentId);
-    const subCategories = selectedCategoryId ? categories.filter(c => c.parentId === selectedCategoryId) : [];
+    const parentCategories = categories.filter(c => !c.parentId && c.name !== 'Staff Cost');
+    const subCategories = selectedCategoryId ? categories.filter(c => c.parentId === selectedCategoryId && c.name !== 'Staff Cost') : [];
 
     const addItem = () => {
         setItems([...items, { description: '', quantity: 1, unitPrice: 0 }]);
