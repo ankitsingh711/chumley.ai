@@ -10,8 +10,9 @@ import { CacheService } from '../utils/cache';
 const createSupplierSchema = z.object({
     name: z.string().min(2),
     contactEmail: z.string().email(),
-    phone: z.string().optional(),
-    address: z.string().optional(),
+    contactName: z.string().min(1),
+    phone: z.string().min(1),
+    address: z.string().min(1),
     category: z.string().min(1),
     logoUrl: z.string().optional(),
 });
@@ -213,14 +214,22 @@ export const createSupplier = async (req: Request, res: Response) => {
             select: { departmentId: true, role: true, name: true }
         });
 
+        const { phone, address, ...supplierData } = validatedData;
+
         const supplier = await prisma.supplier.create({
             data: {
-                ...validatedData,
+                ...supplierData,
                 status,
                 requesterId: isRestricted ? user.id : undefined,
                 departments: fullUser?.departmentId ? {
                     connect: { id: fullUser.departmentId }
-                } : undefined
+                } : undefined,
+                details: {
+                    create: {
+                        phone,
+                        address
+                    }
+                }
             },
         });
 

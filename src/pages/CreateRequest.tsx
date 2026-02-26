@@ -17,8 +17,8 @@ import { AddSupplierModal } from '../components/suppliers/AddSupplierModal';
 
 interface ItemRow {
     description: string;
-    quantity: number;
-    unitPrice: number;
+    quantity: number | '';
+    unitPrice: number | '';
 }
 
 export default function CreateRequest() {
@@ -34,7 +34,7 @@ export default function CreateRequest() {
     const [selectedCategoryId, setSelectedCategoryId] = useState(''); // Main Category
     const [selectedSubCategoryId, setSelectedSubCategoryId] = useState(''); // Sub Category
     const [items, setItems] = useState<ItemRow[]>([
-        { description: '', quantity: 1, unitPrice: 0 }
+        { description: '', quantity: '', unitPrice: '' }
     ]);
     const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
 
@@ -92,7 +92,7 @@ export default function CreateRequest() {
     const subCategories = selectedCategoryId ? categories.filter(c => c.parentId === selectedCategoryId && c.name !== 'Staff Cost') : [];
 
     const addItem = () => {
-        setItems([...items, { description: '', quantity: 1, unitPrice: 0 }]);
+        setItems([...items, { description: '', quantity: '', unitPrice: '' }]);
     };
 
     const removeItem = (index: number) => {
@@ -108,14 +108,14 @@ export default function CreateRequest() {
     };
 
     const calculateTotal = () => {
-        return items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        return items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unitPrice || 0)), 0);
     };
 
     const handleSubmit = async () => {
         setError('');
 
         // Validation
-        const validItems = items.filter(item => item.description && item.quantity > 0 && item.unitPrice > 0);
+        const validItems = items.filter(item => item.description && Number(item.quantity) > 0 && Number(item.unitPrice) > 0);
         if (validItems.length === 0) {
             setError('Please add at least one valid item');
             return;
@@ -145,7 +145,11 @@ export default function CreateRequest() {
                 supplierId: selectedSupplierId,
                 budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
                 categoryId: (subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId) || undefined,
-                items: validItems,
+                items: validItems.map(item => ({
+                    description: item.description,
+                    quantity: Number(item.quantity),
+                    unitPrice: Number(item.unitPrice)
+                })),
                 branch: branch,
             };
 
@@ -377,8 +381,9 @@ export default function CreateRequest() {
                                             type="number"
                                             min="1"
                                             value={item.quantity}
-                                            onChange={(e) => updateItem(index, 'quantity', parseInt(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-center"
+                                            onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
+                                            placeholder="Qty"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div className="w-32">
@@ -388,8 +393,9 @@ export default function CreateRequest() {
                                             min="0"
                                             step="0.01"
                                             value={item.unitPrice}
-                                            onChange={(e) => updateItem(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-right"
+                                            onChange={(e) => updateItem(index, 'unitPrice', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                            placeholder="0.00"
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                         />
                                     </div>
                                     <div className="w-8 flex items-end justify-center pt-8">

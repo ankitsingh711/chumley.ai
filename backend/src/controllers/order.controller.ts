@@ -65,7 +65,7 @@ export const createOrder = async (req: Request, res: Response) => {
         await prisma.interactionLog.create({
             data: {
                 supplierId: validatedData.supplierId,
-                userId: request.requesterId, // Use requester ID as the context user, or could be approver
+                userId: (req as any).user.id, // Use actual user who clicked create
                 eventType: 'order_created',
                 title: 'Purchase Order Issued',
                 description: `Order #${order.id.slice(0, 8)} issued for Request #${request.id.slice(0, 8)}. Amount: £${Number(order.totalAmount).toLocaleString()}`,
@@ -79,6 +79,10 @@ export const createOrder = async (req: Request, res: Response) => {
             budgetMonitorService.checkDepartmentThreshold(department.id, department.name)
                 .catch(err => Logger.error('Failed to check budget threshold:', err));
         }
+
+        // Invalidate caches to ensure Dashboard and KPIs update immediately
+        await CacheService.invalidateOrderCache();
+        await CacheService.invalidateRequestCache(request.id);
 
         res.status(201).json(order);
     } catch (error: any) {

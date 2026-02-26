@@ -128,10 +128,15 @@ function parseDate(dateStr: string): Date {
  * Use this as the dashboard default when no date filter has been applied yet.
  */
 export function getLatestMonthRange(): { start: string; end: string } {
-    const latest = allEntries.reduce((max, e) => {
+    let latest = allEntries.reduce((max, e) => {
         const d = parseDate(e.date);
         return d > max ? d : max;
     }, new Date(0));
+
+    const now = new Date();
+    if (now > latest) {
+        latest = now;
+    }
 
     const yyyy = latest.getFullYear();
     const mm = String(latest.getMonth() + 1).padStart(2, '0');

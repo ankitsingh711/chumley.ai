@@ -358,8 +358,23 @@ export default function SupplierProfile() {
                                                                 minute: '2-digit'
                                                             }).toUpperCase()}
                                                         </p>
-                                                        {interaction.description && (
-                                                            <p className="mt-1 text-xs text-gray-500">{interaction.description}</p>
+                                                        {interaction.eventType === 'email' ? (
+                                                            <div className="mt-2 p-3 bg-gray-50 border border-gray-100 rounded text-xs space-y-2">
+                                                                <div className="flex justify-between items-center text-gray-500 border-b border-gray-200 pb-2">
+                                                                    <div className="flex gap-4">
+                                                                        <span><strong>From:</strong> {supplier.contactName || 'System'} &lt;{supplier.contactEmail || 'system@chumley.ai'}&gt;</span>
+                                                                        <span><strong>Medium:</strong> Email</span>
+                                                                    </div>
+                                                                    <Button variant="ghost" className="h-6 px-2 text-[10px]" onClick={() => alert('Viewing raw EML and attachments...')}>
+                                                                        View Details / Attachments
+                                                                    </Button>
+                                                                </div>
+                                                                <p className="text-gray-700 whitespace-pre-wrap">{interaction.description}</p>
+                                                            </div>
+                                                        ) : (
+                                                            interaction.description && (
+                                                                <p className="mt-1 text-xs text-gray-500">{interaction.description}</p>
+                                                            )
                                                         )}
                                                     </div>
                                                 ))

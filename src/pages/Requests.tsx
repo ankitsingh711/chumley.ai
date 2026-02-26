@@ -19,7 +19,6 @@ export default function Requests() {
     const navigate = useNavigate();
     const { id: requestIdFromUrl } = useParams<{ id: string }>();
     const { user } = useAuth();
-    const isMember = user?.role === UserRole.MEMBER;
     const [requests, setRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | RequestStatusType>('all');
@@ -578,7 +577,7 @@ export default function Requests() {
                                     <th className="px-6 py-4 font-medium">Date</th>
                                     <th className="px-6 py-4 font-medium">Amount</th>
                                     <th className="px-6 py-4 font-medium">Status</th>
-                                    {!isMember && <th className="px-6 py-4 font-medium">Actions</th>}
+                                    <th className="px-6 py-4 font-medium">Actions</th>
                                     <th className="px-6 py-4 font-medium text-right"></th>
                                 </tr>
                             </thead>
@@ -619,66 +618,63 @@ export default function Requests() {
                                                 {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
                                             </span>
                                         </td>
-                                        {/* Action Column */}
-                                        {!isMember && (
-                                            <td className="px-6 py-4">
-                                                {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
-                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
-                                                            disabled={updating === req.id}
-                                                            title="Approve"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
-                                                            disabled={updating === req.id}
-                                                            title="Reject"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
-                                                {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
-                                                {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                            onClick={() => handleDelete(req.id)}
-                                                            disabled={updating === req.id}
-                                                            title="Delete"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                        <td className="px-6 py-4">
+                                            {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
+                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
+                                                        disabled={updating === req.id}
+                                                        title="Approve"
+                                                    >
+                                                        <Check className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
+                                                        disabled={updating === req.id}
+                                                        title="Reject"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
+                                            {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                        onClick={() => handleDelete(req.id)}
+                                                        disabled={updating === req.id}
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </button>
+                                                </div>
+                                            )}
 
-                                                {/* Create PO Button for Approved Requests */}
-                                                {req.status === RequestStatus.APPROVED && (
-                                                    req.order ? (
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-purple-50 text-purple-600 disabled:opacity-50"
-                                                            onClick={() => navigate(`/orders?search=${req.order?.id}`)} // Or navigate to specific order
-                                                            title="View Purchase Order"
-                                                        >
-                                                            <ShoppingBag className="h-4 w-4" />
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                                                            onClick={() => handleCreateOrder(req)}
-                                                            disabled={updating === req.id}
-                                                            title="Create Purchase Order"
-                                                        >
-                                                            <ShoppingBag className="h-4 w-4" />
-                                                        </button>
-                                                    )
-                                                )}
-                                            </td>
-                                        )}
+                                            {/* Create PO Button for Approved Requests */}
+                                            {req.status === RequestStatus.APPROVED && (
+                                                req.order ? (
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-purple-50 text-purple-600 disabled:opacity-50"
+                                                        onClick={() => navigate(`/orders?search=${req.order?.id}`)} // Or navigate to specific order
+                                                        title="View Purchase Order"
+                                                    >
+                                                        <ShoppingBag className="h-4 w-4" />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
+                                                        onClick={() => handleCreateOrder(req)}
+                                                        disabled={updating === req.id}
+                                                        title="Create Purchase Order"
+                                                    >
+                                                        <ShoppingBag className="h-4 w-4" />
+                                                    </button>
+                                                )
+                                            )}
+                                        </td>
                                         <td className="px-6 py-4 text-right">
                                             <button
                                                 onClick={() => handleViewDetails(req)}

@@ -41,7 +41,7 @@ export const BudgetTracker = memo(function BudgetTracker({
     // Monthly budget limits as requested
     const BUDGET_LIMITS: Record<string, number> = {
         'Marketing': 350000,
-        'Chumley': 135000,
+        'Tech': 135000,
         'Finance': 40000,
         'HR & Recruitment': 10000,
         'Fleet': 200000,
@@ -83,7 +83,7 @@ export const BudgetTracker = memo(function BudgetTracker({
                 trackedDepartments.push({
                     id: `unassigned-${name}`,
                     name,
-                    category: 'Unassigned / Other',
+                    category: 'General / Uncategorized',
                     limit: BUDGET_LIMITS[name] || DEFAULT_LIMIT,
                     color: 'bg-gray-400',
                     spent: amount

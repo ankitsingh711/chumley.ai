@@ -2,11 +2,11 @@ import { PrismaClient, Branch } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-const fullHierarchy = {
+export const fullHierarchy = {
     "Chessington": {
         "Tech": {
             "Software Development": {
-                "Chumley": {
+                "Tech": {
                     "AI": [],
                     "Software": [],
                     "Analytics": []
@@ -17,7 +17,7 @@ const fullHierarchy = {
                 }
             },
             "Software": {
-                "Chumley": {
+                "Tech": {
                     "AI": [],
                     "Software": [],
                     "Analytics": []
@@ -33,7 +33,7 @@ const fullHierarchy = {
         "Support": {
             "NI": {
                 "Tech": {
-                    "Chumley": {
+                    "Tech": {
                         "AI": [],
                         "Software": [],
                         "Analytics": []
@@ -43,10 +43,7 @@ const fullHierarchy = {
                         "Website": []
                     }
                 },
-                "Marketing": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
+                "Marketing": {},
                 "HR & Recruitment": {
                     "HR": [],
                     "Recruitment": []
@@ -59,7 +56,7 @@ const fullHierarchy = {
             },
             "Pension": {
                 "Tech": {
-                    "Chumley": {
+                    "Tech": {
                         "AI": [],
                         "Software": [],
                         "Analytics": []
@@ -69,10 +66,7 @@ const fullHierarchy = {
                         "Website": []
                     }
                 },
-                "Marketing": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
+                "Marketing": {},
                 "HR & Recruitment": {
                     "HR": [],
                     "Recruitment": []
@@ -365,7 +359,7 @@ const fullHierarchy = {
     "Royston": {
         "Tech": {
             "Software Development": {
-                "Chumley": {
+                "Tech": {
                     "AI": [],
                     "Software": [],
                     "Analytics": []
@@ -376,7 +370,7 @@ const fullHierarchy = {
                 }
             },
             "Software": {
-                "Chumley": {
+                "Tech": {
                     "AI": [],
                     "Software": [],
                     "Analytics": []
@@ -392,7 +386,7 @@ const fullHierarchy = {
         "Support": {
             "NI": {
                 "Tech": {
-                    "Chumley": {
+                    "Tech": {
                         "AI": [],
                         "Software": [],
                         "Analytics": []
@@ -402,10 +396,7 @@ const fullHierarchy = {
                         "Website": []
                     }
                 },
-                "Marketing": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
+                "Marketing": {},
                 "HR & Recruitment": {
                     "HR": [],
                     "Recruitment": []
@@ -418,7 +409,7 @@ const fullHierarchy = {
             },
             "Pension": {
                 "Tech": {
-                    "Chumley": {
+                    "Tech": {
                         "AI": [],
                         "Software": [],
                         "Analytics": []
@@ -428,10 +419,7 @@ const fullHierarchy = {
                         "Website": []
                     }
                 },
-                "Marketing": {
-                    "PPC": [],
-                    "Non-PPC": []
-                },
+                "Marketing": {},
                 "HR & Recruitment": {
                     "HR": [],
                     "Recruitment": []

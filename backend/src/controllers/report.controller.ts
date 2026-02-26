@@ -116,7 +116,7 @@ export const getKPIs = async (req: Request, res: Response) => {
             // Prioritize budgetCategory set on the request, fallback to user department name
             const budgetCategory = order.request?.budgetCategory;
             const departmentName = order.request?.requester?.department?.name;
-            const category = budgetCategory || departmentName || 'Unassigned';
+            const category = budgetCategory || departmentName || 'General / Uncategorized';
             departmentSpend[category] = (departmentSpend[category] || 0) + Number(order.totalAmount);
         });
 
@@ -243,7 +243,7 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
                 ? (order.request?.requester?.department as any).name
                 : order.request?.requester?.department;
 
-            const category = budgetCategory || objDeptName || 'Unassigned';
+            const category = budgetCategory || objDeptName || 'General / Uncategorized';
 
             if (!spendByMonth[month]) {
                 spendByMonth[month] = { month, spend: 0 };
@@ -332,7 +332,7 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
                 depth++;
             }
 
-            return current ? current.name : 'Unassigned';
+            return current ? current.name : 'General / Uncategorized';
         };
 
         // 2. Fetch orders for this department
@@ -362,7 +362,7 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
         const categorySpend: Record<string, number> = {};
 
         orders.forEach(order => {
-            let categoryName = 'Unassigned';
+            let categoryName = 'General / Uncategorized';
 
             if (order.request?.categoryId) {
                 // Use hierarchy rollup

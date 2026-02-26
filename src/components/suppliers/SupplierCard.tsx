@@ -23,11 +23,9 @@ export interface Supplier {
 
 interface SupplierCardProps {
     supplier: Supplier;
-    onApprove?: (id: string) => void;
-    onReject?: (id: string) => void;
 }
 
-export const SupplierCard = memo(function SupplierCard({ supplier, onApprove, onReject }: SupplierCardProps) {
+export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCardProps) {
     const navigate = useNavigate();
 
     const statusStyles = {
@@ -127,38 +125,13 @@ export const SupplierCard = memo(function SupplierCard({ supplier, onApprove, on
                     {isReviewPending ? 'Contract expires soon' : `Last order: ${supplier.lastOrder}`}
                 </p>
                 <div className="flex gap-2">
-                    {/* Action Buttons for Pending Review */}
-                    {isReviewPending && onApprove && onReject ? (
-                        <>
-                            <Button
-                                variant="outline"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs font-semibold h-8 px-2 border-red-200"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onReject(supplier.id);
-                                }}
-                            >
-                                Reject
-                            </Button>
-                            <Button
-                                className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold h-8 px-2"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onApprove(supplier.id);
-                                }}
-                            >
-                                Approve
-                            </Button>
-                        </>
-                    ) : (
-                        <Button
-                            variant="ghost"
-                            className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
-                            onClick={handleViewProfile}
-                        >
-                            View Profile
-                        </Button>
-                    )}
+                    <Button
+                        variant="ghost"
+                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 text-xs font-semibold h-8 px-3"
+                        onClick={handleViewProfile}
+                    >
+                        View Profile
+                    </Button>
                 </div>
             </div>
         </div>

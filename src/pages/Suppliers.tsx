@@ -143,42 +143,7 @@ export default function Suppliers() {
         }
     };
 
-    const handleApprove = async (id: string) => {
-        try {
-            await suppliersApi.approve(id);
-            // Update local state
-            setSuppliers(suppliers.map(s =>
-                s.id === id ? { ...s, status: 'Standard' } : s
-            ));
-        } catch (error) {
-            console.error('Failed to approve supplier:', error);
-            alert('Failed to approve supplier. You may not have permission.');
-        }
-    };
 
-    const [showRejectModal, setShowRejectModal] = useState(false);
-    const [selectedSupplierId, setSelectedSupplierId] = useState<string | null>(null);
-
-    const handleReject = (id: string) => {
-        setSelectedSupplierId(id);
-        setShowRejectModal(true);
-    };
-
-    const confirmReject = async () => {
-        if (!selectedSupplierId) return;
-
-        try {
-            await suppliersApi.reject(selectedSupplierId);
-            // Remove from list
-            setSuppliers(prev => prev.filter(s => s.id !== selectedSupplierId));
-            setShowRejectModal(false);
-            setSelectedSupplierId(null);
-        } catch (error) {
-            console.error('Failed to reject supplier:', error);
-            alert('Failed to reject supplier. You may not have permission.');
-            setShowRejectModal(false);
-        }
-    };
 
     const handleExportPDF = () => {
         const headers = ['Name', 'Category', 'Status', 'Contact', 'Active Orders', 'Total Spend'];
@@ -251,20 +216,6 @@ export default function Suppliers() {
                     <SupplierCard
                         key={supplier.id}
                         supplier={supplier}
-                        onApprove={
-                            (user?.role === UserRole.SYSTEM_ADMIN ||
-                                user?.role === UserRole.SENIOR_MANAGER ||
-                                user?.role === UserRole.MANAGER)
-                                ? handleApprove
-                                : undefined
-                        }
-                        onReject={
-                            (user?.role === UserRole.SYSTEM_ADMIN ||
-                                user?.role === UserRole.SENIOR_MANAGER ||
-                                user?.role === UserRole.MANAGER)
-                                ? handleReject
-                                : undefined
-                        }
                     />
                 ))}
 
@@ -310,17 +261,6 @@ export default function Suppliers() {
                 confirmText="OK"
                 variant="success"
                 showCancel={false}
-            />
-
-            <ConfirmationModal
-                isOpen={showRejectModal}
-                onClose={() => setShowRejectModal(false)}
-                onConfirm={confirmReject}
-                title="Reject Supplier"
-                message="Are you sure you want to reject this supplier? This action cannot be undone."
-                confirmText="Reject Supplier"
-                cancelText="Cancel"
-                variant="danger"
             />
         </div>
     );

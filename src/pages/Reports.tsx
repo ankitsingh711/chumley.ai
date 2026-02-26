@@ -158,7 +158,7 @@ export default function Reports() {
     const DEPARTMENT_COLORS: Record<string, string> = {
         'Marketing': '#f97316', // Orange
         'Support': '#ec4899',   // Pink
-        'Chumley': '#3b82f6',   // Blue
+        'Tech': '#3b82f6',   // Blue
         'Fleet': '#8b5cf6',     // Purple
         'Finance': '#84cc16',   // Lime Green
         'Sector Group': '#eab308', // Yellow

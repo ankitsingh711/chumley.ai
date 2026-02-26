@@ -42,6 +42,9 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
         const newErrors: Partial<AddSupplierForm> = {};
         if (!formData.name) newErrors.name = 'Company Name is required';
         if (!formData.category) newErrors.category = 'Category is required';
+        if (!formData.contactName) newErrors.contactName = 'Contact Name is required';
+        if (!formData.phone) newErrors.phone = 'Phone Number is required';
+        if (!formData.address) newErrors.address = 'Address is required';
         if (!formData.contactEmail) newErrors.contactEmail = 'Contact Email is required';
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contactEmail)) {
             newErrors.contactEmail = 'Invalid email address';
@@ -61,6 +64,8 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
                 category: formData.category,
                 contactName: formData.contactName,
                 contactEmail: formData.contactEmail,
+                phone: formData.phone,
+                address: formData.address,
                 logoUrl: formData.logoUrl,
             };
 
@@ -153,15 +158,16 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
 
                                     <div>
                                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                            Address
+                                            Address <span className="text-red-500">*</span>
                                         </label>
                                         <textarea
                                             value={formData.address}
                                             onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                                             rows={3}
-                                            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all resize-none"
+                                            className={`w-full rounded-xl border ${errors.address ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all resize-none`}
                                             placeholder="123 Main St, City, State, ZIP"
                                         />
+                                        {errors.address && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.address}</p>}
                                     </div>
                                 </div>
 
@@ -185,15 +191,16 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                        Contact Name
+                                        Contact Name <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="text"
                                         value={formData.contactName}
                                         onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
-                                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
+                                        className={`w-full rounded-xl border ${errors.contactName ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
                                         placeholder="John Doe"
                                     />
+                                    {errors.contactName && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.contactName}</p>}
                                 </div>
 
                                 <div>
@@ -212,15 +219,16 @@ export function AddSupplierModal({ isOpen, onClose, onSuccess, isRestricted }: A
 
                                 <div className="md:col-span-2">
                                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                        Phone Number
+                                        Phone Number <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="tel"
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
+                                        className={`w-full rounded-xl border ${errors.phone ? 'border-red-300 focus:ring-red-200' : 'border-gray-200 focus:border-primary-500 focus:ring-primary-100'} px-4 py-3 text-sm outline-none focus:ring-4 transition-all`}
                                         placeholder="+1 (555) 000-0000"
                                     />
+                                    {errors.phone && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.phone}</p>}
                                 </div>
                             </div>
                         </div>
