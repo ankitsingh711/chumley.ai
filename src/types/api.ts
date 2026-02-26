@@ -146,10 +146,28 @@ export interface Message {
     user?: { id: string; name: string; email: string };
     subject?: string;
     content: string;
+    medium?: MessageMedium;
     isFromUser: boolean;
+    fromAddress?: string;
+    toAddress?: string;
+    source?: string;
+    channelMessageId?: string;
+    metadata?: Record<string, unknown>;
+    receivedAt?: string;
     readAt?: string;
     createdAt: string;
 }
+
+export const MessageMedium = {
+    PORTAL: 'PORTAL',
+    EMAIL: 'EMAIL',
+    SMS: 'SMS',
+    WHATSAPP: 'WHATSAPP',
+    PHONE: 'PHONE',
+    OTHER: 'OTHER',
+} as const;
+
+export type MessageMedium = (typeof MessageMedium)[keyof typeof MessageMedium];
 
 export interface InteractionLog {
     id: string;
@@ -343,6 +361,19 @@ export interface CreateMessageInput {
     subject?: string;
     content: string;
     isFromUser?: boolean;
+    medium?: MessageMedium;
+}
+
+export interface CreateInboundMessageInput {
+    subject?: string;
+    content: string;
+    medium?: MessageMedium;
+    fromAddress?: string;
+    toAddress?: string;
+    source?: string;
+    channelMessageId?: string;
+    metadata?: Record<string, unknown>;
+    receivedAt?: string;
 }
 
 export interface CreateInteractionInput {

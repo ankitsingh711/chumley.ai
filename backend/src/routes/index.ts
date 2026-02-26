@@ -30,5 +30,7 @@ import categoryRoutes from './category.routes';
 router.use('/categories', categoryRoutes);
 import notificationRoutes from './notification.routes';
 router.use('/notifications', notificationRoutes);
+import exportRoutes from './export.routes';
+router.use('/export', exportRoutes);
 
 export default router;

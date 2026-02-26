@@ -141,7 +141,8 @@ export const getOrders = async (req: Request, res: Response) => {
                     totalAmount: true,
                     issuedAt: true,
                     createdAt: true,
-                    supplier: { select: { id: true, name: true } },
+                    updatedAt: true,
+                    supplier: { select: { id: true, name: true, contactEmail: true } },
                     request: {
                         select: {
                             requester: { select: { id: true, name: true } }
@@ -160,12 +161,14 @@ export const getOrders = async (req: Request, res: Response) => {
             supplier: {
                 id: order.supplierId,
                 name: order.supplier.name,
+                contactEmail: order.supplier.contactEmail,
             },
             requesterName: order.request.requester.name,
             status: order.status,
             totalAmount: Number(order.totalAmount),
             issuedAt: order.issuedAt,
-            createdAt: order.createdAt
+            createdAt: order.createdAt,
+            updatedAt: order.updatedAt
         }));
 
         const response = createPaginatedResponse(ordersDTO, total, page, limit);

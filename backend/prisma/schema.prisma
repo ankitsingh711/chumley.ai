@@ -198,7 +198,14 @@ model Message {
   userId     String
   subject    String?
   content    String    @db.Text
+  medium     String    @default("PORTAL")
   isFromUser Boolean   @default(true)
+  fromAddress String?
+  toAddress   String?
+  source      String?
+  channelMessageId String?
+  metadata    Json?
+  receivedAt  DateTime?
   readAt     DateTime?
   createdAt  DateTime  @default(now())
   supplier   Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)

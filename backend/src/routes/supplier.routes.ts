@@ -9,6 +9,8 @@ import {
     updateSupplierDetails,
     getSupplierMessages,
     sendSupplierMessage,
+    receiveSupplierMessage,
+    receiveSupplierEmailReplyWebhook,
     getSupplierInteractions,
     createSupplierInteraction,
     addSupplierDocument,
@@ -20,6 +22,9 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
+
+// Public webhook: supplier reply emails from provider callbacks
+router.post('/messages/inbound/email-reply', receiveSupplierEmailReplyWebhook);
 
 router.use(authenticate);
 
@@ -35,6 +40,7 @@ router.post('/:id/reject', rejectSupplier);
 router.put('/:id', updateSupplier);
 router.put('/:id/details', updateSupplierDetails);
 router.post('/:id/messages', sendSupplierMessage);
+router.post('/:id/messages/inbound', receiveSupplierMessage);
 router.post('/:id/interactions', createSupplierInteraction);
 router.post('/:id/documents', addSupplierDocument);
 
@@ -44,4 +50,3 @@ router.post('/:id/reviews', addSupplierReview);
 router.delete('/:id', deleteSupplier);
 
 export default router;
-

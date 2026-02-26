@@ -6,6 +6,7 @@ import type {
     UpdateSupplierDetailsInput,
     Message,
     CreateMessageInput,
+    CreateInboundMessageInput,
     InteractionLog,
     CreateInteractionInput,
     AddDocumentInput,
@@ -57,6 +58,11 @@ export const suppliersApi = {
 
     sendMessage: async (id: string, data: CreateMessageInput): Promise<Message> => {
         const response = await apiClient.post<Message>(`/suppliers/${id}/messages`, data);
+        return response.data;
+    },
+
+    recordInboundMessage: async (id: string, data: CreateInboundMessageInput): Promise<Message> => {
+        const response = await apiClient.post<Message>(`/suppliers/${id}/messages/inbound`, data);
         return response.data;
     },
 

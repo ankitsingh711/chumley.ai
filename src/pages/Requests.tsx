@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText } from 'lucide-react';
+import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText, ReceiptText } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { RequestsSkeleton } from '../components/skeletons/RequestsSkeleton';
@@ -657,11 +657,11 @@ export default function Requests() {
                                             {req.status === RequestStatus.APPROVED && (
                                                 req.order ? (
                                                     <button
-                                                        className="p-1.5 rounded hover:bg-purple-50 text-purple-600 disabled:opacity-50"
+                                                        className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
                                                         onClick={() => navigate(`/orders?search=${req.order?.id}`)} // Or navigate to specific order
                                                         title="View Purchase Order"
                                                     >
-                                                        <ShoppingBag className="h-4 w-4" />
+                                                        <ReceiptText className="h-4 w-4" />
                                                     </button>
                                                 ) : (
                                                     <button
@@ -879,15 +879,27 @@ export default function Requests() {
 
                                 {/* Create PO Action for Approved Requests */}
                                 {selectedRequest.status === RequestStatus.APPROVED && (
-                                    <div className="pt-4 border-t">
-                                        <Button
-                                            onClick={() => handleCreateOrder(selectedRequest)}
-                                            className="w-full bg-blue-600 hover:bg-blue-700"
-                                            disabled={updating === selectedRequest.id}
-                                        >
-                                            <ShoppingBag className="mr-2 h-4 w-4" /> Create Purchase Order
-                                        </Button>
-                                    </div>
+                                    selectedRequest.order ? (
+                                        <div className="pt-4 border-t">
+                                            <Button
+                                                onClick={() => navigate(`/orders?search=${selectedRequest.order?.id}`)}
+                                                className="w-full bg-emerald-600 hover:bg-emerald-700"
+                                                disabled={updating === selectedRequest.id}
+                                            >
+                                                <ReceiptText className="mr-2 h-4 w-4" /> View Purchase Order
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="pt-4 border-t">
+                                            <Button
+                                                onClick={() => handleCreateOrder(selectedRequest)}
+                                                className="w-full bg-blue-600 hover:bg-blue-700"
+                                                disabled={updating === selectedRequest.id}
+                                            >
+                                                <ShoppingBag className="mr-2 h-4 w-4" /> Create Purchase Order
+                                            </Button>
+                                        </div>
+                                    )
                                 )}
                             </div>
                         </div>

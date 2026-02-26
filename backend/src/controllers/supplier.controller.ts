@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
-import { RequestStatus, UserRole, NotificationType, UserStatus } from '@prisma/client';
+import { Prisma, RequestStatus, UserRole, NotificationType, UserStatus } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
 import { getPaginationParams, createPaginatedResponse, PaginatedResponse } from '../utils/pagination';
 import { CacheService } from '../utils/cache';
+import emailService from '../services/email.service';
 
 
 const createSupplierSchema = z.object({
@@ -18,6 +20,308 @@ const createSupplierSchema = z.object({
 });
 
 const updateSupplierSchema = createSupplierSchema.partial();
+
+const SUPPLIER_MESSAGE_MEDIA = ['PORTAL', 'EMAIL', 'SMS', 'WHATSAPP', 'PHONE', 'OTHER'] as const;
+type SupplierMessageMedium = (typeof SUPPLIER_MESSAGE_MEDIA)[number];
+
+const MESSAGE_USER_SELECT = {
+    id: true,
+    name: true,
+    email: true,
+} as const;
+
+const FULL_MESSAGE_SELECT = {
+    id: true,
+    supplierId: true,
+    userId: true,
+    subject: true,
+    content: true,
+    medium: true,
+    isFromUser: true,
+    fromAddress: true,
+    toAddress: true,
+    source: true,
+    channelMessageId: true,
+    metadata: true,
+    receivedAt: true,
+    readAt: true,
+    createdAt: true,
+    user: {
+        select: MESSAGE_USER_SELECT,
+    },
+} as const;
+
+const LEGACY_MESSAGE_SELECT = {
+    id: true,
+    supplierId: true,
+    userId: true,
+    subject: true,
+    content: true,
+    isFromUser: true,
+    readAt: true,
+    createdAt: true,
+    user: {
+        select: MESSAGE_USER_SELECT,
+    },
+} as const;
+
+let loggedMessageSchemaMismatchWarning = false;
+
+const isMessageSchemaMismatchError = (error: unknown): boolean => {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        // P2022: Column does not exist, P2021: Table does not exist
+        if (error.code === 'P2022' || error.code === 'P2021') {
+            return true;
+        }
+    }
+
+    if (error instanceof Error) {
+        const message = error.message.toLowerCase();
+        return (
+            (message.includes('column') && message.includes('does not exist') && message.includes('medium')) ||
+            (message.includes('unknown column') && message.includes('medium')) ||
+            (message.includes('message.') && message.includes('does not exist'))
+        );
+    }
+
+    return false;
+};
+
+const logMessageSchemaMismatchWarning = () => {
+    if (loggedMessageSchemaMismatchWarning) return;
+    loggedMessageSchemaMismatchWarning = true;
+    Logger.warn(
+        'Message table is missing new columns. Running in backward-compatible mode. Apply Prisma schema changes to enable full message channel metadata.'
+    );
+};
+
+const normalizeLegacyMessage = (
+    message: {
+        id: string;
+        supplierId: string;
+        userId: string;
+        subject: string | null;
+        content: string;
+        isFromUser: boolean;
+        readAt: Date | null;
+        createdAt: Date;
+        user: { id: string; name: string; email: string } | null;
+    },
+    overrides?: {
+        medium?: SupplierMessageMedium;
+        fromAddress?: string | null;
+        toAddress?: string | null;
+        source?: string | null;
+        channelMessageId?: string | null;
+        metadata?: Prisma.InputJsonValue | null;
+        receivedAt?: Date | null;
+    }
+) => ({
+    ...message,
+    medium: overrides?.medium || (message.isFromUser ? 'EMAIL' : 'PORTAL'),
+    fromAddress: overrides?.fromAddress || null,
+    toAddress: overrides?.toAddress || null,
+    source: overrides?.source || null,
+    channelMessageId: overrides?.channelMessageId || null,
+    metadata: overrides?.metadata || null,
+    receivedAt: overrides?.receivedAt || null,
+});
+
+const getSupplierReplyAddress = (supplierId: string, userId: string, fallbackReplyTo: string) => {
+    const domain = process.env.SUPPLIER_INBOUND_REPLY_DOMAIN;
+    const prefix = process.env.SUPPLIER_INBOUND_REPLY_PREFIX || 'supplier-reply';
+
+    if (!domain) {
+        return fallbackReplyTo;
+    }
+
+    return `${prefix}+${supplierId}+${userId}@${domain}`;
+};
+
+const extractEmailAddress = (value: string | null | undefined): string | null => {
+    if (!value) return null;
+    const match = value.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    return match ? match[0].toLowerCase() : null;
+};
+
+const parseReplyRoutingAddress = (rawRecipient: string | null | undefined) => {
+    const domain = process.env.SUPPLIER_INBOUND_REPLY_DOMAIN;
+    const prefix = (process.env.SUPPLIER_INBOUND_REPLY_PREFIX || 'supplier-reply').toLowerCase();
+    if (!rawRecipient || !domain) return null;
+
+    const candidates = rawRecipient.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+    for (const candidate of candidates) {
+        const email = candidate.toLowerCase();
+        const [localPart, emailDomain] = email.split('@');
+        if (!localPart || !emailDomain) continue;
+        if (emailDomain !== domain.toLowerCase()) continue;
+
+        const parts = localPart.split('+');
+        if (parts.length < 3) continue;
+        if (parts[0] !== prefix) continue;
+
+        const supplierId = parts[1];
+        const userId = parts[2];
+        if (!supplierId || !userId) continue;
+
+        return {
+            supplierId,
+            userId,
+            toAddress: email,
+        };
+    }
+
+    return null;
+};
+
+const getWebhookSecretFromRequest = (req: Request) => {
+    const headerSecret = req.headers['x-webhook-secret'];
+    if (typeof headerSecret === 'string') return headerSecret;
+
+    const querySecret = req.query.secret;
+    if (typeof querySecret === 'string') return querySecret;
+
+    return null;
+};
+
+const pickString = (payload: Record<string, unknown>, keys: string[]): string | undefined => {
+    for (const key of keys) {
+        const value = payload[key];
+        if (typeof value === 'string' && value.trim()) {
+            return value.trim();
+        }
+        if (Array.isArray(value)) {
+            const firstString = value.find((entry) => typeof entry === 'string' && entry.trim()) as string | undefined;
+            if (firstString) {
+                return firstString.trim();
+            }
+        }
+    }
+    return undefined;
+};
+
+const normalizeInboundEmailPayload = (payload: Record<string, unknown>) => {
+    const fromRaw = pickString(payload, ['from', 'sender', 'From', 'from_email']);
+    const toRaw = pickString(payload, ['to', 'recipient', 'To', 'envelope_to']);
+    const subject = pickString(payload, ['subject', 'Subject']) || undefined;
+    const textContent = pickString(payload, ['text', 'body-plain', 'stripped-text', 'TextBody', 'content']);
+    const htmlContent = pickString(payload, ['html', 'body-html', 'HtmlBody']);
+    const source = pickString(payload, ['source', 'provider']) || 'EMAIL_WEBHOOK';
+    const channelMessageId =
+        pickString(payload, ['messageId', 'message-id', 'Message-Id', 'MessageID']) || undefined;
+
+    return {
+        fromAddress: extractEmailAddress(fromRaw) || fromRaw || undefined,
+        toAddress: toRaw,
+        subject,
+        content: textContent || htmlContent || '',
+        source,
+        channelMessageId,
+        rawPayload: payload,
+    };
+};
+
+const createLegacyMessageUsingRaw = async (
+    input: {
+        supplierId: string;
+        userId: string;
+        subject?: string | null;
+        content: string;
+        isFromUser: boolean;
+        createdAt?: Date;
+    },
+    user: { id: string; name: string; email: string } | null
+) => {
+    const id = randomUUID();
+    const createdAt = input.createdAt || new Date();
+
+    await prisma.$executeRawUnsafe(
+        'INSERT INTO `Message` (`id`,`supplierId`,`userId`,`subject`,`content`,`isFromUser`,`createdAt`) VALUES (?,?,?,?,?,?,?)',
+        id,
+        input.supplierId,
+        input.userId,
+        input.subject || null,
+        input.content,
+        input.isFromUser ? 1 : 0,
+        createdAt
+    );
+
+    return {
+        id,
+        supplierId: input.supplierId,
+        userId: input.userId,
+        subject: input.subject || null,
+        content: input.content,
+        isFromUser: input.isFromUser,
+        readAt: null,
+        createdAt,
+        user,
+    };
+};
+
+const createInboundMessageWithFallback = async (
+    input: {
+        supplierId: string;
+        userId: string;
+        subject?: string;
+        content: string;
+        medium: SupplierMessageMedium;
+        fromAddress?: string | null;
+        toAddress?: string | null;
+        source?: string | null;
+        channelMessageId?: string | null;
+        metadata?: Prisma.InputJsonValue;
+        receivedAt: Date;
+    },
+    actorUser: { id: string; name: string; email: string }
+) => {
+    try {
+        return await prisma.message.create({
+            data: {
+                supplierId: input.supplierId,
+                userId: input.userId,
+                subject: input.subject,
+                content: input.content,
+                isFromUser: false,
+                medium: input.medium,
+                fromAddress: input.fromAddress || null,
+                toAddress: input.toAddress || null,
+                source: input.source || null,
+                channelMessageId: input.channelMessageId || null,
+                metadata: input.metadata,
+                receivedAt: input.receivedAt,
+            },
+            select: FULL_MESSAGE_SELECT,
+        });
+    } catch (error) {
+        if (!isMessageSchemaMismatchError(error)) {
+            throw error;
+        }
+
+        logMessageSchemaMismatchWarning();
+        const legacyMessage = await createLegacyMessageUsingRaw(
+            {
+                supplierId: input.supplierId,
+                userId: input.userId,
+                subject: input.subject,
+                content: input.content,
+                isFromUser: false,
+                createdAt: input.receivedAt,
+            },
+            actorUser
+        );
+
+        return normalizeLegacyMessage(legacyMessage, {
+            medium: input.medium,
+            fromAddress: input.fromAddress || null,
+            toAddress: input.toAddress || null,
+            source: input.source || null,
+            channelMessageId: input.channelMessageId || null,
+            metadata: input.metadata || null,
+            receivedAt: input.receivedAt,
+        });
+    }
+};
 
 export const getSuppliers = async (req: Request, res: Response) => {
     try {
@@ -600,21 +904,28 @@ export const getSupplierMessages = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
 
-        const messages = await prisma.message.findMany({
-            where: { supplierId: id },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    }
-                }
-            },
-            orderBy: { createdAt: 'asc' }
-        });
+        try {
+            const messages = await prisma.message.findMany({
+                where: { supplierId: id },
+                select: FULL_MESSAGE_SELECT,
+                orderBy: { createdAt: 'asc' },
+            });
+            return res.json(messages);
+        } catch (error) {
+            if (!isMessageSchemaMismatchError(error)) {
+                throw error;
+            }
 
-        res.json(messages);
+            logMessageSchemaMismatchWarning();
+
+            const messages = await prisma.message.findMany({
+                where: { supplierId: id },
+                select: LEGACY_MESSAGE_SELECT,
+                orderBy: { createdAt: 'asc' },
+            });
+
+            return res.json(messages.map((message) => normalizeLegacyMessage(message)));
+        }
     } catch (error) {
         Logger.error(error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -623,9 +934,22 @@ export const getSupplierMessages = async (req: Request, res: Response) => {
 
 // Send supplier message
 const sendMessageSchema = z.object({
-    subject: z.string().optional(),
-    content: z.string().min(1),
-    isFromUser: z.boolean().default(true),
+    subject: z.string().trim().optional(),
+    content: z.string().trim().min(1),
+    isFromUser: z.boolean().default(true), // kept for backward compatibility with existing clients
+    medium: z.enum(SUPPLIER_MESSAGE_MEDIA).optional(),
+});
+
+const receiveMessageSchema = z.object({
+    subject: z.string().trim().optional(),
+    content: z.string().trim().min(1),
+    medium: z.enum(SUPPLIER_MESSAGE_MEDIA).default('EMAIL'),
+    fromAddress: z.string().trim().optional(),
+    toAddress: z.string().trim().optional(),
+    source: z.string().trim().optional(),
+    channelMessageId: z.string().trim().optional(),
+    metadata: z.record(z.string(), z.unknown()).optional(),
+    receivedAt: z.string().datetime().optional(),
 });
 
 export const sendSupplierMessage = async (req: Request, res: Response) => {
@@ -633,34 +957,116 @@ export const sendSupplierMessage = async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const validatedData = sendMessageSchema.parse(req.body);
         const userId = req.user!.id;
+        const senderEmail = req.user?.email || '';
 
-        const message = await prisma.message.create({
-            data: {
-                supplierId: id,
-                userId,
-                ...validatedData,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true,
-                    }
-                }
+        const [supplier, sender] = await Promise.all([
+            prisma.supplier.findUnique({
+                where: { id },
+                select: { id: true, name: true, contactEmail: true },
+            }),
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: { id: true, name: true, email: true },
+            }),
+        ]);
+
+        if (!supplier) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        if (!sender) {
+            return res.status(404).json({ error: 'Sender not found' });
+        }
+
+        const medium: SupplierMessageMedium = validatedData.medium || (supplier.contactEmail ? 'EMAIL' : 'PORTAL');
+
+        if (medium === 'EMAIL' && !supplier.contactEmail) {
+            return res.status(400).json({ error: 'Supplier does not have a contact email. Choose another medium.' });
+        }
+
+        let deliveryStatus: 'SENT' | 'FAILED' | 'SKIPPED' = 'SKIPPED';
+        let deliveryError: string | undefined;
+        let providerMessageId: string | undefined;
+
+        if (medium === 'EMAIL' && supplier.contactEmail) {
+            const replyToAddress = getSupplierReplyAddress(supplier.id, sender.id, sender.email);
+            const result = await emailService.sendSupplierConversationEmail({
+                supplierEmail: supplier.contactEmail,
+                supplierName: supplier.name,
+                senderName: sender.name,
+                senderEmail: sender.email,
+                replyToAddress,
+                subject: validatedData.subject,
+                content: validatedData.content,
+                medium,
+            });
+
+            deliveryStatus = result.sent ? 'SENT' : 'FAILED';
+            deliveryError = result.error;
+            providerMessageId = result.providerMessageId;
+        }
+
+        const messageMetadata = {
+            deliveryStatus,
+            ...(deliveryError ? { deliveryError } : {}),
+        } as Prisma.InputJsonValue;
+
+        let message: any;
+        try {
+            message = await prisma.message.create({
+                data: {
+                    supplierId: id,
+                    userId,
+                    subject: validatedData.subject,
+                    content: validatedData.content,
+                    isFromUser: true,
+                    medium,
+                    fromAddress: senderEmail || sender.email,
+                    toAddress: medium === 'EMAIL' ? supplier.contactEmail : null,
+                    source: medium === 'EMAIL' ? 'SMTP' : 'PORTAL',
+                    channelMessageId: providerMessageId,
+                    metadata: messageMetadata,
+                },
+                select: FULL_MESSAGE_SELECT,
+            });
+        } catch (error) {
+            if (!isMessageSchemaMismatchError(error)) {
+                throw error;
             }
-        });
+
+            logMessageSchemaMismatchWarning();
+
+            const legacyMessage = await createLegacyMessageUsingRaw(
+                {
+                    supplierId: id,
+                    userId,
+                    subject: validatedData.subject,
+                    content: validatedData.content,
+                    isFromUser: true,
+                },
+                sender
+            );
+
+            message = normalizeLegacyMessage(legacyMessage, {
+                medium,
+                fromAddress: senderEmail || sender.email,
+                toAddress: medium === 'EMAIL' ? supplier.contactEmail : null,
+                source: medium === 'EMAIL' ? 'SMTP' : 'PORTAL',
+                channelMessageId: providerMessageId || null,
+                metadata: messageMetadata,
+            });
+        }
 
         // Log interaction for timeline
         await prisma.interactionLog.create({
             data: {
                 supplierId: id,
                 userId,
-                eventType: 'message_sent',
-                title: 'Message Sent',
-                description: `Subject: ${validatedData.subject || 'No Subject'}`,
+                eventType: medium === 'EMAIL' ? 'email_sent' : 'message_sent',
+                title: medium === 'EMAIL' ? 'Email Sent to Supplier' : 'Message Sent',
+                description: `Subject: ${validatedData.subject || 'No Subject'} • Medium: ${medium} • Delivery: ${deliveryStatus}`,
                 eventDate: new Date(),
-            }
+            },
         });
 
         Logger.info(`Message sent to supplier ${id} by user ${userId}`);
@@ -671,6 +1077,169 @@ export const sendSupplierMessage = async (req: Request, res: Response) => {
             return res.status(400).json({ error: (error as any).errors });
         }
         res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// Receive supplier message from email or any external medium
+export const receiveSupplierMessage = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params as { id: string };
+        const validatedData = receiveMessageSchema.parse(req.body);
+        const userId = req.user!.id;
+
+        const [supplier, actorUser] = await Promise.all([
+            prisma.supplier.findUnique({
+                where: { id },
+                select: {
+                    id: true,
+                    name: true,
+                    contactEmail: true,
+                },
+            }),
+            prisma.user.findUnique({
+                where: { id: userId },
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                },
+            }),
+        ]);
+
+        if (!supplier) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
+        if (!actorUser) {
+            return res.status(404).json({ error: 'Sender not found' });
+        }
+
+        const receivedAt = validatedData.receivedAt ? new Date(validatedData.receivedAt) : new Date();
+        const fromAddress = validatedData.fromAddress || supplier.contactEmail || null;
+        const toAddress = validatedData.toAddress || actorUser.email || null;
+        const source = validatedData.source || validatedData.medium;
+        const inboundMetadata = {
+            ...(validatedData.metadata || {}),
+            ingestedByUserId: userId,
+        } as Prisma.InputJsonValue;
+
+        const message = await createInboundMessageWithFallback(
+            {
+                supplierId: id,
+                userId,
+                subject: validatedData.subject,
+                content: validatedData.content,
+                medium: validatedData.medium,
+                fromAddress,
+                toAddress,
+                source,
+                channelMessageId: validatedData.channelMessageId || null,
+                metadata: inboundMetadata,
+                receivedAt,
+            },
+            actorUser
+        );
+
+        await prisma.interactionLog.create({
+            data: {
+                supplierId: id,
+                userId,
+                eventType: 'message_received',
+                title: `${validatedData.medium} Message Received`,
+                description: `From: ${message.fromAddress || 'Unknown'}${message.subject ? ` • Subject: ${message.subject}` : ''}`,
+                eventDate: message.receivedAt || new Date(),
+            },
+        });
+
+        Logger.info(`Inbound message recorded for supplier ${id} by user ${userId}`);
+        res.status(201).json(message);
+    } catch (error: any) {
+        Logger.error(error);
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: (error as any).errors });
+        }
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+// Public webhook endpoint for inbound supplier email replies
+export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Response) => {
+    try {
+        const configuredSecret = process.env.SUPPLIER_INBOUND_WEBHOOK_SECRET;
+        if (configuredSecret) {
+            const providedSecret = getWebhookSecretFromRequest(req);
+            if (!providedSecret || providedSecret !== configuredSecret) {
+                return res.status(401).json({ error: 'Invalid webhook secret' });
+            }
+        }
+
+        const payload = (typeof req.body === 'object' && req.body ? req.body : {}) as Record<string, unknown>;
+        const normalized = normalizeInboundEmailPayload(payload);
+
+        if (!normalized.content.trim()) {
+            return res.status(400).json({ error: 'Inbound email payload is missing content' });
+        }
+
+        const routing = parseReplyRoutingAddress(normalized.toAddress);
+        if (!routing) {
+            return res.status(400).json({
+                error: 'Unable to map recipient to supplier conversation',
+                hint: 'Ensure SUPPLIER_INBOUND_REPLY_DOMAIN is configured and Reply-To uses supplier-reply+supplierId+userId@domain',
+            });
+        }
+
+        const [supplier, routedUser] = await Promise.all([
+            prisma.supplier.findUnique({
+                where: { id: routing.supplierId },
+                select: { id: true, name: true, contactEmail: true },
+            }),
+            prisma.user.findUnique({
+                where: { id: routing.userId },
+                select: { id: true, name: true, email: true },
+            }),
+        ]);
+
+        if (!supplier || !routedUser) {
+            return res.status(404).json({ error: 'Supplier or routed user not found for inbound reply' });
+        }
+
+        const receivedAt = new Date();
+        const message = await createInboundMessageWithFallback(
+            {
+                supplierId: supplier.id,
+                userId: routedUser.id,
+                subject: normalized.subject,
+                content: normalized.content,
+                medium: 'EMAIL',
+                fromAddress: normalized.fromAddress || supplier.contactEmail || null,
+                toAddress: routing.toAddress,
+                source: normalized.source || 'EMAIL_WEBHOOK',
+                channelMessageId: normalized.channelMessageId || null,
+                metadata: {
+                    providerPayload: payload,
+                    ingestedBy: 'supplier_email_webhook',
+                } as Prisma.InputJsonValue,
+                receivedAt,
+            },
+            routedUser
+        );
+
+        await prisma.interactionLog.create({
+            data: {
+                supplierId: supplier.id,
+                userId: routedUser.id,
+                eventType: 'email_reply_received',
+                title: 'Supplier Email Reply Received',
+                description: `From: ${normalized.fromAddress || 'Unknown'}${normalized.subject ? ` • Subject: ${normalized.subject}` : ''}`,
+                eventDate: receivedAt,
+            },
+        });
+
+        Logger.info(`Inbound supplier email processed for supplier ${supplier.id}, user ${routedUser.id}`);
+        return res.status(201).json({ success: true, messageId: message.id });
+    } catch (error) {
+        Logger.error(error);
+        return res.status(500).json({ error: 'Failed to process inbound supplier email webhook' });
     }
 };
 

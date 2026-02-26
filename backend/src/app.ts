@@ -24,6 +24,7 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Rate Limiting
 app.use(rateLimiterMiddleware('general')); // Global limit
@@ -44,6 +45,10 @@ app.use(
 
 // Routes
 app.use('/api', router);
+
+// explicit legacy route for email template PDF backwards compatibility
+import exportRoutes from './routes/export.routes';
+app.use('/api/v1/export', exportRoutes);
 
 // Error Handling (Basic)
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
