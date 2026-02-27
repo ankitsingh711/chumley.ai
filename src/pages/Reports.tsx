@@ -19,13 +19,19 @@ export default function Reports() {
     const [allRequests, setAllRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [activeDateRange, setActiveDateRange] = useState<{ start?: string, end?: string }>({});
+    const defaultEnd = new Date();
+    const defaultStart = new Date();
+    defaultStart.setMonth(defaultStart.getMonth() - 5);
+    const defaultStartStr = defaultStart.toISOString().split('T')[0];
+    const defaultEndStr = defaultEnd.toISOString().split('T')[0];
+
+    const [dateRange, setDateRange] = useState({ start: defaultStartStr, end: defaultEndStr });
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string, end?: string }>({ start: defaultStartStr, end: defaultEndStr });
     const [transactionFilter, setTransactionFilter] = useState('ALL');
     const [showTransactionFilter, setShowTransactionFilter] = useState(false);
 
     useEffect(() => {
-        loadData();
+        loadData(defaultStartStr, defaultEndStr);
     }, []);
 
     const loadData = async (startDate?: string, endDate?: string) => {
@@ -133,10 +139,10 @@ export default function Reports() {
     };
 
     const clearDateRange = () => {
-        setDateRange({ start: '', end: '' });
-        setActiveDateRange({});
+        setDateRange({ start: defaultStartStr, end: defaultEndStr });
+        setActiveDateRange({ start: defaultStartStr, end: defaultEndStr });
         setShowDatePicker(false);
-        loadData();
+        loadData(defaultStartStr, defaultEndStr);
     };
 
     const departments = useMemo(() => {
@@ -186,7 +192,7 @@ export default function Reports() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-                    {(activeDateRange.start || activeDateRange.end) && (
+                    {(activeDateRange.start !== defaultStartStr || activeDateRange.end !== defaultEndStr) && (
                         <p className="text-sm text-gray-500 mt-1">
                             Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
                             <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
@@ -212,6 +218,7 @@ export default function Reports() {
                                     <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
                                     <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
                                     <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
+                                    <button onClick={() => applyDateRange(150)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 6 Months</button>
                                     <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
                                 </div>
 

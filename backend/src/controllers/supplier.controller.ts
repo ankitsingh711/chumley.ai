@@ -127,15 +127,43 @@ const normalizeLegacyMessage = (
     receivedAt: overrides?.receivedAt || null,
 });
 
-const getSupplierReplyAddress = (supplierId: string, userId: string, fallbackReplyTo: string) => {
-    const domain = process.env.SUPPLIER_INBOUND_REPLY_DOMAIN;
-    const prefix = process.env.SUPPLIER_INBOUND_REPLY_PREFIX || 'supplier-reply';
+type InboundReplyRoutingConfig = {
+    mode: 'domain' | 'mailbox';
+    domain: string;
+    mailboxLocalPart?: string;
+    prefix: string;
+};
 
-    if (!domain) {
+const getInboundReplyRoutingConfig = (): InboundReplyRoutingConfig | null => {
+    const rawTarget = process.env.SUPPLIER_INBOUND_REPLY_DOMAIN?.trim().toLowerCase();
+    if (!rawTarget) return null;
+
+    const prefix = (process.env.SUPPLIER_INBOUND_REPLY_PREFIX || 'supplier-reply').trim().toLowerCase();
+    if (!prefix) return null;
+
+    // Supports either:
+    // 1) Domain mode: "aspect.co.uk"
+    // 2) Mailbox mode: "ankit.singh@aspect.co.uk"
+    if (rawTarget.includes('@')) {
+        const [mailboxLocalPart, domain] = rawTarget.split('@');
+        if (!mailboxLocalPart || !domain) return null;
+        return { mode: 'mailbox', mailboxLocalPart, domain, prefix };
+    }
+
+    return { mode: 'domain', domain: rawTarget, prefix };
+};
+
+const getSupplierReplyAddress = (supplierId: string, userId: string, fallbackReplyTo: string) => {
+    const routingConfig = getInboundReplyRoutingConfig();
+    if (!routingConfig) {
         return fallbackReplyTo;
     }
 
-    return `${prefix}+${supplierId}+${userId}@${domain}`;
+    if (routingConfig.mode === 'mailbox' && routingConfig.mailboxLocalPart) {
+        return `${routingConfig.mailboxLocalPart}+${routingConfig.prefix}+${supplierId}+${userId}@${routingConfig.domain}`;
+    }
+
+    return `${routingConfig.prefix}+${supplierId}+${userId}@${routingConfig.domain}`;
 };
 
 const extractEmailAddress = (value: string | null | undefined): string | null => {
@@ -145,30 +173,48 @@ const extractEmailAddress = (value: string | null | undefined): string | null =>
 };
 
 const parseReplyRoutingAddress = (rawRecipient: string | null | undefined) => {
-    const domain = process.env.SUPPLIER_INBOUND_REPLY_DOMAIN;
-    const prefix = (process.env.SUPPLIER_INBOUND_REPLY_PREFIX || 'supplier-reply').toLowerCase();
-    if (!rawRecipient || !domain) return null;
+    const routingConfig = getInboundReplyRoutingConfig();
+    if (!rawRecipient || !routingConfig) return null;
 
     const candidates = rawRecipient.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
     for (const candidate of candidates) {
         const email = candidate.toLowerCase();
         const [localPart, emailDomain] = email.split('@');
         if (!localPart || !emailDomain) continue;
-        if (emailDomain !== domain.toLowerCase()) continue;
+        if (emailDomain !== routingConfig.domain) continue;
 
         const parts = localPart.split('+');
-        if (parts.length < 3) continue;
-        if (parts[0] !== prefix) continue;
+        // Domain mode: supplier-reply+supplierId+userId@domain
+        if (parts.length >= 3 && parts[0] === routingConfig.prefix) {
+            const supplierId = parts[1];
+            const userId = parts[2];
+            if (supplierId && userId) {
+                return {
+                    supplierId,
+                    userId,
+                    toAddress: email,
+                };
+            }
+        }
 
-        const supplierId = parts[1];
-        const userId = parts[2];
-        if (!supplierId || !userId) continue;
-
-        return {
-            supplierId,
-            userId,
-            toAddress: email,
-        };
+        // Mailbox mode: local+supplier-reply+supplierId+userId@domain
+        if (
+            routingConfig.mode === 'mailbox' &&
+            routingConfig.mailboxLocalPart &&
+            parts.length >= 4 &&
+            parts[0] === routingConfig.mailboxLocalPart &&
+            parts[1] === routingConfig.prefix
+        ) {
+            const supplierId = parts[2];
+            const userId = parts[3];
+            if (supplierId && userId) {
+                return {
+                    supplierId,
+                    userId,
+                    toAddress: email,
+                };
+            }
+        }
     }
 
     return null;
@@ -202,7 +248,12 @@ const pickString = (payload: Record<string, unknown>, keys: string[]): string | 
 
 const normalizeInboundEmailPayload = (payload: Record<string, unknown>) => {
     const fromRaw = pickString(payload, ['from', 'sender', 'From', 'from_email']);
-    const toRaw = pickString(payload, ['to', 'recipient', 'To', 'envelope_to']);
+    const envelope =
+        typeof payload.envelope === 'object' && payload.envelope !== null
+            ? (payload.envelope as Record<string, unknown>)
+            : null;
+    const envelopeTo = envelope ? pickString(envelope, ['to', 'recipient']) : undefined;
+    const toRaw = pickString(payload, ['to', 'recipient', 'To', 'envelope_to', 'original-recipient', 'Delivered-To']) || envelopeTo;
     const subject = pickString(payload, ['subject', 'Subject']) || undefined;
     const textContent = pickString(payload, ['text', 'body-plain', 'stripped-text', 'TextBody', 'content']);
     const htmlContent = pickString(payload, ['html', 'body-html', 'HtmlBody']);
@@ -1184,7 +1235,7 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
         if (!routing) {
             return res.status(400).json({
                 error: 'Unable to map recipient to supplier conversation',
-                hint: 'Ensure SUPPLIER_INBOUND_REPLY_DOMAIN is configured and Reply-To uses supplier-reply+supplierId+userId@domain',
+                hint: 'Ensure SUPPLIER_INBOUND_REPLY_DOMAIN is configured and Reply-To uses either supplier-reply+supplierId+userId@domain or mailbox+supplier-reply+supplierId+userId@domain',
             });
         }
 

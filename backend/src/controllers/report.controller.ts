@@ -177,7 +177,7 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
         }
 
         // Default to last 6 months if no date range provided
-        let start = subMonths(new Date(), 6);
+        let start = subMonths(new Date(), 5);
         let end = new Date();
 
         if (startDate) {
@@ -230,6 +230,16 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
         });
 
         const spendByMonth: Record<string, any> = {};
+
+        // Pre-fill all months in the date range
+        let currentMonth = startOfMonth(start);
+        const endMonth = startOfMonth(end);
+
+        while (currentMonth <= endMonth) {
+            const monthStr = format(currentMonth, 'MMM yyyy');
+            spendByMonth[monthStr] = { month: monthStr, spend: 0 };
+            currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
+        }
 
         orders.forEach(order => {
             const month = format(order.createdAt, 'MMM yyyy');
