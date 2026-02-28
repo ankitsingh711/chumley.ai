@@ -23,6 +23,10 @@ export default function SupplierProfile() {
     const { user } = useAuth();
     const { id } = useParams<{ id: string }>();
     const isSystemAdmin = user?.role === UserRole.SYSTEM_ADMIN;
+    const canReviewSupplier =
+        user?.role === UserRole.SYSTEM_ADMIN ||
+        user?.role === UserRole.SENIOR_MANAGER ||
+        user?.role === UserRole.MANAGER;
     const [supplier, setSupplier] = useState<Supplier | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showEditModal, setShowEditModal] = useState(false);
@@ -147,14 +151,20 @@ export default function SupplierProfile() {
                                 <div className="flex items-center gap-1">
                                     <span className="text-yellow-500">★ {supplier.details?.rating ? Number(supplier.details.rating).toFixed(1) : '0.0'}</span> ({supplier.details?.reviewCount || 0} Reviews)
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <MapPin className="h-3 w-3" /> Austin, TX
-                                </div>
+                                {(supplier.details?.city || supplier.details?.state || supplier.details?.address || supplier.details?.country) && (
+                                    <div className="flex items-center gap-1">
+                                        <MapPin className="h-3 w-3" /> {
+                                            [supplier.details?.city, supplier.details?.state].filter(Boolean).join(', ') ||
+                                            supplier.details?.address ||
+                                            supplier.details?.country
+                                        }
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
                     <div className="flex gap-2">
-                        {isSystemAdmin && (supplier.status === 'Review Pending' || supplier.status === 'Pending') ? (
+                        {canReviewSupplier && (supplier.status === 'Review Pending' || supplier.status === 'Pending') ? (
                             <>
                                 <Button
                                     variant="outline"
@@ -771,51 +781,53 @@ export default function SupplierProfile() {
             </div>
 
             {/* Modals */}
-            {supplier && (
-                <>
-                    <EditSupplierModal
-                        supplier={supplier}
-                        isOpen={showEditModal}
-                        onClose={() => setShowEditModal(false)}
-                        onSuccess={(updated) => {
-                            setSupplier(updated);
-                            setShowEditModal(false);
-                        }}
-                    />
-                    <MessageSupplierModal
-                        supplierId={supplier.id}
-                        supplierName={supplier.name}
-                        isOpen={showMessageModal}
-                        onClose={() => setShowMessageModal(false)}
-                    />
-                    <AddDocumentModal
-                        isOpen={isAddDocumentOpen}
-                        onClose={() => setIsAddDocumentOpen(false)}
-                        supplierId={supplier.id}
-                        onSuccess={async () => {
-                            // Refresh supplier to see new document
-                            const data = await suppliersApi.getDetails(supplier.id);
-                            setSupplier(data);
-                        }}
-                    />
-                    <WriteReviewModal
-                        isOpen={showReviewModal}
-                        onClose={() => setShowReviewModal(false)}
-                        supplierId={supplier.id}
-                        onSuccess={() => {
-                            fetchReviews(1, false);
-                            // Also refresh supplier details to update rating
-                            suppliersApi.getDetails(supplier.id).then(setSupplier);
-                        }}
-                    />
-                    <RequestDetailsModal
-                        isOpen={showRequestModal}
-                        onClose={() => setShowRequestModal(false)}
-                        request={selectedRequest}
-                        canApprove={false} // View only for now
-                    />
-                </>
-            )}
-        </div>
+            {
+                supplier && (
+                    <>
+                        <EditSupplierModal
+                            supplier={supplier}
+                            isOpen={showEditModal}
+                            onClose={() => setShowEditModal(false)}
+                            onSuccess={(updated) => {
+                                setSupplier(updated);
+                                setShowEditModal(false);
+                            }}
+                        />
+                        <MessageSupplierModal
+                            supplierId={supplier.id}
+                            supplierName={supplier.name}
+                            isOpen={showMessageModal}
+                            onClose={() => setShowMessageModal(false)}
+                        />
+                        <AddDocumentModal
+                            isOpen={isAddDocumentOpen}
+                            onClose={() => setIsAddDocumentOpen(false)}
+                            supplierId={supplier.id}
+                            onSuccess={async () => {
+                                // Refresh supplier to see new document
+                                const data = await suppliersApi.getDetails(supplier.id);
+                                setSupplier(data);
+                            }}
+                        />
+                        <WriteReviewModal
+                            isOpen={showReviewModal}
+                            onClose={() => setShowReviewModal(false)}
+                            supplierId={supplier.id}
+                            onSuccess={() => {
+                                fetchReviews(1, false);
+                                // Also refresh supplier details to update rating
+                                suppliersApi.getDetails(supplier.id).then(setSupplier);
+                            }}
+                        />
+                        <RequestDetailsModal
+                            isOpen={showRequestModal}
+                            onClose={() => setShowRequestModal(false)}
+                            request={selectedRequest}
+                            canApprove={false} // View only for now
+                        />
+                    </>
+                )
+            }
+        </div >
     );
 }

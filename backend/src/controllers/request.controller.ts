@@ -30,6 +30,13 @@ const updateStatusSchema = z.object({
     status: z.nativeEnum(RequestStatus),
 });
 
+const APPROVED_SUPPLIER_STATUSES = new Set(['STANDARD', 'PREFERRED', 'ACTIVE']);
+
+const isSupplierApprovedForRequest = (supplierStatus?: string | null): boolean => {
+    if (!supplierStatus) return false;
+    return APPROVED_SUPPLIER_STATUSES.has(supplierStatus.trim().toUpperCase());
+};
+
 export const createRequest = async (req: Request, res: Response) => {
     try {
         const validatedData = createRequestSchema.parse(req.body);
@@ -98,8 +105,8 @@ export const getRequests = async (req: Request, res: Response) => {
         const user = req.user! as any;
         const { page, limit, skip } = getPaginationParams(req);
 
-        // Build cache key
-        const cacheKey = `requests:list:${user.id}:page${page}:limit${limit}`;
+        // Build cache key (v2 includes supplier status in payload shape)
+        const cacheKey = `requests:list:v2:${user.id}:page${page}:limit${limit}`;
 
         // Try cache  first
         const cached = await CacheService.get(cacheKey);
@@ -156,6 +163,7 @@ export const getRequests = async (req: Request, res: Response) => {
                         select: {
                             id: true,
                             name: true,
+                            status: true,
                             contactName: true,
                             contactEmail: true,
                             logoUrl: true
@@ -290,6 +298,18 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
             if (!currentUser.departmentId || currentUser.departmentId !== request.requester.departmentId) {
                 Logger.warn(`Permission Denied: User ${userId} Dept: ${currentUser.departmentId}, Requester Dept: ${request.requester.departmentId}`);
                 return res.status(403).json({ error: 'You can only approve requests from your own department' });
+            }
+        }
+
+        if (status === RequestStatus.APPROVED && request.supplierId) {
+            if (!request.supplier) {
+                return res.status(400).json({ error: 'Cannot approve request: linked supplier not found' });
+            }
+
+            if (!isSupplierApprovedForRequest(request.supplier.status)) {
+                return res.status(400).json({
+                    error: `Cannot approve request until supplier is approved. Current supplier status: ${request.supplier.status}`
+                });
             }
         }
 

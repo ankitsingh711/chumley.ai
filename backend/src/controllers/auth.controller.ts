@@ -136,9 +136,10 @@ const acceptInviteSchema = z.object({
 export const acceptInvite = async (req: Request, res: Response) => {
     try {
         const { token, name, password } = acceptInviteSchema.parse(req.body);
+        const normalizedToken = token.trim();
 
         const user = await prisma.user.findUnique({
-            where: { invitationToken: token },
+            where: { invitationToken: normalizedToken },
             include: { department: true }
         });
 

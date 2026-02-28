@@ -653,40 +653,52 @@ export const approveSupplier = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Insufficient permissions to approve suppliers' });
         }
 
-        let whereClause: any = { id };
+        let supplierScope: { id: string; name: string; requesterId: string | null } | null = null;
 
-        // If not system admin, restrict to own department
-        if (user.role !== UserRole.SYSTEM_ADMIN) {
+        if (user.role === UserRole.SYSTEM_ADMIN) {
+            supplierScope = await prisma.supplier.findUnique({
+                where: { id },
+                select: { id: true, name: true, requesterId: true },
+            });
+            if (!supplierScope) {
+                return res.status(404).json({ error: 'Supplier not found' });
+            }
+        } else {
             const fullUser = await prisma.user.findUnique({
                 where: { id: user.id },
-                select: { departmentId: true }
+                select: { departmentId: true },
             });
 
             if (!fullUser?.departmentId) {
                 return res.status(403).json({ error: 'User does not belong to a department' });
             }
 
-            whereClause = {
-                id,
-                departments: {
-                    some: {
-                        id: fullUser.departmentId
-                    }
-                }
-            };
+            supplierScope = await prisma.supplier.findFirst({
+                where: {
+                    id,
+                    departments: {
+                        some: {
+                            id: fullUser.departmentId,
+                        },
+                    },
+                },
+                select: { id: true, name: true, requesterId: true },
+            });
+
+            if (!supplierScope) {
+                return res.status(403).json({ error: 'Insufficient permissions to approve suppliers outside your department' });
+            }
         }
 
         const supplier = await prisma.supplier.update({
-            where: whereClause,
+            where: { id: supplierScope.id },
             data: { status: 'Standard' }, // Default to Standard upon approval
         });
 
         // Notify requester if exists
-        // @ts-ignore - Prisma types might lag
         if (supplier.requesterId) {
             await prisma.notification.create({
                 data: {
-                    // @ts-ignore
                     userId: supplier.requesterId,
                     type: NotificationType.REQUEST_APPROVED,
                     title: 'Supplier Request Approved',
@@ -698,6 +710,7 @@ export const approveSupplier = async (req: Request, res: Response) => {
 
         // Invalidate cache
         await CacheService.invalidateSupplierCache(id);
+        await CacheService.invalidateRequestCache();
 
         Logger.info(`Supplier approved: ${id} by ${user.id}`);
         res.json(supplier);
@@ -723,41 +736,53 @@ export const rejectSupplier = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Insufficient permissions to reject suppliers' });
         }
 
-        let whereClause: any = { id };
+        let supplierScope: { id: string; name: string; requesterId: string | null } | null = null;
 
-        // If not system admin, restrict to own department
-        if (user.role !== UserRole.SYSTEM_ADMIN) {
+        if (user.role === UserRole.SYSTEM_ADMIN) {
+            supplierScope = await prisma.supplier.findUnique({
+                where: { id },
+                select: { id: true, name: true, requesterId: true },
+            });
+            if (!supplierScope) {
+                return res.status(404).json({ error: 'Supplier not found' });
+            }
+        } else {
             const fullUser = await prisma.user.findUnique({
                 where: { id: user.id },
-                select: { departmentId: true }
+                select: { departmentId: true },
             });
 
             if (!fullUser?.departmentId) {
                 return res.status(403).json({ error: 'User does not belong to a department' });
             }
 
-            whereClause = {
-                id,
-                departments: {
-                    some: {
-                        id: fullUser.departmentId
-                    }
-                }
-            };
+            supplierScope = await prisma.supplier.findFirst({
+                where: {
+                    id,
+                    departments: {
+                        some: {
+                            id: fullUser.departmentId,
+                        },
+                    },
+                },
+                select: { id: true, name: true, requesterId: true },
+            });
+
+            if (!supplierScope) {
+                return res.status(403).json({ error: 'Insufficient permissions to reject suppliers outside your department' });
+            }
         }
 
         // We can either delete it or mark as rejected. Let's mark as rejected for record.
         const supplier = await prisma.supplier.update({
-            where: whereClause,
+            where: { id: supplierScope.id },
             data: { status: 'Rejected' },
         });
 
         // Notify requester if exists
-        // @ts-ignore
         if (supplier.requesterId) {
             await prisma.notification.create({
                 data: {
-                    // @ts-ignore
                     userId: supplier.requesterId,
                     type: NotificationType.REQUEST_REJECTED,
                     title: 'Supplier Request Rejected',
@@ -769,6 +794,7 @@ export const rejectSupplier = async (req: Request, res: Response) => {
 
         // Invalidate cache
         await CacheService.invalidateSupplierCache(id);
+        await CacheService.invalidateRequestCache();
 
         Logger.info(`Supplier rejected: ${id} by ${user.id}`);
         res.json(supplier);

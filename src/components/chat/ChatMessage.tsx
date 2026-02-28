@@ -1,5 +1,5 @@
 import { useState, useRef, memo } from 'react';
-import { Bot, User as UserIcon, Upload, Loader2, Paperclip } from 'lucide-react';
+import { Bot, User as UserIcon, Upload, Loader2, Paperclip, Sparkles } from 'lucide-react';
 import { uploadApi } from '../../services/upload.service';
 import { requestsApi } from '../../services/requests.service';
 import type { Attachment } from '../../types/api';
@@ -11,7 +11,7 @@ export interface ChatMessageProps {
         text: string;
         sender: 'user' | 'bot';
         timestamp: Date;
-        type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
+        type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail' | 'orders_list' | 'suppliers_list' | 'overview';
         data?: any;
         attachment?: {
             name: string;
@@ -26,9 +26,39 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
     const fileInputRef = useRef<HTMLInputElement>(null);
     const isBot = message.sender === 'bot';
 
+    const getStatusClasses = (status?: string) => {
+        switch (status) {
+            case 'APPROVED':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'PENDING':
+                return 'bg-amber-100 text-amber-700';
+            case 'IN_PROGRESS':
+                return 'bg-sky-100 text-sky-700';
+            case 'SENT':
+                return 'bg-indigo-100 text-indigo-700';
+            case 'PARTIAL':
+                return 'bg-violet-100 text-violet-700';
+            case 'COMPLETED':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'ACTIVE':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'PREFERRED':
+            case 'STANDARD':
+            case 'VERIFIED':
+                return 'bg-emerald-100 text-emerald-700';
+            case 'DRAFT':
+                return 'bg-slate-100 text-slate-700';
+            case 'CANCELLED':
+            case 'CANCELED':
+                return 'bg-rose-100 text-rose-700';
+            default:
+                return 'bg-rose-100 text-rose-700';
+        }
+    };
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
+        if (!file || !requestData?.id) return;
 
         setUploading(true);
         try {
@@ -53,35 +83,102 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
 
     const renderContent = () => {
         switch (message.type) {
-            case 'requests_list':
+            case 'overview':
+                const overview = message.data || {};
                 return (
-                    <div className="space-y-2 mt-2">
-                        {message.data.map((req: any) => (
-                            <div key={req.id} className="bg-gray-50 p-2 rounded-lg text-xs border border-gray-100 flex justify-between items-center group cursor-pointer hover:bg-gray-100 transition-colors">
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <p className="text-slate-500">Requests</p>
+                            <p className="font-semibold text-slate-900">{overview.totalRequests ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <p className="text-slate-500">Orders</p>
+                            <p className="font-semibold text-slate-900">{overview.totalOrders ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <p className="text-slate-500">Suppliers</p>
+                            <p className="font-semibold text-slate-900">{overview.suppliersInScope ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 p-2">
+                            <p className="text-slate-500">Expiring Contracts</p>
+                            <p className="font-semibold text-slate-900">{overview.expiringContracts ?? 0}</p>
+                        </div>
+                    </div>
+                );
+
+            case 'requests_list':
+                const requestRows = Array.isArray(message.data) ? message.data : [];
+                return (
+                    <div className="mt-3 space-y-2">
+                        {requestRows.map((req: any) => (
+                            <div key={req.id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-xs transition-colors hover:bg-slate-100">
                                 <div>
-                                    <p className="font-semibold text-gray-900">Request #{req.id.slice(0, 8)}</p>
-                                    <p className="text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</p>
+                                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                                        <p className="font-semibold text-slate-900">Request #{req.id.slice(0, 8)}</p>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(req.status)}`}>
+                                            {req.status}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</p>
                                 </div>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                    req.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-red-100 text-red-700'
-                                    }`}>
-                                    {req.status}
-                                </span>
                             </div>
                         ))}
                     </div>
                 );
 
             case 'contracts_list':
+                const contractRows = Array.isArray(message.data) ? message.data : [];
                 return (
-                    <div className="space-y-2 mt-2">
-                        {message.data.map((contract: any) => (
-                            <div key={contract.id} className="bg-gray-50 p-2 rounded-lg text-xs border border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors">
-                                <p className="font-semibold text-gray-900 truncate">{contract.title}</p>
-                                <div className="flex justify-between mt-1 text-gray-500">
+                    <div className="mt-3 space-y-2">
+                        {contractRows.map((contract: any) => (
+                            <div key={contract.id} className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-xs transition-colors hover:bg-slate-100">
+                                <p className="truncate font-semibold text-slate-900">{contract.title}</p>
+                                <div className="mt-1 flex justify-between text-slate-500">
                                     <span>{contract.supplier?.name}</span>
                                     <span>Exp: {new Date(contract.endDate).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                );
+
+            case 'orders_list':
+                const orderRows = Array.isArray(message.data) ? message.data : [];
+                return (
+                    <div className="mt-3 space-y-2">
+                        {orderRows.map((order: any) => (
+                            <div key={order.id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-xs transition-colors hover:bg-slate-100">
+                                <div className="mb-1.5 flex items-start justify-between gap-2">
+                                    <p className="font-semibold text-slate-900">Order #{order.id.slice(0, 8)}</p>
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(order.status)}`}>
+                                        {String(order.status || '').replace(/_/g, ' ')}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-slate-500">
+                                    <span>{order.supplierName}</span>
+                                    <span>£{Number(order.totalAmount || 0).toLocaleString()}</span>
+                                </div>
+                                <p className="mt-1 text-slate-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                            </div>
+                        ))}
+                    </div>
+                );
+
+            case 'suppliers_list':
+                const supplierRows = Array.isArray(message.data) ? message.data : [];
+                return (
+                    <div className="mt-3 space-y-2">
+                        {supplierRows.map((supplier: any) => (
+                            <div key={supplier.id} className="rounded-xl border border-slate-200 bg-slate-50/80 p-2.5 text-xs transition-colors hover:bg-slate-100">
+                                <div className="mb-1.5 flex items-start justify-between gap-2">
+                                    <p className="font-semibold text-slate-900">{supplier.name}</p>
+                                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(String(supplier.status || '').toUpperCase())}`}>
+                                        {supplier.status}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between text-slate-500">
+                                    <span>{supplier.category}</span>
+                                    <span className="truncate max-w-[140px]">{supplier.contactEmail || 'No email'}</span>
                                 </div>
                             </div>
                         ))}
@@ -91,25 +188,25 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
             case 'spend_summary':
                 const { totalSpent, remaining, percentUsed } = message.data;
                 return (
-                    <div className="mt-3 bg-gray-50 rounded-lg p-3 border border-gray-100">
-                        <div className="flex justify-between items-end mb-2">
-                            <span className="text-xs font-medium text-gray-500">Budget Used</span>
-                            <span className="text-xs font-bold text-gray-900">{percentUsed}%</span>
+                    <div className="mt-3 rounded-xl border border-primary-100 bg-gradient-to-br from-primary-50/90 to-sky-50 p-3">
+                        <div className="mb-2 flex items-end justify-between">
+                            <span className="text-xs font-medium text-slate-600">Budget Used</span>
+                            <span className="text-xs font-bold text-slate-900">{percentUsed}%</span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2">
+                        <div className="mb-2 h-1.5 w-full rounded-full bg-slate-200">
                             <div
-                                className={`h-1.5 rounded-full ${percentUsed > 90 ? 'bg-red-500' : 'bg-primary-600'}`}
+                                className={`h-1.5 rounded-full ${percentUsed > 90 ? 'bg-rose-500' : 'bg-primary-600'}`}
                                 style={{ width: `${Math.min(percentUsed, 100)}%` }}
-                            ></div>
+                            />
                         </div>
                         <div className="flex justify-between text-xs">
                             <div>
-                                <p className="text-gray-400">Spent</p>
-                                <p className="font-semibold text-gray-900">£{Number(totalSpent).toLocaleString()}</p>
+                                <p className="text-slate-500">Spent</p>
+                                <p className="font-semibold text-slate-900">£{Number(totalSpent).toLocaleString()}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-gray-400">Remaining</p>
-                                <p className="font-semibold text-green-600">£{Number(remaining).toLocaleString()}</p>
+                                <p className="text-slate-500">Remaining</p>
+                                <p className="font-semibold text-emerald-600">£{Number(remaining).toLocaleString()}</p>
                             </div>
                         </div>
                     </div>
@@ -117,54 +214,52 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
 
             case 'request_detail':
                 const request = requestData;
+                if (!request) return null;
+
                 return (
-                    <div className="mt-3 bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 flex justify-between items-center">
-                            <span className="font-semibold text-gray-900 text-xs">Request #{request.id.slice(0, 8)}</span>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${request.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                request.status === 'PENDING' ? 'bg-yellow-100 text-yellow-700' :
-                                    request.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-red-100 text-red-700'
-                                }`}>
+                    <div className="mt-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-3 py-2">
+                            <span className="text-xs font-semibold text-slate-900">Request #{request.id.slice(0, 8)}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getStatusClasses(request.status)}`}>
                                 {request.status.replace(/_/g, ' ')}
                             </span>
                         </div>
                         <div className="p-3">
-                            <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+                            <div className="mb-3 grid grid-cols-2 gap-2 text-xs">
                                 <div>
-                                    <p className="text-gray-500">Total Amount</p>
-                                    <p className="font-semibold text-gray-900">£{Number(request.totalAmount).toLocaleString()}</p>
+                                    <p className="text-slate-500">Total Amount</p>
+                                    <p className="font-semibold text-slate-900">£{Number(request.totalAmount).toLocaleString()}</p>
                                 </div>
                                 <div>
-                                    <p className="text-gray-500">Date</p>
-                                    <p className="font-medium text-gray-900">{new Date(request.createdAt).toLocaleDateString()}</p>
+                                    <p className="text-slate-500">Date</p>
+                                    <p className="font-medium text-slate-900">{new Date(request.createdAt).toLocaleDateString()}</p>
                                 </div>
                                 {request.requester && (
                                     <div className="col-span-2">
-                                        <p className="text-gray-500">Requested By</p>
-                                        <p className="font-medium text-gray-900">{request.requester.name} <span className="text-gray-400">({request.requester.email})</span></p>
+                                        <p className="text-slate-500">Requested By</p>
+                                        <p className="font-medium text-slate-900">{request.requester.name} <span className="text-slate-400">({request.requester.email})</span></p>
                                     </div>
                                 )}
                             </div>
 
                             {request.reason && (
                                 <div className="mb-3 text-xs">
-                                    <p className="text-gray-500 mb-1">Reason</p>
-                                    <p className="text-gray-800 italic bg-gray-50 p-2 rounded border border-gray-100">{request.reason}</p>
+                                    <p className="mb-1 text-slate-500">Reason</p>
+                                    <p className="rounded border border-slate-200 bg-slate-50 p-2 italic text-slate-700">{request.reason}</p>
                                 </div>
                             )}
 
                             {request.items && request.items.length > 0 && (
                                 <div className="mb-3">
-                                    <p className="text-xs font-medium text-gray-500 mb-2">Items</p>
+                                    <p className="mb-2 text-xs font-medium text-slate-500">Items</p>
                                     <div className="space-y-2">
                                         {request.items.map((item: any) => (
-                                            <div key={item.id} className="text-xs border-b border-gray-100 last:border-0 pb-2 last:pb-0">
+                                            <div key={item.id} className="border-b border-slate-100 pb-2 text-xs last:border-0 last:pb-0">
                                                 <div className="flex justify-between font-medium">
-                                                    <span className="text-gray-900">{item.description}</span>
+                                                    <span className="text-slate-900">{item.description}</span>
                                                     <span>£{Number(item.totalPrice).toLocaleString()}</span>
                                                 </div>
-                                                <div className="text-gray-500 flex justify-between mt-0.5">
+                                                <div className="mt-0.5 flex justify-between text-slate-500">
                                                     <span>Qty: {item.quantity}</span>
                                                     <span>@ £{Number(item.unitPrice).toLocaleString()}</span>
                                                 </div>
@@ -176,12 +271,12 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
 
                             {/* Attachments Section */}
                             <div>
-                                <div className="flex items-center justify-between mb-2">
-                                    <p className="text-xs font-medium text-gray-500">Documents</p>
+                                <div className="mb-2 flex items-center justify-between">
+                                    <p className="text-xs font-medium text-slate-500">Documents</p>
                                     <button
                                         onClick={() => fileInputRef.current?.click()}
                                         disabled={uploading}
-                                        className="text-[10px] flex items-center text-primary-600 hover:text-primary-700 font-medium"
+                                        className="flex items-center text-[10px] font-medium text-primary-700 transition-colors hover:text-primary-800"
                                     >
                                         {uploading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
                                         {uploading ? 'Uploading...' : 'Upload'}
@@ -202,16 +297,16 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
                                                 href={att.fileUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center p-2 bg-gray-50 rounded hover:bg-gray-100 border border-transparent hover:border-gray-200 transition-colors group"
+                                                className="group flex items-center rounded-lg border border-transparent bg-slate-50 p-2 transition-colors hover:border-slate-200 hover:bg-slate-100"
                                             >
-                                                <Paperclip className="h-3 w-3 text-gray-400 group-hover:text-primary-500 mr-2" />
-                                                <span className="text-xs text-gray-700 truncate flex-1">{att.filename}</span>
+                                                <Paperclip className="mr-2 h-3 w-3 text-slate-400 transition-colors group-hover:text-primary-600" />
+                                                <span className="flex-1 truncate text-xs text-slate-700">{att.filename}</span>
                                             </a>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-2 bg-gray-50 rounded border border-dashed border-gray-200">
-                                        <p className="text-[10px] text-gray-400">No documents attached</p>
+                                    <div className="rounded border border-dashed border-slate-200 bg-slate-50 py-2 text-center">
+                                        <p className="text-[10px] text-slate-400">No documents attached</p>
                                     </div>
                                 )}
                             </div>
@@ -225,18 +320,19 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
     };
 
     return (
-        <div className={`flex w-full gap-3 ${isBot ? 'justify-start' : 'justify-end'}`}>
+        <div className={`flex w-full items-end gap-2.5 ${isBot ? 'justify-start' : 'justify-end'}`}>
             {isBot && (
-                <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-primary-100 text-primary-600">
+                <div className="relative flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-sky-100 text-primary-700 ring-1 ring-primary-200/60">
                     <Bot className="h-4 w-4" />
+                    <Sparkles className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-white p-0.5 text-primary-600 ring-1 ring-primary-200" />
                 </div>
             )}
 
-            <div className={`flex flex-col max-w-[85%] ${isBot ? 'items-start' : 'items-end'}`}>
+            <div className={`flex max-w-[88%] flex-col ${isBot ? 'items-start' : 'items-end'}`}>
                 <div
-                    className={`rounded-2xl px-4 py-2.5 shadow-sm text-sm ${isBot
-                        ? 'bg-white text-gray-800 border border-gray-100 rounded-tl-none'
-                        : 'bg-primary-600 text-white rounded-tr-none'
+                    className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${isBot
+                        ? 'rounded-bl-md border border-slate-200 bg-white text-slate-800'
+                        : 'rounded-br-md bg-gradient-to-br from-primary-700 to-primary-600 text-white'
                         }`}
                 >
                     <p className="whitespace-pre-wrap">{message.text}</p>
@@ -245,7 +341,7 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
                             href={message.attachment.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className={`flex items-center gap-2 mt-2 p-2 rounded text-xs ${isBot ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-white/20 hover:bg-white/30 text-white'}`}
+                            className={`mt-2 flex items-center gap-2 rounded-lg p-2 text-xs ${isBot ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'bg-white/20 text-white hover:bg-white/30'}`}
                         >
                             <Paperclip className="h-3 w-3" />
                             <span className="truncate max-w-[150px]">{message.attachment.name}</span>
@@ -253,13 +349,13 @@ export const ChatMessage = memo(function ChatMessage({ message }: ChatMessagePro
                     )}
                     {isBot && renderContent()}
                 </div>
-                <span className="mt-1 text-[10px] text-gray-400">
+                <span className="mt-1 text-[10px] text-slate-400">
                     {format(message.timestamp, 'HH:mm')}
                 </span>
             </div>
 
             {!isBot && (
-                <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-gray-100 text-gray-600">
+                <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-slate-200 text-slate-700 ring-1 ring-slate-300">
                     <UserIcon className="h-4 w-4" />
                 </div>
             )}

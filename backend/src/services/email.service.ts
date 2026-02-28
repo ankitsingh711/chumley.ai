@@ -318,6 +318,55 @@ export const sendApprovalRequestEmail = async (data: ApprovalRequestEmailData): 
     }
 };
 
+interface NewRequestRaisedEmailData {
+    recipientEmail: string;
+    recipientName: string;
+    requesterName: string;
+    requestId: string;
+    totalAmount: number;
+    manageUrl: string;
+}
+
+export const sendNewRequestRaisedEmail = async (data: NewRequestRaisedEmailData): Promise<boolean> => {
+    try {
+        const {
+            recipientEmail,
+            recipientName,
+            requesterName,
+            requestId,
+            totalAmount,
+            manageUrl,
+        } = data;
+
+        const requestShortId = requestId.slice(0, 8);
+
+        const htmlContent = `
+            <h2>New Purchase Request Raised</h2>
+            <p>Hello ${recipientName},</p>
+            <p><strong>${requesterName}</strong> has raised a new purchase request.</p>
+            <ul>
+                <li><strong>Request ID:</strong> #${requestShortId}</li>
+                <li><strong>Amount:</strong> £${totalAmount.toLocaleString('en-GB')}</li>
+            </ul>
+            <p>You can view the request details using the link below.</p>
+            <a href="${manageUrl}" style="background-color: #27549D; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">View Request</a>
+        `;
+
+        await transporter.sendMail({
+            from: process.env.EMAIL_FROM || `"Aspect by Chumley.ai" <${process.env.EMAIL_USER}>`,
+            to: recipientEmail,
+            subject: `New Purchase Request: #${requestShortId}`,
+            html: htmlContent,
+        });
+
+        Logger.info(`New purchase request email sent to ${recipientEmail} for request ${requestId}`);
+        return true;
+    } catch (error) {
+        Logger.error('Failed to send new purchase request email:', error);
+        return false;
+    }
+};
+
 interface RejectionEmailData {
     requesterEmail: string;
     requesterName: string;
@@ -455,6 +504,7 @@ Open Supplier Inbox: ${frontendUrl}/suppliers
 export default {
     sendPurchaseRequestNotification,
     sendApprovalRequestEmail,
+    sendNewRequestRaisedEmail,
     sendRejectionNotification,
     sendSupplierConversationEmail,
 };

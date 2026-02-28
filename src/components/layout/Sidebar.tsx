@@ -49,9 +49,9 @@ export function Sidebar() {
             return ['/', '/requests', '/orders', '/suppliers', '/reports'].includes(item.path);
         }
 
-        // Member: Requests, Suppliers
+        // Member: Requests, Orders, Suppliers
         if (user?.role === UserRole.MEMBER) {
-            return ['/requests', '/suppliers'].includes(item.path);
+            return ['/requests', '/orders', '/suppliers'].includes(item.path);
         }
 
         return false;
@@ -71,6 +71,7 @@ export function Sidebar() {
             <nav className="flex-1 space-y-1 px-4">
                 {visibleNavItems.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
+                    const displayLabel = user?.role === UserRole.MEMBER && item.path === '/orders' ? 'My Orders' : item.label;
                     return (
                         <Link
                             key={item.path}
@@ -83,7 +84,7 @@ export function Sidebar() {
                             )}
                         >
                             <item.icon className={cn('h-5 w-5', isActive ? 'text-primary-700' : 'text-gray-400')} />
-                            {item.label}
+                            {displayLabel}
                         </Link>
                     );
                 })}

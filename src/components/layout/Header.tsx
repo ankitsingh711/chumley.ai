@@ -228,9 +228,11 @@ export function Header({ onChatToggle }: HeaderProps) {
                 <NotificationBell />
                 <button
                     onClick={onChatToggle}
-                    className="rounded-full p-2 hover:bg-gray-100 transition-colors"
+                    className="group relative rounded-full border border-slate-200 bg-white p-2.5 text-slate-600 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700"
+                    aria-label="Toggle chatbot"
                 >
-                    <MessageSquare className="h-5 w-5 text-gray-600" />
+                    <MessageSquare className="h-5 w-5" />
+                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-emerald-400 ring-2 ring-white" />
                 </button>
 
                 <div className="flex items-center gap-3 border-l pl-4">

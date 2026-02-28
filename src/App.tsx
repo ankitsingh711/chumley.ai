@@ -59,7 +59,7 @@ function App() {
               </RoleProtectedRoute>
             } />
             <Route path="/orders" element={
-              <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER]}>
+              <RoleProtectedRoute allowedRoles={[UserRole.SYSTEM_ADMIN, UserRole.SENIOR_MANAGER, UserRole.MANAGER, UserRole.MEMBER]}>
                 <PurchaseOrders />
               </RoleProtectedRoute>
             } />

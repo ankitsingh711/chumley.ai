@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText, ReceiptText } from 'lucide-react';
+import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText, ReceiptText, ExternalLink } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { RequestsSkeleton } from '../components/skeletons/RequestsSkeleton';
@@ -14,6 +14,8 @@ import { RequestStatus, UserRole } from '../types/api';
 import { Pagination } from '../components/Pagination';
 import { isPaginatedResponse } from '../types/pagination';
 import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
+
+const APPROVED_SUPPLIER_STATUSES = new Set(['STANDARD', 'PREFERRED', 'ACTIVE']);
 
 export default function Requests() {
     const navigate = useNavigate();
@@ -120,7 +122,10 @@ export default function Requests() {
             await loadRequests(); // Reload to get updated data
         } catch (error) {
             console.error('Failed to update status:', error);
-            alert('Failed to update request status');
+            const errorMessage =
+                (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+                'Failed to update request status';
+            alert(errorMessage);
         } finally {
             setUpdating(null);
         }
@@ -411,6 +416,28 @@ export default function Requests() {
         return false;
     };
 
+    const normalizeSupplierStatus = (status?: string | null) => status?.trim().toUpperCase() || '';
+
+    const isSupplierApprovalBlocked = (req: PurchaseRequest) => {
+        if (!req.supplierId) return false;
+        const normalizedStatus = normalizeSupplierStatus(req.supplier?.status);
+        if (!normalizedStatus) return false;
+        return !APPROVED_SUPPLIER_STATUSES.has(normalizedStatus);
+    };
+
+    const getSupplierStatusLabel = (req: PurchaseRequest) => req.supplier?.status?.trim() || 'Unknown';
+
+    const getSupplierApprovalBlockReason = (req: PurchaseRequest) => {
+        if (!req.supplierId) return '';
+        if (!isSupplierApprovalBlocked(req)) return '';
+        return `Cannot approve request until supplier is approved. Current supplier status: ${getSupplierStatusLabel(req)}`;
+    };
+
+    const navigateToSupplierApproval = (req: PurchaseRequest) => {
+        if (!req.supplierId) return;
+        navigate(`/suppliers/${req.supplierId}`);
+    };
+
     if (loading) {
         return <RequestsSkeleton />;
     }
@@ -609,7 +636,6 @@ export default function Requests() {
                                         </td>
                                         <td className="px-6 py-4 font-bold text-gray-900">£{Number(req.totalAmount).toLocaleString()}</td>
                                         <td className="px-6 py-4">
-
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
                                             ${req.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
                                                     req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
@@ -617,27 +643,46 @@ export default function Requests() {
                                                             'bg-gray-100 text-gray-700'}`}>
                                                 {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
                                             </span>
+                                            {(req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) &&
+                                                isSupplierApprovalBlocked(req) && (
+                                                <div className="mt-1.5">
+                                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                                        Supplier: {getSupplierStatusLabel(req)}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
-                                                <div className="flex gap-2">
+                                                isSupplierApprovalBlocked(req) && req.supplierId ? (
                                                     <button
-                                                        className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
-                                                        disabled={updating === req.id}
-                                                        title="Approve"
+                                                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                                                        onClick={() => navigateToSupplierApproval(req)}
+                                                        title={getSupplierApprovalBlockReason(req)}
                                                     >
-                                                        <Check className="h-4 w-4" />
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                        Review Supplier
                                                     </button>
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                        onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
-                                                        disabled={updating === req.id}
-                                                        title="Reject"
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </button>
-                                                </div>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
+                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
+                                                            disabled={updating === req.id}
+                                                            title="Approve"
+                                                        >
+                                                            <Check className="h-4 w-4" />
+                                                        </button>
+                                                        <button
+                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
+                                                            disabled={updating === req.id}
+                                                            title="Reject"
+                                                        >
+                                                            <X className="h-4 w-4" />
+                                                        </button>
+                                                    </div>
+                                                )
                                             )}
                                             {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
                                             {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
@@ -848,27 +893,48 @@ export default function Requests() {
 
                                 {/* Actions */}
                                 {canUserApprove(selectedRequest) && (selectedRequest.status === RequestStatus.PENDING || selectedRequest.status === RequestStatus.IN_PROGRESS) && (
-                                    <div className="pt-4 border-t flex gap-3">
-                                        <Button
-                                            onClick={() => {
-                                                handleStatusUpdate(selectedRequest.id, RequestStatus.APPROVED);
-                                                closeModal();
-                                            }}
-                                            className="flex-1 bg-green-600 hover:bg-green-700"
-                                        >
-                                            <Check className="mr-2 h-4 w-4" /> Approve
-                                        </Button>
-                                        <Button
-                                            onClick={() => {
-                                                handleStatusUpdate(selectedRequest.id, RequestStatus.REJECTED);
-                                                closeModal();
-                                            }}
-                                            variant="outline"
-                                            className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                                        >
-                                            <X className="mr-2 h-4 w-4" /> Reject
-                                        </Button>
-                                    </div>
+                                    isSupplierApprovalBlocked(selectedRequest) && selectedRequest.supplierId ? (
+                                        <div className="pt-4 border-t space-y-2">
+                                            <Button
+                                                onClick={() => {
+                                                    navigateToSupplierApproval(selectedRequest);
+                                                    closeModal();
+                                                }}
+                                                variant="outline"
+                                                className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
+                                                title={getSupplierApprovalBlockReason(selectedRequest)}
+                                            >
+                                                <ExternalLink className="mr-2 h-4 w-4" /> Open Supplier To Approve
+                                            </Button>
+                                            <p className="text-xs text-amber-700">
+                                                {getSupplierApprovalBlockReason(selectedRequest)}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="pt-4 border-t flex gap-3">
+                                            <Button
+                                                onClick={() => {
+                                                    handleStatusUpdate(selectedRequest.id, RequestStatus.APPROVED);
+                                                    closeModal();
+                                                }}
+                                                className="flex-1 bg-green-600 hover:bg-green-700"
+                                                disabled={updating === selectedRequest.id}
+                                                title="Approve"
+                                            >
+                                                <Check className="mr-2 h-4 w-4" /> Approve
+                                            </Button>
+                                            <Button
+                                                onClick={() => {
+                                                    handleStatusUpdate(selectedRequest.id, RequestStatus.REJECTED);
+                                                    closeModal();
+                                                }}
+                                                variant="outline"
+                                                className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
+                                            >
+                                                <X className="mr-2 h-4 w-4" /> Reject
+                                            </Button>
+                                        </div>
+                                    )
                                 )}
 
                                 <div className="pt-4 border-t flex flex-wrap gap-3">

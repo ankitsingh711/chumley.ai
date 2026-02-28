@@ -20,6 +20,10 @@ export default function PurchaseOrders() {
     const location = useLocation();
     const navigate = useNavigate();
     const isMember = user?.role === UserRole.MEMBER;
+    const pageTitle = isMember ? 'My Purchase Orders' : 'Purchase Orders';
+    const pageDescription = isMember
+        ? 'Track and review your own purchase orders.'
+        : 'Manage and track all corporate purchase orders in one place.';
     const [orders, setOrders] = useState<PurchaseOrder[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -337,8 +341,8 @@ export default function PurchaseOrders() {
             {/* Page Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-                    <p className="text-sm text-gray-500">Manage and track all corporate purchase orders in one place.</p>
+                    <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
+                    <p className="text-sm text-gray-500">{pageDescription}</p>
                 </div>
                 <div className="flex gap-3">
                     <Button variant="outline" onClick={handleExportAll}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>

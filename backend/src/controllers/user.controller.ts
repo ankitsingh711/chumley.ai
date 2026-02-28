@@ -273,6 +273,12 @@ const inviteUserSchema = z.object({
     departmentId: z.string().optional(),
 });
 
+const generateInvitationToken = (): string =>
+    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+const getInvitationExpiry = (): Date =>
+    new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
 export const inviteUser = async (req: Request, res: Response) => {
     try {
         const validatedData = inviteUserSchema.parse(req.body);
@@ -282,14 +288,61 @@ export const inviteUser = async (req: Request, res: Response) => {
         });
 
         if (existingUser) {
-            return res.status(400).json({ error: 'User with this email already exists' });
+            if (existingUser.status !== 'PENDING') {
+                return res.status(400).json({ error: 'User with this email already exists' });
+            }
+
+            const invitationToken = generateInvitationToken();
+            const invitationExpires = getInvitationExpiry();
+
+            const user = await prisma.user.update({
+                where: { id: existingUser.id },
+                data: {
+                    name: validatedData.name,
+                    role: validatedData.role || existingUser.role,
+                    departmentId: validatedData.departmentId,
+                    status: 'PENDING',
+                    invitationToken,
+                    invitationExpires,
+                },
+                select: {
+                    id: true,
+                    email: true,
+                    name: true,
+                    role: true,
+                    status: true,
+                    department: true,
+                    createdAt: true,
+                },
+            });
+
+            Logger.info(`Pending user re-invited: ${user.email}`);
+
+            const inviteLink = `${process.env.FRONTEND_URL}/onboarding?token=${invitationToken}`;
+
+            sendInvitationEmail({
+                to: user.email,
+                name: user.name,
+                inviteLink,
+                role: user.role,
+                companyName: process.env.COMPANY_NAME || 'Aspect',
+                invitedBy: 'Your administrator',
+            }).catch((err) => {
+                Logger.error(`Failed to resend invitation email to ${user.email}:`, err);
+            });
+
+            return res.status(200).json({
+                message: 'Invitation resent successfully',
+                user,
+                inviteLink,
+            });
         }
 
 
         // Generate invitation token
         // In a real app, use crypto.randomBytes
-        const invitationToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        const invitationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+        const invitationToken = generateInvitationToken();
+        const invitationExpires = getInvitationExpiry();
 
         // Create user with PENDING status and NO valid password initially (or a random unusable one)
         const user = await prisma.user.create({

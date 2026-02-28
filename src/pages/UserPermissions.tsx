@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, Trash2, UserPlus, AlertTriangle, Check } from 'lucide-react';
+import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, Trash2, UserPlus, AlertTriangle, Check, Copy, X } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { UserPermissionsSkeleton } from '../components/skeletons/UserPermissionsSkeleton';
@@ -37,9 +37,39 @@ export default function UserPermissions() {
     const [deleting, setDeleting] = useState(false);
     const [modalType, setModalType] = useState<'success' | 'error'>('success');
     const [modalMessage, setModalMessage] = useState('');
+    const [inviteSuccess, setInviteSuccess] = useState<{
+        name: string;
+        email: string;
+        role: UserRole;
+        departmentName?: string;
+        inviteLink?: string;
+        statusMessage?: string;
+    } | null>(null);
+    const [linkCopied, setLinkCopied] = useState(false);
 
     const { user: currentUser, isLoading: authLoading } = useAuth();
     const [departments, setDepartments] = useState<any[]>([]);
+
+    const dismissFeedbackModal = () => {
+        setShowModal(false);
+        setLinkCopied(false);
+    };
+
+    const openInviteModalFromSuccess = () => {
+        dismissFeedbackModal();
+        setInviteSuccess(null);
+        setShowInviteModal(true);
+    };
+
+    const handleCopyInviteLink = async () => {
+        if (!inviteSuccess?.inviteLink) return;
+        try {
+            await navigator.clipboard.writeText(inviteSuccess.inviteLink);
+            setLinkCopied(true);
+        } catch (error) {
+            console.error('Failed to copy invitation link:', error);
+        }
+    };
 
     useEffect(() => {
         if (!authLoading) {
@@ -54,6 +84,26 @@ export default function UserPermissions() {
             setActiveTab('profile');
         }
     }, [currentUser, authLoading, activeTab]);
+
+    useEffect(() => {
+        if (!showModal) return;
+
+        const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                dismissFeedbackModal();
+            }
+        };
+
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [showModal]);
+
+    useEffect(() => {
+        if (!linkCopied) return;
+
+        const timeoutId = window.setTimeout(() => setLinkCopied(false), 2200);
+        return () => window.clearTimeout(timeoutId);
+    }, [linkCopied]);
 
     const fetchDepartments = async () => {
         try {
@@ -124,11 +174,13 @@ export default function UserPermissions() {
             setUsers(users.map(u => u.id === updated.id ? updated : u));
             setModalType('success');
             setModalMessage(`Successfully updated ${updated.name} 's role to ${updated.role}`);
+            setInviteSuccess(null);
             setShowModal(true);
         } catch (error) {
             console.error('Failed to update user:', error);
             setModalType('error');
             setModalMessage('Failed to update user permissions. Please try again.');
+            setInviteSuccess(null);
             setShowModal(true);
         } finally {
             setSaving(false);
@@ -139,9 +191,20 @@ export default function UserPermissions() {
         e.preventDefault();
         setInviting(true);
         try {
-            await usersApi.invite(inviteData);
+            const response = await usersApi.invite(inviteData);
+            const selectedDepartmentName = departments.find((department) => department.id === inviteData.departmentId)?.name;
+
             setModalType('success');
-            setModalMessage(`Successfully invited ${inviteData.name}. An email has been sent to ${inviteData.email} with instructions to set up their account.`);
+            setModalMessage(response?.message || 'Invitation sent successfully.');
+            setInviteSuccess({
+                name: inviteData.name,
+                email: inviteData.email,
+                role: inviteData.role,
+                departmentName: selectedDepartmentName,
+                inviteLink: response?.inviteLink,
+                statusMessage: response?.message,
+            });
+            setLinkCopied(false);
             setShowInviteModal(false);
             setInviteData({ name: '', email: '', role: UserRole.MEMBER, departmentId: '' });
             fetchUsers();
@@ -150,6 +213,7 @@ export default function UserPermissions() {
             console.error('Failed to invite user:', error);
             setModalType('error');
             setModalMessage(error.response?.data?.error || 'Failed to invite user.');
+            setInviteSuccess(null);
             setShowModal(true);
         } finally {
             setInviting(false);
@@ -169,11 +233,13 @@ export default function UserPermissions() {
 
             setModalType('success');
             setModalMessage(`User ${newStatus === UserStatus.ACTIVE ? 'activated' : 'suspended'} successfully.`);
+            setInviteSuccess(null);
             setShowModal(true);
         } catch (error) {
             console.error('Failed to update user status:', error);
             setModalType('error');
             setModalMessage('Failed to update status. Please try again.');
+            setInviteSuccess(null);
             setShowModal(true);
         }
     };
@@ -186,6 +252,7 @@ export default function UserPermissions() {
             await usersApi.delete(selectedUser.id);
             setModalType('success');
             setModalMessage(`Successfully deleted user ${selectedUser.name}.`);
+            setInviteSuccess(null);
             setShowDeleteModal(false);
 
             // Remove from list
@@ -198,6 +265,7 @@ export default function UserPermissions() {
             console.error('Failed to delete user:', error);
             setModalType('error');
             setModalMessage('Failed to delete user. Please try again.');
+            setInviteSuccess(null);
             setShowModal(true);
         } finally {
             setDeleting(false);
@@ -753,18 +821,97 @@ export default function UserPermissions() {
             )}
 
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowModal(false)}>
-                    <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full flex items-start gap-4" onClick={e => e.stopPropagation()}>
-                        <div className={`p-2 rounded-full ${modalType === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                            {modalType === 'success' ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900">{modalType === 'success' ? 'Success' : 'Error'}</h3>
-                            <p className="text-sm text-gray-500 mt-1">{modalMessage}</p>
-                            <div className="mt-4 text-right">
-                                <button onClick={() => setShowModal(false)} className="text-sm font-medium text-gray-500 hover:text-gray-900">Dismiss</button>
+                <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={dismissFeedbackModal}>
+                    <div
+                        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            onClick={dismissFeedbackModal}
+                            className="absolute top-3 right-3 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                            aria-label="Close message"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+
+                        {modalType === 'success' && inviteSuccess ? (
+                            <>
+                                <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
+                                <div className="p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                                            <CheckCircle className="h-6 w-6" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="text-lg font-semibold text-slate-900">Invitation sent</h3>
+                                            <p className="text-sm text-slate-600 mt-1 leading-6">
+                                                {inviteSuccess.statusMessage || 'Your invite email has been delivered to the recipient.'}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 space-y-2.5">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Recipient</span>
+                                            <span className="text-sm font-medium text-slate-900 text-right">{inviteSuccess.name}</span>
+                                        </div>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Email</span>
+                                            <span className="text-sm text-slate-700 text-right break-all">{inviteSuccess.email}</span>
+                                        </div>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Role</span>
+                                            <span className="text-sm text-slate-700 text-right">{inviteSuccess.role.replace('_', ' ')}</span>
+                                        </div>
+                                        {inviteSuccess.departmentName && (
+                                            <div className="flex items-start justify-between gap-3">
+                                                <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Department</span>
+                                                <span className="text-sm text-slate-700 text-right">{inviteSuccess.departmentName}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {inviteSuccess.inviteLink && (
+                                        <button
+                                            type="button"
+                                            onClick={handleCopyInviteLink}
+                                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                                        >
+                                            <Copy className="h-4 w-4" />
+                                            {linkCopied ? 'Link copied to clipboard' : 'Copy invite link'}
+                                        </button>
+                                    )}
+
+                                    <div className="mt-6 flex items-center justify-end gap-3">
+                                        <Button variant="ghost" onClick={dismissFeedbackModal}>
+                                            Done
+                                        </Button>
+                                        <Button
+                                            onClick={openInviteModalFromSuccess}
+                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                        >
+                                            Invite Another
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="p-6 flex items-start gap-4">
+                                <div className={`p-2.5 rounded-xl ${modalType === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                    {modalType === 'success' ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="font-semibold text-slate-900">{modalType === 'success' ? 'Success' : 'Error'}</h3>
+                                    <p className="text-sm text-slate-600 mt-1 break-words">{modalMessage}</p>
+                                    <div className="mt-5 flex justify-end">
+                                        <Button variant="outline" size="sm" onClick={dismissFeedbackModal}>
+                                            Okay
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}

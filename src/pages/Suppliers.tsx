@@ -218,17 +218,6 @@ export default function Suppliers() {
                         supplier={supplier}
                     />
                 ))}
-
-                {/* Add New Quick Card */}
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-6 flex flex-col items-center justify-center text-center hover:border-primary-300 hover:bg-primary-50/50 transition-colors cursor-pointer group h-full min-h-[300px]"
-                    onClick={handleOpenModal}
-                >
-                    <div className="h-12 w-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
-                        <Plus className="h-6 w-6 text-primary-600" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900">{isRestricted ? 'Request New Supplier' : 'Add New Supplier'}</h3>
-                    <p className="text-sm text-gray-500 mt-1 max-w-[200px]">{isRestricted ? 'Submit a request to add a new vendor' : 'Onboard a new vendor to your approved list'}</p>
-                </div>
             </div>
 
             {/* Pagination */}

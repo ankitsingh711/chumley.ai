@@ -99,8 +99,14 @@ export const getOrders = async (req: Request, res: Response) => {
         const user = req.user! as any;
         const { page, limit, skip } = getPaginationParams(req);
 
-        // Build cache key
-        const cacheKey = `orders:list:${user.id}:page${page}:limit${limit}`;
+        // Build cache key with role/scope to avoid stale cross-scope cache reads.
+        const scope =
+            user.role === UserRole.MEMBER
+                ? 'own'
+                : [UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role)
+                    ? 'department'
+                    : 'all';
+        const cacheKey = `orders:list:${user.id}:role:${user.role}:scope:${scope}:dept:${user.departmentId || 'none'}:page${page}:limit${limit}`;
 
         // Try cache first
         const cached = await CacheService.get(cacheKey);
@@ -108,20 +114,22 @@ export const getOrders = async (req: Request, res: Response) => {
             return res.json(cached);
         }
 
-        // Restrict view for MEMBER, MANAGER, and SENIOR_MANAGER (System Admin sees all)
-        const isRestricted = [UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role);
-
         const where: any = {};
-        if (isRestricted) {
+        if (user.role === UserRole.MEMBER) {
+            // Members see only orders created from their own requests
+            where.request = {
+                requesterId: user.id
+            };
+        } else if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role)) {
             if (user.departmentId) {
-                // Check if the request's requester is in the same department
+                // Managers and Senior Managers see orders for their department
                 where.request = {
                     requester: {
                         departmentId: user.departmentId
                     }
                 };
             } else {
-                // If user has no department, they can only see orders from their own requests (fallback)
+                // Fallback for managers without department
                 where.request = {
                     requesterId: user.id
                 };
@@ -186,16 +194,44 @@ export const getOrders = async (req: Request, res: Response) => {
 export const getOrderById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const user = req.user! as any;
+
         const order = await prisma.purchaseOrder.findUnique({
             where: { id },
             include: {
                 supplier: true,
-                request: { include: { items: true } },
+                request: {
+                    include: {
+                        items: true,
+                        requester: {
+                            select: {
+                                id: true,
+                                departmentId: true,
+                            }
+                        }
+                    }
+                },
             },
         });
 
         if (!order) {
             return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Authorization: Members can only access their own orders.
+        // Managers/Senior Managers are limited to their department.
+        if (user.role === UserRole.MEMBER && order.request.requesterId !== user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role)) {
+            const requesterDepartmentId = order.request.requester?.departmentId || null;
+            if (user.departmentId && requesterDepartmentId !== user.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+            if (!user.departmentId && order.request.requesterId !== user.id) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
         }
 
         res.json(order);

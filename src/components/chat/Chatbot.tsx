@@ -1,5 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Paperclip, FileText, Loader2 } from 'lucide-react';
+import {
+    X,
+    Send,
+    Paperclip,
+    FileText,
+    Loader2,
+    Sparkles,
+    ClipboardList,
+    CirclePlus,
+    FileSearch,
+    ShieldCheck,
+    Bot,
+    CornerDownLeft
+} from 'lucide-react';
 import { uploadApi } from '../../services/upload.service';
 import { ChatMessage } from './ChatMessage';
 import { chatApi } from '../../services/chat.service';
@@ -10,7 +23,7 @@ interface Message {
     text: string;
     sender: 'user' | 'bot';
     timestamp: Date;
-    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail';
+    type?: 'text' | 'requests_list' | 'contracts_list' | 'spend_summary' | 'request_detail' | 'orders_list' | 'suppliers_list' | 'overview';
     data?: any;
     attachment?: {
         name: string;
@@ -24,10 +37,26 @@ interface ChatbotProps {
 }
 
 const QUICK_REPLIES = [
-    "Check request status",
-    "Create new request",
-    "View recent contracts",
-    "How do I reset my password?",
+    {
+        label: "Check request status",
+        hint: "Track approvals and next steps",
+        icon: ClipboardList,
+    },
+    {
+        label: "Create new request",
+        hint: "Start a new purchase flow",
+        icon: CirclePlus,
+    },
+    {
+        label: "View recent contracts",
+        hint: "Find active vendor agreements",
+        icon: FileSearch,
+    },
+    {
+        label: "How do I reset my password?",
+        hint: "Get account and access help",
+        icon: ShieldCheck,
+    },
 ];
 
 export function Chatbot({ isOpen, onClose }: ChatbotProps) {
@@ -45,6 +74,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     const [isUploading, setIsUploading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const [lastContextAttachment, setLastContextAttachment] = useState<string | undefined>(undefined);
 
     const scrollToBottom = () => {
@@ -53,13 +83,15 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
 
     useEffect(() => {
         if (isOpen) {
+            inputRef.current?.focus();
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen) {
             scrollToBottom();
         }
-    }, [messages, isOpen]);
-
-
-
-    // ... (keep interface Message but upgrade it)
+    }, [isOpen, messages, isTyping]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -102,10 +134,17 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         setIsTyping(true);
 
         try {
+            const historyPayload = [...messages.slice(-12), userMsg].map((message) => ({
+                sender: message.sender,
+                text: message.text,
+                type: message.type
+            }));
+
             const response = await chatApi.sendMessage(
                 text,
                 currentAttachment?.url,
-                lastContextAttachment
+                lastContextAttachment,
+                historyPayload
             );
 
             const botMsg: Message = {
@@ -140,41 +179,68 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
         }
     };
 
+    const canSend = Boolean(inputValue.trim() || attachment);
+    const showQuickReplies = messages.length <= 2 && !isTyping;
+
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex w-96 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 transition-all duration-300 animate-in slide-in-from-bottom-10 fade-in backdrop-blur-sm">
+        <div className="fixed bottom-4 left-4 right-4 z-50 flex h-[min(85vh,46rem)] max-h-[46rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_28px_80px_-24px_rgba(15,23,42,0.5)] sm:bottom-6 sm:left-auto sm:right-6 sm:w-[27rem] sm:max-w-[27rem]">
             {/* Header */}
-            <div className="flex items-center justify-between bg-primary-600 px-4 py-3 text-white">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center">
-                        <img src="/chatbot-icon.png" alt="Aspect Bot" className="h-10 w-10 rounded-lg" />
+            <div className="relative overflow-hidden bg-gradient-to-br from-primary-700 via-primary-600 to-sky-600 px-5 py-4 text-white">
+                <div className="pointer-events-none absolute -left-8 top-6 h-20 w-20 rounded-full bg-white/15 blur-2xl" />
+                <div className="pointer-events-none absolute -right-10 top-2 h-24 w-24 rounded-full bg-cyan-300/20 blur-2xl" />
+                <div className="relative flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-12 w-12 items-center justify-center overflow-hidden">
+                            <img src="/aspect-favicon.svg" alt="Aspect logo" className="h-full w-full object-contain" />
+                        </div>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                                <h3 className="truncate text-base font-semibold tracking-tight">Aspect Bot</h3>
+                                <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white/95 ring-1 ring-white/30">
+                                    <Sparkles className="h-3 w-3" />
+                                    Smart
+                                </span>
+                            </div>
+                            <p className="text-xs text-white/85">Procurement assistant for requests, suppliers, and contracts</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 className="font-semibold text-sm">Aspect Bot</h3>
-                        <p className="text-[10px] text-primary-100 opacity-90">Always here to help</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-1">
-                    <button onClick={onClose} className="rounded-full p-1.5 hover:bg-white/20 transition-colors">
+                    <button
+                        onClick={onClose}
+                        className="rounded-full p-2 text-white/90 transition-colors hover:bg-white/15 hover:text-white"
+                        aria-label="Close chatbot"
+                    >
                         <X className="h-4 w-4" />
                     </button>
                 </div>
             </div>
 
             {/* Messages Area */}
-            <div className="flex h-96 flex-col overflow-y-auto bg-gray-50/50 p-4">
-                <div className="flex-1 space-y-4">
+            <div className="relative flex flex-1 flex-col overflow-y-auto bg-gradient-to-b from-slate-50 via-white to-slate-100/60 px-4 py-4 sm:px-5">
+                <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-white/70 to-transparent" />
+                <div className="relative flex-1 space-y-4">
+                    <div className="flex justify-center">
+                        <span className="rounded-full border border-slate-200 bg-white/95 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-slate-500 shadow-sm">
+                            Today
+                        </span>
+                    </div>
                     {messages.map(msg => (
                         <ChatMessage key={msg.id} message={msg} />
                     ))}
 
                     {isTyping && (
                         <div className="flex justify-start">
-                            <div className="flex items-center gap-1 rounded-2xl rounded-tl-none bg-white px-4 py-3 shadow-sm border border-gray-100">
-                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]"></span>
-                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s]"></span>
-                                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-gray-400"></span>
+                            <div className="inline-flex items-center gap-2 rounded-2xl rounded-bl-md border border-slate-200 bg-white px-3 py-2.5 shadow-sm">
+                                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary-50 text-primary-700">
+                                    <Bot className="h-3.5 w-3.5" />
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
+                                </div>
+                                <span className="text-xs font-medium text-slate-500">Thinking...</span>
                             </div>
                         </div>
                     )}
@@ -183,22 +249,34 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
             </div>
 
             {/* Quick Replies */}
-            {messages.length < 3 && !isTyping && (
-                <div className="flex gap-2 overflow-x-auto px-4 py-2 scrollbar-thin">
-                    {QUICK_REPLIES.map((reply, i) => (
-                        <button
-                            key={i}
-                            onClick={() => handleSend(reply)}
-                            className="whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 hover:bg-primary-100 transition-colors"
-                        >
-                            {reply}
-                        </button>
-                    ))}
+            {showQuickReplies && (
+                <div className="border-t border-slate-200 bg-white/95 px-4 py-3 sm:px-5">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Quick actions</p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        {QUICK_REPLIES.map((reply) => {
+                            const Icon = reply.icon;
+                            return (
+                                <button
+                                    key={reply.label}
+                                    onClick={() => handleSend(reply.label)}
+                                    className="group flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50/70"
+                                >
+                                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white text-primary-700 shadow-sm ring-1 ring-slate-200/70 transition-colors group-hover:bg-primary-600 group-hover:text-white">
+                                        <Icon className="h-4 w-4" />
+                                    </span>
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-[13px] font-semibold text-slate-800">{reply.label}</span>
+                                        <span className="block truncate text-[11px] text-slate-500">{reply.hint}</span>
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
 
             {/* Input Area */}
-            <div className="border-t bg-white p-4">
+            <div className="border-t border-slate-200/80 bg-white px-4 pb-4 pt-3 sm:px-5">
                 <form
                     onSubmit={(e) => {
                         e.preventDefault();
@@ -208,25 +286,29 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
                 >
                     {/* Attachment Preview */}
                     {attachment && (
-                        <div className="absolute bottom-full left-0 mb-2 bg-gray-100 rounded-lg p-2 flex items-center gap-2 border border-gray-200 text-xs w-full max-w-[200px]">
-                            <FileText className="h-3 w-3 text-primary-600" />
-                            <span className="truncate flex-1 font-medium">{attachment.name}</span>
+                        <div className="mb-2 flex w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-white text-primary-700 ring-1 ring-slate-200">
+                                <FileText className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="flex-1 truncate font-medium text-slate-700">{attachment.name}</span>
                             <button
                                 type="button"
                                 onClick={() => setAttachment(null)}
-                                className="text-gray-400 hover:text-red-500"
+                                className="rounded p-0.5 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                                aria-label="Remove attachment"
                             >
                                 <X className="h-3 w-3" />
                             </button>
                         </div>
                     )}
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-2">
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={isUploading}
-                            className={`p-2 rounded-full transition-colors ${isUploading ? 'bg-gray-100 text-gray-400' : 'bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-primary-600'}`}
+                            className={`rounded-xl p-2 transition-colors ${isUploading ? 'bg-slate-200 text-slate-400' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-primary-700'}`}
+                            aria-label="Attach file"
                         >
                             {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}
                         </button>
@@ -239,18 +321,27 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
 
                         <input
                             type="text"
+                            ref={inputRef}
                             value={inputValue}
                             onChange={(e) => setInputValue(e.target.value)}
                             placeholder={attachment ? "Ask a question about this file..." : "Type a message..."}
-                            className="flex-1 rounded-full border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 transition-all placeholder:text-gray-400"
+                            className="flex-1 border-none bg-transparent px-2 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
                         />
                         <button
                             type="submit"
-                            disabled={!inputValue.trim() && !attachment}
-                            className="rounded-full bg-primary-600 p-2.5 text-white hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm hover:shadow-md"
+                            disabled={!canSend}
+                            className="rounded-xl bg-gradient-to-r from-primary-700 to-primary-600 p-2.5 text-white shadow-sm transition-all hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                            aria-label="Send message"
                         >
                             <Send className="h-4 w-4" />
                         </button>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between px-1 text-[11px] text-slate-400">
+                        <span>{attachment ? 'Attachment ready' : 'Ask about requests, orders, suppliers, or spend'}</span>
+                        <span className="inline-flex items-center gap-1">
+                            <CornerDownLeft className="h-3 w-3" />
+                            Enter to send
+                        </span>
                     </div>
                 </form>
             </div>
