@@ -33,23 +33,17 @@ export function Sidebar() {
     const navigate = useNavigate();
     const { logout, user } = useAuth();
 
-    // Filter menu items based on user role
-    // Filter menu items based on user role
-    const visibleNavItems = navItems.filter(item => {
-        // If system admin, show everything
+    const visibleNavItems = navItems.filter((item) => {
         if (user?.role === UserRole.SYSTEM_ADMIN) return true;
 
-        // Senior Manager: Dashboard, Requests, Orders, Suppliers, Reports
         if (user?.role === UserRole.SENIOR_MANAGER) {
             return ['/', '/requests', '/orders', '/suppliers', '/reports'].includes(item.path);
         }
 
-        // Manager: Dashboard, Requests, Orders, Suppliers, Reports
         if (user?.role === UserRole.MANAGER) {
             return ['/', '/requests', '/orders', '/suppliers', '/reports'].includes(item.path);
         }
 
-        // Member: Requests, Orders, Suppliers
         if (user?.role === UserRole.MEMBER) {
             return ['/requests', '/orders', '/suppliers'].includes(item.path);
         }
@@ -63,49 +57,77 @@ export function Sidebar() {
     };
 
     return (
-        <div className="flex h-screen w-64 flex-col border-r bg-white">
-            <div className="flex items-center gap-2 p-6">
-                <LogoWithText />
+        <aside className="flex h-screen w-64 flex-col border-r border-gray-200/80 bg-gradient-to-b from-white via-gray-50/60 to-white">
+            <div className="px-5 pb-5 pt-5">
+                <LogoWithText classNameIcon="w-44" classNameText="text-gray-500" />
             </div>
 
-            <nav className="flex-1 space-y-1 px-4">
+            <nav className="flex-1 space-y-1.5 overflow-y-auto px-3 pb-4">
                 {visibleNavItems.map((item) => {
                     const isActive = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
                     const displayLabel = user?.role === UserRole.MEMBER && item.path === '/orders' ? 'My Orders' : item.label;
+
                     return (
                         <Link
                             key={item.path}
                             to={item.path}
                             className={cn(
-                                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                                'group relative flex items-center gap-3.5 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all',
                                 isActive
-                                    ? 'bg-primary-50 text-primary-700'
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-white text-primary-800 shadow-sm'
+                                    : 'border-transparent text-gray-600 hover:border-gray-200 hover:bg-white hover:text-gray-900'
                             )}
                         >
-                            <item.icon className={cn('h-5 w-5', isActive ? 'text-primary-700' : 'text-gray-400')} />
-                            {displayLabel}
+                            <span
+                                className={cn(
+                                    'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all',
+                                    isActive
+                                        ? 'bg-primary-700 text-white shadow-sm'
+                                        : 'bg-gray-100 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-700',
+                                )}
+                            >
+                                <item.icon className="h-5 w-5" />
+                            </span>
+                            <span className="flex-1">{displayLabel}</span>
+                            {isActive && <span className="h-2 w-2 rounded-full bg-primary-600" />}
                         </Link>
                     );
                 })}
             </nav>
 
-            <div className="border-t p-4 space-y-1">
+            <div className="space-y-1.5 border-t border-gray-200/80 bg-white/80 p-3 backdrop-blur">
+                <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-[0.13em] text-gray-500">Account</p>
                 <Link
                     to="/settings"
                     className={cn(
-                        'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                        location.pathname === '/settings' && 'bg-primary-50 text-primary-700'
+                        'group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm font-semibold transition-all',
+                        location.pathname === '/settings'
+                            ? 'border-primary-200 bg-gradient-to-r from-primary-50 to-white text-primary-800 shadow-sm'
+                            : 'border-transparent text-gray-600 hover:border-gray-200 hover:bg-white hover:text-gray-900',
                     )}
                 >
-                    <Settings className="h-5 w-5 text-gray-400" />
+                    <span
+                        className={cn(
+                            'inline-flex h-9 w-9 items-center justify-center rounded-lg transition-all',
+                            location.pathname === '/settings'
+                                ? 'bg-primary-700 text-white shadow-sm'
+                                : 'bg-gray-100 text-gray-400 group-hover:bg-primary-50 group-hover:text-primary-700',
+                        )}
+                    >
+                        <Settings className="h-5 w-5" />
+                    </span>
                     Settings
                 </Link>
-                <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900">
-                    <LogOut className="h-5 w-5 text-gray-400" />
+                <button
+                    onClick={handleLogout}
+                    className="group flex w-full items-center gap-3 rounded-xl border border-transparent px-3 py-2.5 text-sm font-semibold text-gray-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700"
+                >
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gray-100 text-gray-400 transition-all group-hover:bg-rose-100 group-hover:text-rose-700">
+                        <LogOut className="h-5 w-5" />
+                    </span>
                     Logout
                 </button>
             </div>
-        </div>
+        </aside>
     );
 }
