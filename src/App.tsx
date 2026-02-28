@@ -5,7 +5,6 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { AdminRoute } from './components/AdminRoute';
 import { RoleProtectedRoute } from './components/RoleProtectedRoute';
 import { Layout } from './components/layout/Layout';
-import { SkeletonLoader } from './components/skeletons/SkeletonLoader';
 import { UserRole } from './types/api';
 
 // Lazy load all page components for optimal code splitting
@@ -31,7 +30,7 @@ function App() {
   return (
     <Router>
       <AppInitializer />
-      <Suspense fallback={<SkeletonLoader />}>
+      <Suspense fallback={null}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/onboarding" element={<Onboarding />} />
