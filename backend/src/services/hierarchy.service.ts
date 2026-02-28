@@ -2,6 +2,9 @@ import { Branch } from '@prisma/client';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
 
+const STAFF_WORD_REGEX = /\bstaff\b/i;
+const isStaffCategoryName = (name: string) => STAFF_WORD_REGEX.test(name);
+
 
 export const hierarchyService = {
     /**
@@ -11,7 +14,7 @@ export const hierarchyService = {
         branch: Branch,
         departmentId: string
     ) {
-        return await prisma.spendingCategory.findMany({
+        const categories = await prisma.spendingCategory.findMany({
             where: {
                 branch,
                 departmentId,
@@ -25,6 +28,7 @@ export const hierarchyService = {
                 name: 'asc',
             },
         });
+        return categories.filter((category) => !isStaffCategoryName(category.name));
     },
 
     /**
@@ -44,18 +48,19 @@ export const hierarchyService = {
                 name: 'asc',
             },
         });
+        const nonStaffCategories = categories.filter((category) => !isStaffCategoryName(category.name));
 
         // Build tree structure
         const categoryMap = new Map();
         const rootCategories: any[] = [];
 
         // First pass: create map of all categories
-        categories.forEach((cat) => {
+        nonStaffCategories.forEach((cat) => {
             categoryMap.set(cat.id, { ...cat, children: [] });
         });
 
         // Second pass: build tree
-        categories.forEach((cat) => {
+        nonStaffCategories.forEach((cat) => {
             const node = categoryMap.get(cat.id)!;
             if (cat.parentId) {
                 const parent = categoryMap.get(cat.parentId);

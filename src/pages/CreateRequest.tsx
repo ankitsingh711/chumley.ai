@@ -88,8 +88,11 @@ export default function CreateRequest() {
         }
     }, [branch, selectedDepartmentId]);
 
-    const parentCategories = categories.filter(c => !c.parentId && c.name !== 'Staff Cost');
-    const subCategories = selectedCategoryId ? categories.filter(c => c.parentId === selectedCategoryId && c.name !== 'Staff Cost') : [];
+    const isStaffCategory = (name: string) => /\bstaff\b/i.test(name);
+    const parentCategories = categories.filter(c => !c.parentId && !isStaffCategory(c.name));
+    const subCategories = selectedCategoryId
+        ? categories.filter(c => c.parentId === selectedCategoryId && !isStaffCategory(c.name))
+        : [];
 
     const addItem = () => {
         setItems([...items, { description: '', quantity: '', unitPrice: '' }]);
@@ -452,4 +455,3 @@ export default function CreateRequest() {
         </div>
     );
 }
-

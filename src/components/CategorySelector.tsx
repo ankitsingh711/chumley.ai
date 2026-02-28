@@ -22,6 +22,17 @@ interface FlattenedCategory extends Category {
     path: string[];
 }
 
+const STAFF_WORD_REGEX = /\bstaff\b/i;
+
+const removeStaffCategories = (nodes: CategoryTree): CategoryTree => {
+    return nodes
+        .filter(node => !STAFF_WORD_REGEX.test(node.name))
+        .map(node => ({
+            ...node,
+            children: node.children ? removeStaffCategories(node.children) : [],
+        }));
+};
+
 export const CategorySelector: React.FC<CategorySelectorProps> = ({
     value,
     onChange,
@@ -61,7 +72,8 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
                     departmentId
                 );
                 if (mounted) {
-                    setCategories(tree.filter(c => !c.parentId));
+                    const filteredTree = removeStaffCategories(tree);
+                    setCategories(filteredTree.filter(c => !c.parentId));
                 }
             } catch (err) {
                 if (mounted) {

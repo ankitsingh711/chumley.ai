@@ -98,7 +98,6 @@ export const fullHierarchy = {
                     "Mobiles": []
                 },
                 "Entertainment": {
-                    "Staff": [],
                     "Client": []
                 },
                 "Stationary": [],
@@ -136,8 +135,7 @@ export const fullHierarchy = {
             },
             "HR & Recruitment": {
                 "Training": {
-                    "Engineers": [],
-                    "Staff": []
+                    "Engineers": []
                 },
                 "Software": {
                     "HR": [],

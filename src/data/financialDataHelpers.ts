@@ -11,11 +11,14 @@ export interface FinancialEntry {
 
 // Combine all data
 const allRawData = [...dataHistorical, ...data2025];
+const STAFF_WORD_REGEX = /\bstaff\b/i;
 
 // Parse into structured entries
-const allEntries: FinancialEntry[] = allRawData.map(([date, category, subCategory, amount]) => ({
-    date, category, subCategory, amount,
-}));
+const allEntries: FinancialEntry[] = allRawData
+    .map(([date, category, subCategory, amount]) => ({
+        date, category, subCategory, amount,
+    }))
+    .filter(({ category, subCategory }) => !STAFF_WORD_REGEX.test(category) && !STAFF_WORD_REGEX.test(subCategory));
 
 /**
  * Get total spend per category (top-level department) across a date range
