@@ -13,6 +13,9 @@ router.get('/', departmentController.getAllDepartments);
 // Get department by ID
 router.get('/:id', departmentController.getDepartmentById);
 
+// Update department (budget/description)
+router.patch('/:id', departmentController.updateDepartment);
+
 // Get department spending
 router.get('/:id/spending', departmentController.getDepartmentSpending);
 

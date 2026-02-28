@@ -185,7 +185,7 @@ export function Chatbot({ isOpen, onClose }: ChatbotProps) {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed bottom-4 left-4 right-4 z-50 flex h-[min(85vh,46rem)] max-h-[46rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_28px_80px_-24px_rgba(15,23,42,0.5)] sm:bottom-6 sm:left-auto sm:right-6 sm:w-[27rem] sm:max-w-[27rem]">
+        <div className="fixed bottom-4 left-4 right-4 z-50 flex h-[min(80vh,42rem)] max-h-[42rem] flex-col overflow-hidden rounded-[28px] border border-slate-200/80 bg-white shadow-[0_28px_80px_-24px_rgba(15,23,42,0.5)] sm:bottom-6 sm:left-auto sm:right-6 sm:w-[24rem] sm:max-w-[24rem]">
             {/* Header */}
             <div className="relative overflow-hidden bg-gradient-to-br from-primary-700 via-primary-600 to-sky-600 px-5 py-4 text-white">
                 <div className="pointer-events-none absolute -left-8 top-6 h-20 w-20 rounded-full bg-white/15 blur-2xl" />

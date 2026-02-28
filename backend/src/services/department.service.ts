@@ -6,6 +6,11 @@ interface DateRange {
     endDate: Date;
 }
 
+interface UpdateDepartmentData {
+    budget?: number;
+    description?: string | null;
+}
+
 const DEPARTMENT_NAME_EXCLUSIONS = ['Royston', 'Roystton', 'royston', 'roystton'];
 
 export class DepartmentService {
@@ -116,6 +121,57 @@ export class DepartmentService {
         });
 
         return spendingByCategory;
+    }
+
+    /**
+     * Update department fields (budget, description)
+     */
+    async updateDepartment(
+        departmentId: string,
+        data: UpdateDepartmentData,
+        user?: { role?: string; departmentId?: string }
+    ) {
+        const existingDepartment = await prisma.department.findUnique({
+            where: { id: departmentId },
+            select: { id: true }
+        });
+
+        if (!existingDepartment) {
+            return null;
+        }
+
+        // RBAC: System Admin can update any department, Senior Manager only their own.
+        if (user) {
+            const role = user.role;
+            const userDepartmentId = user.departmentId;
+
+            if (role === 'SYSTEM_ADMIN') {
+                // allowed
+            } else if (role === 'SENIOR_MANAGER') {
+                if (!userDepartmentId || userDepartmentId !== departmentId) {
+                    throw new Error('FORBIDDEN');
+                }
+            } else {
+                throw new Error('FORBIDDEN');
+            }
+        }
+
+        const updateData: UpdateDepartmentData = {};
+
+        if (typeof data.budget === 'number') {
+            updateData.budget = data.budget;
+        }
+
+        if (Object.prototype.hasOwnProperty.call(data, 'description')) {
+            updateData.description = data.description ?? null;
+        }
+
+        const updatedDepartment = await prisma.department.update({
+            where: { id: departmentId },
+            data: updateData
+        });
+
+        return updatedDepartment;
     }
 
     /**

@@ -321,384 +321,428 @@ export default function UserPermissions() {
         );
     };
 
+    const roleLibrary: Record<string, { title: string; summary: string; panel: string; capabilities: string[] }> = {
+        [UserRole.SYSTEM_ADMIN]: {
+            title: 'System Administrator',
+            summary: 'Owns workspace governance, user access, and global purchasing controls.',
+            panel: 'bg-gradient-to-br from-violet-50 to-fuchsia-50 border-violet-100',
+            capabilities: ['Manage all users', 'Configure system settings', 'Approve all requests', 'Control supplier access'],
+        },
+        ADMIN: {
+            title: 'Administrator',
+            summary: 'Oversees operational configuration with broad management privileges.',
+            panel: 'bg-gradient-to-br from-violet-50 to-fuchsia-50 border-violet-100',
+            capabilities: ['Manage workspace users', 'Update role assignments', 'Review procurement activity', 'Control supplier access'],
+        },
+        [UserRole.SENIOR_MANAGER]: {
+            title: 'Senior Manager',
+            summary: 'Leads departmental operations, approvals, and spend governance.',
+            panel: 'bg-gradient-to-br from-indigo-50 to-sky-50 border-indigo-100',
+            capabilities: ['Approve high-value requests', 'Review team spend', 'Manage team permissions', 'Create purchase requests'],
+        },
+        [UserRole.MANAGER]: {
+            title: 'Manager',
+            summary: 'Manages day-to-day approvals and oversight for direct reports.',
+            panel: 'bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100',
+            capabilities: ['Approve team requests', 'View team activity', 'Create purchase requests', 'Manage own team members'],
+        },
+        [UserRole.MEMBER]: {
+            title: 'Team Member',
+            summary: 'Creates purchase requests and tracks personal request history.',
+            panel: 'bg-gradient-to-br from-slate-50 to-gray-50 border-slate-200',
+            capabilities: ['Create purchase requests', 'Track own request status', 'View own history', 'Manage personal profile'],
+        },
+    };
+
+    const selectedRoleKey = String(roleValue || selectedUser?.role || UserRole.MEMBER);
+    const activeRoleMeta = roleLibrary[selectedRoleKey] || roleLibrary[UserRole.MEMBER];
+    const totalMembers = users.length;
+    const activeMembers = users.filter((member) => (member.status || UserStatus.ACTIVE) === UserStatus.ACTIVE).length;
+    const pendingMembers = users.filter((member) => member.status === UserStatus.PENDING).length;
+    const suspendedMembers = users.filter((member) => member.status === UserStatus.SUSPENDED).length;
+    const canInviteUsers = currentUser?.role === UserRole.SYSTEM_ADMIN || currentUser?.role === UserRole.SENIOR_MANAGER;
+
     if (loading) {
         return <UserPermissionsSkeleton />;
     }
 
     return (
-        <div className="flex h-[calc(100vh-theme(spacing.20))] gap-8">
-            {/* Left Sidebar: Navigation & Organization */}
-            <div className="w-80 flex-shrink-0 flex flex-col gap-6">
+        <div className="space-y-6">
+            <section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-blue-900 px-6 py-7 text-white shadow-[0_18px_45px_-30px_rgba(15,23,42,0.85)] sm:px-8">
+                <div className="absolute -right-20 -top-24 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl" />
+                <div className="absolute -left-24 -bottom-24 h-60 w-60 rounded-full bg-indigo-300/15 blur-3xl" />
+                <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">Control Center</p>
+                        <h1 className="mt-2 text-3xl font-semibold tracking-tight">Workspace Settings</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-blue-100/85">
+                            Manage member access, adjust permissions, and keep your teams structured with fewer clicks.
+                        </p>
+                    </div>
+                    {activeTab === 'permissions' && (
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Members</p>
+                                <p className="mt-1 text-xl font-semibold">{totalMembers}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Active</p>
+                                <p className="mt-1 text-xl font-semibold">{activeMembers}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Pending</p>
+                                <p className="mt-1 text-xl font-semibold">{pendingMembers}</p>
+                            </div>
+                            <div className="rounded-xl border border-white/20 bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <p className="text-[10px] uppercase tracking-[0.18em] text-blue-100/80">Suspended</p>
+                                <p className="mt-1 text-xl font-semibold">{suspendedMembers}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
 
-                {/* Navigation Group */}
-                <div className="space-y-1">
-                    <h3 className="px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Settings</h3>
-                    {currentUser?.role === UserRole.SYSTEM_ADMIN && (
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[340px,minmax(0,1fr)]">
+                <aside className="space-y-5">
+                    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+                        <p className="px-2 pb-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Settings</p>
+                        {currentUser?.role === UserRole.SYSTEM_ADMIN && (
+                            <button
+                                onClick={() => setActiveTab('permissions')}
+                                className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-all ${activeTab === 'permissions'
+                                    ? 'bg-gradient-to-r from-primary-50 to-blue-50 text-primary-800 ring-1 ring-primary-200'
+                                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    }`}
+                            >
+                                <span className={`rounded-lg p-2 ${activeTab === 'permissions' ? 'bg-white text-primary-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
+                                    <Shield className="h-4 w-4" />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                    <span className="block font-medium">User Permissions</span>
+                                    <span className="block text-xs text-slate-500">Roles, approvals, and access</span>
+                                </span>
+                                {activeTab === 'permissions' && <ChevronRight className="h-4 w-4 text-primary-500" />}
+                            </button>
+                        )}
                         <button
-                            onClick={() => setActiveTab('permissions')}
-                            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${activeTab === 'permissions'
-                                ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200'
-                                : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
+                            onClick={() => setActiveTab('profile')}
+                            className={`group mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-all ${activeTab === 'profile'
+                                ? 'bg-gradient-to-r from-primary-50 to-blue-50 text-primary-800 ring-1 ring-primary-200'
+                                : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                                 }`}
                         >
-                            <Shield className="h-4 w-4" />
-                            <span>User Permissions</span>
-                            {activeTab === 'permissions' && <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />}
+                            <span className={`rounded-lg p-2 ${activeTab === 'profile' ? 'bg-white text-primary-700' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'}`}>
+                                <UserIcon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <span className="block font-medium">My Profile</span>
+                                <span className="block text-xs text-slate-500">Personal details and account</span>
+                            </span>
+                            {activeTab === 'profile' && <ChevronRight className="h-4 w-4 text-primary-500" />}
                         </button>
-                    )}
-                    <button
-                        onClick={() => setActiveTab('profile')}
-                        className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all ${activeTab === 'profile'
-                            ? 'bg-white text-primary-700 shadow-sm ring-1 ring-gray-200'
-                            : 'text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
-                            }`}
-                    >
-                        <UserIcon className="h-4 w-4" />
-                        <span>My Profile</span>
-                        {activeTab === 'profile' && <ChevronRight className="h-4 w-4 ml-auto text-gray-400" />}
-                    </button>
+                    </div>
 
-                </div>
+                    {activeTab === 'permissions' && (
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="border-b border-slate-100 p-4">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <div>
+                                        <h2 className="text-base font-semibold text-slate-900">Team Directory</h2>
+                                        <p className="text-xs text-slate-500">{filteredUsers.length} visible users</p>
+                                    </div>
+                                    {canInviteUsers && (
+                                        <button
+                                            onClick={() => setShowInviteModal(true)}
+                                            className="inline-flex items-center gap-2 rounded-lg border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-100"
+                                            title="Invite User"
+                                        >
+                                            <UserPlus className="h-3.5 w-3.5" />
+                                            Invite
+                                        </button>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or email..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-primary-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-200"
+                                    />
+                                </div>
+                            </div>
 
-                {/* Organization List - Only show when in Permissions tab */}
-                {activeTab === 'permissions' && (
-                    <div className="flex-1 flex flex-col min-h-0 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="p-4 border-b border-gray-100">
-                            <div className="flex items-center justify-between mb-3">
-                                <h2 className="font-semibold text-gray-900">Team Members</h2>
-                                {(currentUser?.role === UserRole.SYSTEM_ADMIN || currentUser?.role === UserRole.SENIOR_MANAGER) && (
+                            <div className="max-h-[48vh] overflow-y-auto p-2 custom-scrollbar xl:max-h-[calc(100vh-27.5rem)]">
+                                {filteredUsers.map((member) => (
                                     <button
-                                        onClick={() => setShowInviteModal(true)}
-                                        className="text-primary-600 hover:text-primary-700 hover:bg-primary-50 p-1.5 rounded-md transition-colors"
-                                        title="Invite User"
+                                        key={member.id}
+                                        onClick={() => setSelectedUser(member)}
+                                        className={`mb-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-all ${selectedUser?.id === member.id
+                                            ? 'bg-gradient-to-r from-primary-50 to-blue-50 ring-1 ring-primary-200'
+                                            : 'hover:bg-slate-50'
+                                            }`}
                                     >
-                                        <UserPlus className="h-4 w-4" />
+                                        <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-semibold text-white ${selectedUser?.id === member.id ? 'bg-primary-600' : 'bg-slate-400'}`}>
+                                            {getInitials(member.name)}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className={`truncate text-sm font-medium ${selectedUser?.id === member.id ? 'text-primary-900' : 'text-slate-900'}`}>
+                                                {member.name}
+                                            </p>
+                                            <p className="truncate text-xs text-slate-500">{getDepartmentName(member.department) || 'No Department'}</p>
+                                        </div>
+                                        <div className="hidden sm:block">
+                                            <StatusBadge status={member.status || UserStatus.ACTIVE} />
+                                        </div>
                                     </button>
+                                ))}
+
+                                {filteredUsers.length === 0 && (
+                                    <div className="rounded-xl border border-dashed border-slate-200 px-4 py-8 text-center">
+                                        <p className="text-sm font-medium text-slate-700">No members found</p>
+                                        <p className="mt-1 text-xs text-slate-500">Try a different name or clear search.</p>
+                                    </div>
                                 )}
                             </div>
-                            <div className="relative">
-                                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full rounded-lg border-0 bg-gray-50 py-2 pl-9 pr-4 text-sm text-gray-900 ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-primary-600 sm:text-sm sm:leading-6"
-                                />
-                            </div>
                         </div>
+                    )}
+                </aside>
 
-                        <div className="flex-1 overflow-y-auto p-2 space-y-0.5 custom-scrollbar">
-                            {filteredUsers.map(user => (
-                                <div
-                                    key={user.id}
-                                    onClick={() => setSelectedUser(user)}
-                                    className={`group flex items-center gap-3 rounded-lg p-2.5 cursor-pointer transition-all ${selectedUser?.id === user.id
-                                        ? 'bg-primary-50/60 ring-1 ring-primary-100'
-                                        : 'hover:bg-gray-50'
-                                        }`}
-                                >
-                                    <div className={`h-9 w-9 rounded-full flex items-center justify-center text-white font-medium text-xs shadow-sm ring-2 ring-white ${selectedUser?.id === user.id ? 'bg-primary-600' : 'bg-slate-400 group-hover:bg-slate-500 transition-colors'
-                                        }`}>
-                                        {getInitials(user.name)}
-                                    </div>
-                                    <div className="flex-1 overflow-hidden min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <p className={`truncate text-sm font-medium ${selectedUser?.id === user.id ? 'text-primary-900' : 'text-gray-900'
-                                                }`}>
-                                                {user.name}
+                <section className="min-h-[34rem] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    {activeTab === 'permissions' && selectedUser ? (
+                        <div className="h-full overflow-y-auto">
+                            <div className="space-y-6 p-6 md:p-8">
+                                <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-gradient-to-br from-white via-slate-50 to-slate-100 p-6">
+                                    <div className="absolute -right-12 -top-12 h-40 w-40 rounded-full bg-primary-200/40 blur-3xl" />
+                                    <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                                        <div className="flex items-start gap-4">
+                                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-blue-700 text-2xl font-bold text-white shadow-lg ring-4 ring-white">
+                                                {getInitials(selectedUser.name)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h2 className="text-2xl font-semibold text-slate-900">{selectedUser.name}</h2>
+                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1">
+                                                        <Mail className="h-3.5 w-3.5" />
+                                                        <span className="max-w-[20rem] truncate">{selectedUser.email}</span>
+                                                    </span>
+                                                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/80 px-2.5 py-1">
+                                                        <Building className="h-3.5 w-3.5" />
+                                                        {getDepartmentName(selectedUser.department) || 'Global'}
+                                                    </span>
+                                                </div>
+                                                <div className="mt-3 flex items-center gap-2">
+                                                    <RoleBadge role={selectedUser.role} />
+                                                    <StatusBadge status={selectedUser.status || UserStatus.ACTIVE} />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="w-full rounded-xl border border-slate-200 bg-white p-4 shadow-sm lg:w-[23rem]">
+                                            <label className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Role Assignment</label>
+                                            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                                                <Select
+                                                    value={roleValue}
+                                                    onChange={(val) => setRoleValue(val as UserRole)}
+                                                    options={[
+                                                        { value: UserRole.MEMBER, label: 'Team Member' },
+                                                        { value: UserRole.MANAGER, label: 'Manager' },
+                                                        { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
+                                                    ]}
+                                                    className="w-full sm:flex-1"
+                                                />
+                                                <Button
+                                                    onClick={handleSaveChanges}
+                                                    disabled={saving || roleValue === selectedUser.role}
+                                                    className={`${roleValue !== selectedUser.role ? 'bg-primary-600 text-white hover:bg-primary-700' : 'bg-slate-100 text-slate-400'} sm:w-auto`}
+                                                >
+                                                    {saving ? 'Saving...' : 'Save'}
+                                                </Button>
+                                            </div>
+                                            <p className={`mt-2 text-xs ${roleValue !== selectedUser.role ? 'text-primary-700' : 'text-slate-500'}`}>
+                                                {roleValue !== selectedUser.role ? 'Role update pending. Save to apply changes.' : 'No unsaved role updates.'}
                                             </p>
                                         </div>
-                                        <p className="truncate text-xs text-gray-500">{getDepartmentName(user.department) || 'No Dept.'}</p>
                                     </div>
-                                    {selectedUser?.id === user.id && (
-                                        <ChevronRight className="h-4 w-4 text-primary-400" />
-                                    )}
                                 </div>
-                            ))}
-                            {filteredUsers.length === 0 && (
-                                <div className="p-4 text-center text-sm text-gray-500">
-                                    No members found
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </div>
 
-            {/* Main Content Area */}
-            <div className="flex-1 min-w-0 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col">
-                {activeTab === 'permissions' && selectedUser ? (
-                    <>
-                        {/* Header Banner */}
-                        <div className="relative bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 p-8">
-                            <div className="flex items-start justify-between relative z-10">
-                                <div className="flex gap-5">
-                                    <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-primary-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg ring-4 ring-white">
-                                        {getInitials(selectedUser.name)}
-                                    </div>
-                                    <div className="pt-1">
-                                        <h1 className="text-2xl font-bold text-gray-900">{selectedUser.name}</h1>
-                                        <div className="flex items-center gap-3 mt-2 text-sm text-gray-500">
-                                            <div className="flex items-center gap-1.5">
-                                                <Mail className="h-3.5 w-3.5" />
-                                                {selectedUser.email}
+                                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr),290px]">
+                                    <div className="space-y-6">
+                                        <div className={`rounded-2xl border p-6 ${activeRoleMeta.panel}`}>
+                                            <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                                                <Shield className="h-3.5 w-3.5" />
+                                                Role Capabilities
                                             </div>
-                                            <div className="h-1 w-1 rounded-full bg-gray-300"></div>
-                                            <div className="flex items-center gap-1.5">
-                                                <Building className="h-3.5 w-3.5" />
-                                                {getDepartmentName(selectedUser.department) || 'Global'}
+                                            <h3 className="text-xl font-semibold text-slate-900">{activeRoleMeta.title}</h3>
+                                            <p className="mt-2 text-sm text-slate-600">{activeRoleMeta.summary}</p>
+                                            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                {activeRoleMeta.capabilities.map((capability) => (
+                                                    <div key={capability} className="flex items-center gap-2 rounded-xl border border-white/60 bg-white/60 px-3 py-2 text-sm text-slate-700">
+                                                        <Check className="h-4 w-4 text-emerald-500" />
+                                                        <span>{capability}</span>
+                                                    </div>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="mt-3 flex gap-2">
-                                            <RoleBadge role={selectedUser.role} />
-                                            <StatusBadge status={selectedUser.status || UserStatus.ACTIVE} />
+
+                                        <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                                            <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Access Snapshot</h3>
+                                            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Department</p>
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">{getDepartmentName(selectedUser.department) || 'Global'}</p>
+                                                </div>
+                                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Status</p>
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">{(selectedUser.status || UserStatus.ACTIVE).toLowerCase()}</p>
+                                                </div>
+                                                <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                                                    <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">Member Since</p>
+                                                    <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                        {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Header Actions */}
-                                <div className="flex flex-col items-end gap-3">
-                                    <div className="flex items-center gap-3 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
-                                        <div className="px-3 py-1.5 border-r border-gray-100">
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5">Role Assignment</label>
-                                            <Select
-                                                value={roleValue}
-                                                onChange={(val) => setRoleValue(val as UserRole)}
-                                                options={[
-                                                    { value: UserRole.MEMBER, label: 'Team Member' },
-                                                    { value: UserRole.MANAGER, label: 'Manager' },
-                                                    { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
-                                                ]}
-                                                triggerClassName="border-none p-0 h-auto text-sm font-semibold text-gray-900 focus:ring-0 w-32 bg-transparent"
-                                                className="w-auto h-auto"
-                                            />
-                                        </div>
-                                        <Button
-                                            onClick={handleSaveChanges}
-                                            disabled={saving || roleValue === selectedUser.role}
-                                            className={`mx-1 ${roleValue !== selectedUser.role ? 'bg-primary-600 text-white shadow-md' : 'bg-gray-100 text-gray-400'}`}
-                                            size="sm"
-                                        >
-                                            {saving ? 'Saving...' : 'Save Changes'}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Decorative Pattern */}
-                            <div className="absolute top-0 right-0 w-64 h-full opacity-[0.03] bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:16px_16px] pointer-events-none"></div>
-                        </div>
-
-                        {/* Scrolling Content */}
-                        <div className="flex-1 overflow-y-auto p-8">
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                {/* Left Column: Info & Permissions */}
-                                <div className="lg:col-span-2 space-y-8">
-
-                                    {/* Role Capabilities Card */}
-                                    <section>
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                            <Shield className="h-4 w-4 text-primary-500" />
-                                            Role Capabilities
-                                        </h3>
-                                        <div className={`rounded-xl border p-5 ${roleValue === UserRole.SYSTEM_ADMIN ? 'bg-purple-50/50 border-purple-100' :
-                                            roleValue === UserRole.SENIOR_MANAGER ? 'bg-indigo-50/50 border-indigo-100' :
-                                                roleValue === UserRole.MANAGER ? 'bg-blue-50/50 border-blue-100' :
-                                                    'bg-gray-50/50 border-gray-100'
-                                            }`}>
-                                            <div className="flex items-start gap-4">
-                                                <div className={`p-2 rounded-lg ${roleValue === UserRole.SYSTEM_ADMIN ? 'bg-purple-100 text-purple-600' :
-                                                    roleValue === UserRole.SENIOR_MANAGER ? 'bg-indigo-100 text-indigo-600' :
-                                                        roleValue === UserRole.MANAGER ? 'bg-blue-100 text-blue-600' :
-                                                            'bg-white text-gray-500 border border-gray-200'
-                                                    }`}>
-                                                    <Shield className="h-6 w-6" />
+                                    <div className="space-y-4">
+                                        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                                            <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Metadata</h3>
+                                            <div className="mt-4 space-y-4">
+                                                <div>
+                                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">User ID</p>
+                                                    <p className="mt-1 inline-flex rounded-md border border-slate-200 bg-white px-2 py-1 font-mono text-xs text-slate-700">
+                                                        {selectedUser.id.split('-')[0]}...
+                                                    </p>
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-semibold text-gray-900 text-lg">
-                                                        {roleValue === UserRole.SYSTEM_ADMIN ? 'System Administrator' :
-                                                            roleValue === UserRole.SENIOR_MANAGER ? 'Senior Manager' :
-                                                                roleValue === UserRole.MANAGER ? 'Manager' : 'Team Member'}
-                                                    </h4>
-                                                    <p className="text-sm text-gray-600 mt-1 mb-4">
-                                                        {roleValue === UserRole.SYSTEM_ADMIN ? 'Full access to all system settings, users, and financial data.' :
-                                                            roleValue === UserRole.SENIOR_MANAGER ? 'Can manage budget, suppliers, and approve high-value requests.' :
-                                                                roleValue === UserRole.MANAGER ? 'Can approve team requests and manage direct reports.' :
-                                                                    'Basic access to create requests and view own history.'}
+                                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Joined</p>
+                                                    <p className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-700">
+                                                        <Calendar className="h-3.5 w-3.5 text-slate-500" />
+                                                        {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : 'N/A'}
                                                     </p>
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                                        {(roleValue === UserRole.SYSTEM_ADMIN || roleValue === UserRole.SENIOR_MANAGER || roleValue === UserRole.MANAGER) && (
-                                                            <div className="flex items-center gap-2 text-gray-700">
-                                                                <Check className="h-4 w-4 text-green-500" />
-                                                                <span>Approve Requests</span>
-                                                            </div>
-                                                        )}
-                                                        {(roleValue === UserRole.SYSTEM_ADMIN || roleValue === UserRole.SENIOR_MANAGER) && (
-                                                            <div className="flex items-center gap-2 text-gray-700">
-                                                                <Check className="h-4 w-4 text-green-500" />
-                                                                <span>Manage Suppliers</span>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center gap-2 text-gray-700">
-                                                            <Check className="h-4 w-4 text-green-500" />
-                                                            <span>Create Purchase Requests</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 text-gray-700">
-                                                            <Check className="h-4 w-4 text-green-500" />
-                                                            <span>View Own History</span>
-                                                        </div>
-                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-400">Role Preview</p>
+                                                    <p className="mt-1 text-sm font-medium text-slate-700">{activeRoleMeta.title}</p>
                                                 </div>
                                             </div>
                                         </div>
-                                    </section>
-                                </div>
 
-                                {/* Right Column: Meta & Actions */}
-                                <div className="space-y-6">
-                                    {/* User Meta Card */}
-                                    <div className="bg-gray-50 rounded-xl border border-gray-100 p-5 space-y-4">
-                                        <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-widest">Metadata</h3>
-                                        <div className="space-y-3">
-                                            <div>
-                                                <div className="text-xs text-gray-400 mb-0.5">User ID</div>
-                                                <div className="text-xs font-mono text-gray-600 bg-white px-2 py-1 rounded border border-gray-200 inline-block">{selectedUser.id.split('-')[0]}...</div>
-                                            </div>
-                                            <div>
-                                                <div className="text-xs text-gray-400 mb-0.5">Joined</div>
-                                                <div className="text-sm text-gray-700 flex items-center gap-2">
-                                                    <Calendar className="h-3.5 w-3.5" />
-                                                    {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString() : 'N/A'}
+                                        {currentUser?.role === UserRole.SYSTEM_ADMIN && selectedUser.id !== currentUser.id && (
+                                            <div className="rounded-2xl border border-red-100 bg-red-50/40 p-5">
+                                                <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-red-500">Danger Zone</h3>
+                                                <div className="mt-3 space-y-2.5">
+                                                    <button
+                                                        onClick={() => handleUpdateStatus(
+                                                            selectedUser.status === UserStatus.SUSPENDED ? UserStatus.ACTIVE : UserStatus.SUSPENDED
+                                                        )}
+                                                        className={`flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${selectedUser.status === UserStatus.SUSPENDED
+                                                            ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
+                                                            : 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                                            }`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            {selectedUser.status === UserStatus.SUSPENDED ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                                                            {selectedUser.status === UserStatus.SUSPENDED ? 'Activate User' : 'Suspend Access'}
+                                                        </span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => setShowDeleteModal(true)}
+                                                        className="flex w-full items-center justify-between rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700 transition-colors hover:bg-red-100"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <Trash2 className="h-4 w-4" />
+                                                            Delete User
+                                                        </span>
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <div className="text-xs text-gray-400 mb-0.5">Last Active</div>
-                                                <div className="text-sm text-gray-700">Today, 10:42 AM</div>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
-
-                                    {/* Admin Actions */}
-                                    {currentUser?.role === UserRole.SYSTEM_ADMIN && selectedUser.id !== currentUser.id && (
-                                        <div className="space-y-3 pt-4 border-t border-gray-100">
-                                            <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-widest">Danger Zone</h3>
-
-                                            <button
-                                                onClick={() => handleUpdateStatus(
-                                                    selectedUser.status === UserStatus.SUSPENDED ? UserStatus.ACTIVE : UserStatus.SUSPENDED
-                                                )}
-                                                className={`w-full flex items-center justify-between p-3 rounded-lg border text-sm font-medium transition-colors ${selectedUser.status === UserStatus.SUSPENDED
-                                                    ? "bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                                                    : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                                                    }`}
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    {selectedUser.status === UserStatus.SUSPENDED ? <CheckCircle className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
-                                                    {selectedUser.status === UserStatus.SUSPENDED ? 'Activate User' : 'Suspend Access'}
-                                                </span>
-                                            </button>
-
-                                            <button
-                                                onClick={() => setShowDeleteModal(true)}
-                                                className="w-full flex items-center justify-between p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm font-medium hover:bg-red-100 transition-colors"
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    <Trash2 className="h-4 w-4" />
-                                                    Delete User
-                                                </span>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         </div>
-                    </>
-                ) : activeTab === 'profile' && currentUser ? (
-                    // My Profile View
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="max-w-3xl mx-auto p-8 space-y-8">
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900">My Profile</h1>
-                                <p className="text-gray-500 mt-1">Manage your account settings and preferences</p>
-                            </div>
-
-                            <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center gap-6">
-                                <div className="h-24 w-24 rounded-full bg-primary-600 flex items-center justify-center text-white text-3xl font-bold border-4 border-primary-50">
-                                    {getInitials(currentUser.name)}
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h2 className="text-xl font-bold text-gray-900">{currentUser.name}</h2>
-                                            <p className="text-gray-500">{currentUser.role} • {currentUser.email}</p>
-                                            <div className="flex items-center gap-2 mt-2">
-                                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${currentUser.role === 'SYSTEM_ADMIN' ? 'bg-purple-100 text-purple-800' :
-                                                    currentUser.role === 'SENIOR_MANAGER' ? 'bg-blue-100 text-blue-800' :
-                                                        currentUser.role === 'MANAGER' ? 'bg-indigo-100 text-indigo-800' :
-                                                            'bg-gray-100 text-gray-800'
-                                                    }`}>
-                                                    {currentUser.role.replace('_', ' ')}
-                                                </span>
-                                                <span className="text-sm text-gray-400">
-                                                    • {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'No Department')}
-                                                </span>
+                    ) : activeTab === 'profile' && currentUser ? (
+                        <div className="h-full overflow-y-auto">
+                            <div className="space-y-6 p-6 md:p-8">
+                                <div className="rounded-2xl border border-slate-200 bg-gradient-to-r from-white via-slate-50 to-blue-50 p-6">
+                                    <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-600 to-blue-700 text-2xl font-bold text-white shadow-lg ring-4 ring-white">
+                                                {getInitials(currentUser.name)}
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-500">My Account</p>
+                                                <h2 className="mt-1 text-2xl font-semibold text-slate-900">{currentUser.name}</h2>
+                                                <p className="mt-1 text-sm text-slate-600">{currentUser.email}</p>
+                                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                    <RoleBadge role={currentUser.role} />
+                                                    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                        {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'No Department')}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <Button variant="outline" size="sm" onClick={() => setIsEditProfileOpen(true)}>
+                                        <Button variant="outline" onClick={() => setIsEditProfileOpen(true)} className="self-start md:self-auto">
                                             Edit Profile
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
-                                    <h3 className="font-semibold text-gray-900 mb-4">Personal Info</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Full Name</label>
-                                            <p className="font-medium text-gray-900">{currentUser.name}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
-                                            <p className="text-gray-600">{currentUser.email}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
-                                            <p className="text-gray-500 italic">Not set</p>
+                                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                                        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">Personal Information</h3>
+                                        <div className="mt-4 space-y-4">
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Full Name</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">{currentUser.name}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Email</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">{currentUser.email}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Department</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">
+                                                    {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'None')}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                <div className="p-6 bg-gray-50 rounded-xl border border-gray-100">
-                                    <h3 className="font-semibold text-gray-900 mb-4">System Access</h3>
-                                    <div className="space-y-4">
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Role</label>
-                                            <p className="font-medium text-gray-900">{currentUser.role}</p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Department</label>
-                                            <p className="text-gray-600">
-                                                {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'None')}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <label className="text-xs font-bold text-gray-500 uppercase">Timezone</label>
-                                            <p className="text-gray-600">London (GMT+1)</p>
+                                    <div className="rounded-2xl border border-slate-200 bg-white p-6">
+                                        <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-500">System Access</h3>
+                                        <div className="mt-4 space-y-4">
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Role</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">{currentUser.role.replace('_', ' ')}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Account Status</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">Active</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Timezone</p>
+                                                <p className="mt-1 text-sm font-medium text-slate-900">Europe/London</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-gray-400">
-                        Select a user to view details
-                    </div>
-                )}
+                    ) : (
+                        <div className="flex h-full items-center justify-center p-8">
+                            <div className="max-w-sm rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-6 py-8 text-center">
+                                <p className="text-base font-semibold text-slate-700">No user selected</p>
+                                <p className="mt-2 text-sm text-slate-500">Choose a team member from the directory to view and edit permissions.</p>
+                            </div>
+                        </div>
+                    )}
+                </section>
             </div>
 
             {currentUser && (

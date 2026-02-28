@@ -1,16 +1,17 @@
-import { useEffect, useState, Fragment } from 'react';
-import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X, ChevronDown, Check } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X, ChevronDown, AlertTriangle, Calendar } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Transition } from '@headlessui/react';
+import { createPortal } from 'react-dom';
 import { Button } from '../components/ui/Button';
 import { StatCard } from '../components/dashboard/StatCard';
 import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
+import { DatePicker } from '../components/ui/DatePicker';
 import { departmentsApi, type Department } from '../services/departments.service';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
-import { getCategorySpendTotals } from '../data/financialDataHelpers';
+import { getCategoryBreakdown, getCategorySpendTotals, getLatestMonthRange } from '../data/financialDataHelpers';
 
 interface DepartmentBudget extends Department {
     spent: number;
@@ -39,17 +40,23 @@ export default function DepartmentBudgets() {
     const [baseDepartments, setBaseDepartments] = useState<Department[]>([]);
     const [departments, setDepartments] = useState<DepartmentBudget[]>([]);
     const [loading, setLoading] = useState(true);
-    const [budgetTimeframe, setBudgetTimeframe] = useState<number | string | undefined>(2025);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [dateRange, setDateRange] = useState({ start: '', end: '' });
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getLatestMonthRange);
     const [totalStats, setTotalStats] = useState({
         totalBudget: 0,
         totalSpent: 0,
         utilization: 0
     });
+    const [expandedDept, setExpandedDept] = useState<string | null>(null);
+    const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
 
     // Editing State
     const [editingDept, setEditingDept] = useState<DepartmentBudget | null>(null);
     const [editValue, setEditValue] = useState('');
     const [saving, setSaving] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
+    const [saveError, setSaveError] = useState<string | null>(null);
 
     // Check if current user can edit a department's budget
     const canEditBudget = (dept: DepartmentBudget): boolean => {
@@ -90,24 +97,10 @@ export default function DepartmentBudgets() {
     useEffect(() => {
         if (!baseDepartments.length) return;
 
-        // Convert timeframe to dateRange
-        let dateRange: { start?: string; end?: string } | undefined;
-        if (typeof budgetTimeframe === 'number') {
-            dateRange = { start: `${budgetTimeframe}-01-01`, end: `${budgetTimeframe}-12-31` };
-        } else if (typeof budgetTimeframe === 'string') {
-            const [monthStr, yearStr] = budgetTimeframe.split('-');
-            const months: Record<string, string> = {
-                Jan: '01', Feb: '02', Mar: '03', Apr: '04', May: '05', Jun: '06',
-                Jul: '07', Aug: '08', Sep: '09', Oct: '10', Nov: '11', Dec: '12'
-            };
-            const month = months[monthStr];
-            const year = `20${yearStr}`;
-            const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
-            dateRange = { start: `${year}-${month}-01`, end: `${year}-${month}-${lastDay}` };
-        }
+        const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
 
         // Get spending data for current timeframe
-        const departmentSpendMap = getCategorySpendTotals(dateRange);
+        const departmentSpendMap = getCategorySpendTotals(selectedRange);
 
         const processedDepts = baseDepartments.map((dept) => {
             // Use actual budget from DB or default to 0
@@ -140,21 +133,78 @@ export default function DepartmentBudgets() {
             totalSpent,
             utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
         });
-    }, [baseDepartments, budgetTimeframe]);
+    }, [baseDepartments, activeDateRange]);
+
+    useEffect(() => {
+        setExpandedDept(null);
+        setBreakdownData({});
+    }, [activeDateRange?.start, activeDateRange?.end]);
+
+    const applyDateRange = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        setDateRange({ start: '', end: '' });
+        setActiveDateRange({ start: startStr, end: endStr });
+        setShowDatePicker(false);
+    };
+
+    const applyCustomDateRange = () => {
+        if (!dateRange.start || !dateRange.end) return;
+        setActiveDateRange({ start: dateRange.start, end: dateRange.end });
+        setShowDatePicker(false);
+    };
+
+    const clearDateRange = () => {
+        setDateRange({ start: '', end: '' });
+        setActiveDateRange({});
+        setShowDatePicker(false);
+    };
 
     const handleEditClick = (dept: DepartmentBudget) => {
         setEditingDept(dept);
         setEditValue(dept.budget?.toString() || '0');
+        setValidationError(null);
+        setSaveError(null);
+    };
+
+    const handleCloseEditModal = (force = false) => {
+        if (saving && !force) return;
+        setEditingDept(null);
+        setEditValue('');
+        setValidationError(null);
+        setSaveError(null);
     };
 
     const handleSaveBudget = async () => {
         if (!editingDept) return;
 
-        setSaving(true);
-        try {
-            const newBudget = parseFloat(editValue);
-            if (isNaN(newBudget) || newBudget < 0) return; // Simple validation
+        const normalizedValue = editValue.replace(/,/g, '').trim();
+        const newBudget = Number(normalizedValue);
 
+        if (!normalizedValue || Number.isNaN(newBudget) || !Number.isFinite(newBudget)) {
+            setValidationError('Enter a valid annual budget amount.');
+            return;
+        }
+
+        if (newBudget < 0) {
+            setValidationError('Budget cannot be negative.');
+            return;
+        }
+
+        if (newBudget > 999999999999.99) {
+            setValidationError('Budget exceeds allowed limit.');
+            return;
+        }
+
+        setValidationError(null);
+        setSaveError(null);
+        setSaving(true);
+
+        try {
             await departmentsApi.update(editingDept.id, { budget: newBudget });
 
             // Update baseDepartments so the effect re-runs
@@ -162,13 +212,59 @@ export default function DepartmentBudgets() {
                 d.id === editingDept.id ? { ...d, budget: newBudget } : d
             ));
 
-            setEditingDept(null);
-        } catch (error) {
+            handleCloseEditModal(true);
+        } catch (error: any) {
             console.error('Failed to update budget:', error);
+            const apiError = error?.response?.data?.error;
+            if (typeof apiError === 'string') {
+                setSaveError(apiError);
+            } else if (Array.isArray(apiError) && typeof apiError[0]?.message === 'string') {
+                setSaveError(apiError[0].message);
+            } else {
+                setSaveError('Failed to save budget. Please try again.');
+            }
         } finally {
             setSaving(false);
         }
     };
+
+    const handleExpand = (dept: DepartmentBudget) => {
+        if (expandedDept === dept.id) {
+            setExpandedDept(null);
+            return;
+        }
+
+        setExpandedDept(dept.id);
+        if (!breakdownData[dept.id]) {
+            const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
+            const data = getCategoryBreakdown(dept.name, selectedRange);
+            setBreakdownData(prev => ({ ...prev, [dept.id]: data }));
+        }
+    };
+
+    useEffect(() => {
+        if (!editingDept) return;
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                handleCloseEditModal();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = 'unset';
+        };
+    }, [editingDept, saving]);
+
+    const draftBudget = Number(editValue.replace(/,/g, '').trim());
+    const previewBudget = Number.isFinite(draftBudget) ? draftBudget : 0;
+    const spentAmount = editingDept?.spent ?? 0;
+    const projectedRemaining = previewBudget - spentAmount;
+    const projectedUtilization = previewBudget > 0 ? Math.round((spentAmount / previewBudget) * 100) : 0;
 
     if (loading) {
         return <DepartmentBudgetsSkeleton />;
@@ -178,133 +274,67 @@ export default function DepartmentBudgets() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <Button variant="ghost" className="p-2" onClick={() => navigate('/')}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Departmental Budget Tracking</h1>
                         <p className="text-sm text-gray-500">Overview of budget allocation and consumption across all departments</p>
+                        {(activeDateRange.start || activeDateRange.end) && (
+                            <p className="text-sm text-gray-500 mt-1">
+                                Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
+                                <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
+                            </p>
+                        )}
                     </div>
                 </div>
 
-                <Menu as="div" className="relative inline-block text-left">
-                    <Menu.Button
-                        className="flex items-center gap-2 px-4 py-2 text-sm bg-white rounded-xl hover:bg-slate-50 focus:outline-none transition-all duration-200 border border-slate-200 shadow-sm ui-open:border-blue-500 ui-open:ring-4 ui-open:ring-blue-500/10"
-                    >
-                        <span className="font-semibold text-slate-700">
-                            {budgetTimeframe === 2025 ? '2025' :
-                                budgetTimeframe === 2024 ? '2024' :
-                                    typeof budgetTimeframe === 'string' ? budgetTimeframe.replace('-', ' ') :
-                                        'All Time'}
-                        </span>
-                        <ChevronDown className="h-4 w-4 text-slate-400 transition-transform duration-200 ui-open:rotate-180 ui-open:text-blue-500" />
-                    </Menu.Button>
+                <div className="relative">
+                    <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
+                        <Calendar className="mr-2 h-4 w-4" /> Date Range
+                    </Button>
 
-                    <Transition
-                        as={Fragment}
-                        enter="transition ease-out duration-100"
-                        enterFrom="transform opacity-0 scale-95"
-                        enterTo="transform opacity-100 scale-100"
-                        leave="transition ease-in duration-75"
-                        leaveFrom="transform opacity-100 scale-100"
-                        leaveTo="transform opacity-0 scale-95"
-                    >
-                        <Menu.Items className="absolute right-0 mt-2 w-52 z-20 origin-top-right bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden focus:outline-none max-h-[350px] overflow-y-auto ring-1 ring-black/5">
-                            <div className="flex flex-col py-1.5">
-                                {/* Yearly Section */}
-                                <div className="px-4 pt-3 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yearly</div>
-                                <div className="px-1.5 space-y-0.5">
-                                    {[
-                                        { label: '2025', value: 2025 },
-                                        { label: '2024', value: 2024 }
-                                    ].map((option) => (
-                                        <Menu.Item key={option.label}>
-                                            {({ active }: { active: boolean }) => (
-                                                <button
-                                                    onClick={() => setBudgetTimeframe(option.value)}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
-                                                        budgetTimeframe === option.value
-                                                            ? "bg-blue-50 text-blue-700 font-semibold"
-                                                            : active
-                                                                ? "bg-slate-50 text-slate-900 font-medium"
-                                                                : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                                                    )}
-                                                >
-                                                    <span className="w-7 flex-shrink-0 flex items-center justify-start">
-                                                        {budgetTimeframe === option.value && (
-                                                            <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
-                                                        )}
-                                                    </span>
-                                                    <span>{option.label}</span>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-
-                                <div className="h-px bg-slate-100 w-full my-2" />
-
-                                {/* Monthly Section */}
-                                <div className="px-4 pt-1 pb-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly (2025)</div>
-                                <div className="px-1.5 space-y-0.5">
-                                    {['Dec-25', 'Nov-25', 'Oct-25', 'Sep-25', 'Aug-25', 'Jul-25', 'Jun-25', 'May-25', 'Apr-25', 'Mar-25', 'Feb-25', 'Jan-25'].map((month) => (
-                                        <Menu.Item key={month}>
-                                            {({ active }: { active: boolean }) => (
-                                                <button
-                                                    onClick={() => setBudgetTimeframe(month)}
-                                                    className={cn(
-                                                        "w-full text-left px-2.5 py-2 text-sm flex items-center rounded-lg transition-all duration-200 group",
-                                                        budgetTimeframe === month
-                                                            ? "bg-blue-50 text-blue-700 font-semibold"
-                                                            : active
-                                                                ? "bg-slate-50 text-slate-900 font-medium"
-                                                                : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                                                    )}
-                                                >
-                                                    <span className="w-7 flex-shrink-0 flex items-center justify-start">
-                                                        {budgetTimeframe === month && (
-                                                            <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
-                                                        )}
-                                                    </span>
-                                                    <span>{month.replace('-', ' ')}</span>
-                                                </button>
-                                            )}
-                                        </Menu.Item>
-                                    ))}
-                                </div>
-
-                                <div className="h-px bg-slate-100 w-full my-2" />
-
-                                {/* All Time Section */}
-                                <div className="px-1.5 pb-1">
-                                    <Menu.Item>
-                                        {({ active }: { active: boolean }) => (
-                                            <button
-                                                onClick={() => setBudgetTimeframe(undefined)}
-                                                className={cn(
-                                                    "w-full text-left px-2.5 py-2.5 text-sm flex items-center rounded-lg transition-all duration-200 group",
-                                                    budgetTimeframe === undefined
-                                                        ? "bg-blue-50 text-blue-700 font-semibold"
-                                                        : active
-                                                            ? "bg-slate-50 text-slate-900 font-medium"
-                                                            : "text-slate-600 font-medium hover:bg-slate-50 hover:text-slate-900"
-                                                )}
-                                            >
-                                                <span className="w-7 flex-shrink-0 flex items-center justify-start">
-                                                    {budgetTimeframe === undefined && (
-                                                        <Check className="h-4 w-4 text-blue-600" strokeWidth={2.5} />
-                                                    )}
-                                                </span>
-                                                <span>All Time</span>
-                                            </button>
-                                        )}
-                                    </Menu.Item>
-                                </div>
+                    {showDatePicker && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-30">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-900">Select Date Range</h3>
+                                <button onClick={() => setShowDatePicker(false)} className="text-gray-400 hover:text-gray-600">
+                                    <X className="h-4 w-4" />
+                                </button>
                             </div>
-                        </Menu.Items>
-                    </Transition>
-                </Menu>
+
+                            <div className="space-y-2 mb-4">
+                                <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
+                                <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
+                                <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
+                                <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
+                            </div>
+
+                            <div className="border-t pt-4">
+                                <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <DatePicker
+                                        value={dateRange.start}
+                                        onChange={(val) => setDateRange({ ...dateRange, start: val })}
+                                        placeholder="Start Date"
+                                        className="text-sm w-full"
+                                    />
+                                    <DatePicker
+                                        value={dateRange.end}
+                                        onChange={(val) => setDateRange({ ...dateRange, end: val })}
+                                        placeholder="End Date"
+                                        className="text-sm w-full"
+                                    />
+                                </div>
+                                <Button
+                                    onClick={applyCustomDateRange}
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    disabled={!dateRange.start || !dateRange.end}
+                                >
+                                    Apply Custom Range
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* High Level Stats */}
@@ -345,19 +375,25 @@ export default function DepartmentBudgets() {
                                 const percentage = currentBudget > 0 ? Math.round((dept.spent / currentBudget) * 100) : 0;
                                 const remaining = currentBudget - dept.spent;
                                 const color = COLORS[index % COLORS.length];
+                                const isExpanded = expandedDept === dept.id;
+                                const breakdown = breakdownData[dept.id] || [];
 
                                 return (
                                     <div key={dept.id} className="relative group">
-                                        <div className="mb-2 flex items-end justify-between">
+                                        <div className="mb-2 flex items-end justify-between cursor-pointer" onClick={() => handleExpand(dept)}>
                                             <div>
                                                 <div className="flex items-center gap-2">
+                                                    <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isExpanded && "rotate-180")} />
                                                     <h4 className="font-semibold text-gray-900">{dept.name}</h4>
                                                     <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 font-medium">
                                                         {dept.metrics.userCount} Members
                                                     </span>
                                                     {canEditBudget(dept) && (
                                                         <button
-                                                            onClick={() => handleEditClick(dept)}
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                handleEditClick(dept);
+                                                            }}
                                                             className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
                                                             title="Edit Budget"
                                                         >
@@ -390,6 +426,29 @@ export default function DepartmentBudgets() {
                                                 }}
                                             />
                                         </div>
+
+                                        {isExpanded && (
+                                            <div className="mt-4 rounded-lg bg-gray-50 px-4 py-4 text-sm animate-in slide-in-from-top-2 duration-200">
+                                                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Category Breakdown</h4>
+
+                                                {breakdown.length > 0 ? (
+                                                    <div className="space-y-2">
+                                                        {breakdown.map((item, idx) => (
+                                                            <div key={idx} className="flex items-center justify-between text-xs">
+                                                                <span className="text-gray-600">{item.category}</span>
+                                                                <span className="font-medium text-gray-900">£{item.amount.toLocaleString()}</span>
+                                                            </div>
+                                                        ))}
+                                                        <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 text-xs font-semibold">
+                                                            <span>Total</span>
+                                                            <span>£{breakdown.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs italic text-gray-400">No detailed spend data available.</p>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -429,38 +488,115 @@ export default function DepartmentBudgets() {
             </div>
 
             {/* Edit Budget Modal */}
-            {editingDept && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setEditingDept(null)}>
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Set Budget: {editingDept.name}</h3>
-                            <button onClick={() => setEditingDept(null)} className="text-gray-400 hover:text-gray-600">
-                                <X className="h-5 w-5" />
-                            </button>
+            {editingDept && createPortal(
+                <div
+                    className="fixed inset-0 z-[120] bg-slate-950/50 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200"
+                    onClick={() => handleCloseEditModal()}
+                >
+                    <div
+                        className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-2 duration-200"
+                        onClick={(event) => event.stopPropagation()}
+                    >
+                        <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-blue-700 px-6 py-5 text-white">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-[0.18em] text-blue-100/80">Department Budget</p>
+                                    <h3 className="mt-1 text-2xl font-semibold leading-tight">Set Budget for {editingDept.name}</h3>
+                                    <p className="mt-1 text-sm text-blue-100/90">Update the annual cap and instantly recalculate remaining budget.</p>
+                                </div>
+                                <button
+                                    onClick={() => handleCloseEditModal()}
+                                    disabled={saving}
+                                    className="rounded-full p-2 text-blue-100 transition-colors hover:bg-white/15 hover:text-white disabled:opacity-60"
+                                    aria-label="Close budget modal"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Annual Budget Limit (£)</label>
-                                <input
-                                    type="number"
-                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-primary-500 focus:outline-none"
-                                    value={editValue}
-                                    onChange={(e) => setEditValue(e.target.value)}
-                                    min="0"
-                                    step="1000"
-                                />
+                        <div className="space-y-5 px-6 py-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current Budget</p>
+                                    <p className="mt-1 text-lg font-semibold text-slate-900">£{(editingDept.budget || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Spent</p>
+                                    <p className="mt-1 text-lg font-semibold text-slate-900">£{spentAmount.toLocaleString()}</p>
+                                </div>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Projected Remaining</p>
+                                    <p className={cn(
+                                        "mt-1 text-lg font-semibold",
+                                        projectedRemaining < 0 ? "text-red-600" : "text-emerald-600"
+                                    )}>
+                                        £{projectedRemaining.toLocaleString()}
+                                    </p>
+                                </div>
                             </div>
 
-                            <div className="flex justify-end gap-3 mt-6">
-                                <Button variant="ghost" onClick={() => setEditingDept(null)}>Cancel</Button>
-                                <Button onClick={handleSaveBudget} disabled={saving} className="bg-primary-700 hover:bg-primary-600">
-                                    {saving ? 'Saving...' : 'Save Changes'}
-                                </Button>
+                            <div>
+                                <label htmlFor="annual-budget-input" className="mb-1.5 block text-sm font-semibold text-slate-700">
+                                    Annual Budget Limit (£)
+                                </label>
+                                <div className="relative">
+                                    <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-slate-400">£</span>
+                                    <input
+                                        id="annual-budget-input"
+                                        type="text"
+                                        inputMode="decimal"
+                                        className={cn(
+                                            "w-full rounded-xl border px-10 py-3 text-base font-medium text-slate-900 outline-none transition-all",
+                                            "focus:ring-4 focus:ring-blue-500/10",
+                                            validationError ? "border-red-300 focus:border-red-400" : "border-slate-300 focus:border-blue-500"
+                                        )}
+                                        value={editValue}
+                                        onChange={(event) => {
+                                            setEditValue(event.target.value);
+                                            if (validationError) setValidationError(null);
+                                            if (saveError) setSaveError(null);
+                                        }}
+                                        placeholder="250000"
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
+                                    <span>Utilization Preview: {projectedUtilization}%</span>
+                                    <span>Use plain numbers, e.g. `350000`</span>
+                                </div>
                             </div>
+
+                            {(validationError || saveError) && (
+                                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                    <div className="flex items-start gap-2">
+                                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <p>{validationError || saveError}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => handleCloseEditModal()}
+                                disabled={saving}
+                                className="h-10 px-5 font-semibold"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleSaveBudget}
+                                disabled={saving}
+                                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm shadow-blue-200"
+                            >
+                                {saving ? 'Saving Budget...' : 'Save Budget'}
+                            </Button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
