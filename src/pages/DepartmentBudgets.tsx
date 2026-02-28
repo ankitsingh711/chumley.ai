@@ -274,6 +274,9 @@ export default function DepartmentBudgets() {
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
+                    <Button variant="ghost" className="p-2" onClick={() => navigate('/')}>
+                        <ArrowLeft className="h-5 w-5" />
+                    </Button>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">Departmental Budget Tracking</h1>
                         <p className="text-sm text-gray-500">Overview of budget allocation and consumption across all departments</p>

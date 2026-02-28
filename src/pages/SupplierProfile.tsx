@@ -16,6 +16,7 @@ import { MessageSupplierModal } from '../components/suppliers/MessageSupplierMod
 import { AddDocumentModal } from '../components/suppliers/AddDocumentModal';
 import { WriteReviewModal } from '../components/suppliers/WriteReviewModal';
 import { RequestDetailsModal } from '../components/requests/RequestDetailsModal';
+import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 
 import { useAuth } from '../hooks/useAuth';
 
@@ -42,6 +43,9 @@ export default function SupplierProfile() {
     const [reviewsTotal, setReviewsTotal] = useState(0);
     const [loadingReviews, setLoadingReviews] = useState(false);
     const [showReviewModal, setShowReviewModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectingSupplier, setRejectingSupplier] = useState(false);
+    const [rejectError, setRejectError] = useState<string | null>(null);
 
     // Request Modal & Filtering
     const [selectedRequest, setSelectedRequest] = useState<any>(null);
@@ -114,6 +118,22 @@ export default function SupplierProfile() {
         return <div className="flex items-center justify-center h-64">Supplier not found</div>;
     }
 
+    const handleConfirmRejectSupplier = async () => {
+        setRejectingSupplier(true);
+        setRejectError(null);
+
+        try {
+            const updated = await suppliersApi.reject(supplier.id);
+            setSupplier(updated);
+            setShowRejectModal(false);
+        } catch (err: any) {
+            console.error('Failed to reject supplier', err);
+            setRejectError(err?.response?.data?.error || 'Failed to reject supplier. Please try again.');
+        } finally {
+            setRejectingSupplier(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -169,15 +189,9 @@ export default function SupplierProfile() {
                                 <Button
                                     variant="outline"
                                     className="text-red-600 hover:bg-red-50 border-red-200"
-                                    onClick={async () => {
-                                        if (confirm('Are you sure you want to reject this supplier?')) {
-                                            try {
-                                                const updated = await suppliersApi.reject(supplier.id);
-                                                setSupplier(updated);
-                                            } catch (err) {
-                                                console.error('Failed to reject supplier', err);
-                                            }
-                                        }
+                                    onClick={() => {
+                                        setRejectError(null);
+                                        setShowRejectModal(true);
                                     }}
                                 >
                                     Reject
@@ -824,6 +838,21 @@ export default function SupplierProfile() {
                             onClose={() => setShowRequestModal(false)}
                             request={selectedRequest}
                             canApprove={false} // View only for now
+                        />
+                        <ConfirmationModal
+                            isOpen={showRejectModal}
+                            onClose={() => {
+                                if (rejectingSupplier) return;
+                                setShowRejectModal(false);
+                                setRejectError(null);
+                            }}
+                            onConfirm={handleConfirmRejectSupplier}
+                            title={rejectError ? 'Unable to Reject Supplier' : 'Reject Supplier'}
+                            message={rejectError || 'Are you sure you want to reject this supplier?'}
+                            confirmText={rejectError ? 'Try Again' : 'Reject Supplier'}
+                            cancelText="Cancel"
+                            variant="danger"
+                            isLoading={rejectingSupplier}
                         />
                     </>
                 )
