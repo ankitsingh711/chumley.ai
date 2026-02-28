@@ -365,7 +365,6 @@ export default function DepartmentBudgets() {
                                                         </button>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-gray-500 mt-0.5">{dept.description || 'General Operations'}</p>
                                             </div>
                                             <div className="text-right">
                                                 <div className="flex items-center justify-end gap-2 mb-1">

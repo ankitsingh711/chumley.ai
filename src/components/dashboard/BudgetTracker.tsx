@@ -61,7 +61,7 @@ export const BudgetTracker = memo(function BudgetTracker({
     // Memoize sortedDepartments to avoid recalculation on every render
     const sortedDepartments = useMemo(() => {
         // Combine seeded departments with any extra spend categories (fallback)
-        // We prioritize the seeded departments list to show correct names and descriptions
+        // We prioritize the seeded departments list to show correct names.
         const trackedDepartments = departments.map((dept, index) => {
             // Use embedded metrics from backend if available (new standard), otherwise fallback to props map
             const spendFromMetrics = (dept as any).metrics?.totalSpent;
@@ -70,7 +70,6 @@ export const BudgetTracker = memo(function BudgetTracker({
             return {
                 id: dept.id,
                 name: dept.name,
-                category: dept.description || 'General Budget', // Use description as the subtitle
                 limit: BUDGET_LIMITS[dept.name] || DEFAULT_LIMIT, // Placeholder until limits are in DB
                 color: COLORS[index % COLORS.length],
                 spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
@@ -83,7 +82,6 @@ export const BudgetTracker = memo(function BudgetTracker({
                 trackedDepartments.push({
                     id: `unassigned-${name}`,
                     name,
-                    category: 'General / Uncategorized',
                     limit: BUDGET_LIMITS[name] || DEFAULT_LIMIT,
                     color: 'bg-gray-400',
                     spent: amount
@@ -171,7 +169,6 @@ export const BudgetTracker = memo(function BudgetTracker({
                                         <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isExpanded && "rotate-180")} />
                                         <div>
                                             <p className="font-medium text-gray-900">{dept.name}</p>
-                                            <p className="text-xs text-gray-500">{dept.category}</p>
                                         </div>
                                     </div>
                                     <div className="text-right">
