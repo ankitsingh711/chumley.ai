@@ -1,9 +1,20 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, TrendingUp, DollarSign, PieChart, Edit2, X, ChevronDown, AlertTriangle, Calendar } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    ArrowLeft,
+    TrendingUp,
+    DollarSign,
+    PieChart,
+    Edit2,
+    X,
+    ChevronDown,
+    AlertTriangle,
+    Calendar,
+    BarChart3,
+    ShieldCheck,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Button } from '../components/ui/Button';
-import { StatCard } from '../components/dashboard/StatCard';
 import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
 import { DatePicker } from '../components/ui/DatePicker';
 import { departmentsApi, type Department } from '../services/departments.service';
@@ -14,159 +25,228 @@ import { UserRole } from '../types/api';
 import { getCategoryBreakdown, getCategorySpendTotals, getLatestMonthRange } from '../data/financialDataHelpers';
 
 interface DepartmentBudget extends Department {
+    budget: number;
     spent: number;
-    metrics: {
-        pendingCount: number;
-        userCount: number;
-    };
+    memberCount: number;
+    utilization: number;
+    remaining: number;
 }
 
-const COLORS = [
-    '#eab308', // yellow
-    '#22c55e', // green
-    '#ef4444', // red
-    '#10b981', // emerald
-    '#3b82f6', // blue
-    '#6366f1', // indigo
-    '#a855f7', // purple
-    '#ec4899', // pink
-    '#f97316', // orange
-    '#5080CE', // teal
-];
+const BAR_COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16', '#6366f1'];
+
+const formatCurrency = (value: number) =>
+    `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const formatRangeLabel = (range: { start?: string; end?: string }) => {
+    if (!range.start && !range.end) return 'All Time';
+    const startLabel = range.start ? new Date(range.start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Beginning';
+    const endLabel = range.end ? new Date(range.end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today';
+    return `${startLabel} - ${endLabel}`;
+};
+
+const getUtilizationStyles = (utilization: number) => {
+    if (utilization > 100) {
+        return {
+            badge: 'border border-red-200 bg-red-50 text-red-700',
+            bar: 'bg-red-500',
+            text: 'text-red-700',
+        };
+    }
+
+    if (utilization >= 85) {
+        return {
+            badge: 'border border-amber-200 bg-amber-50 text-amber-700',
+            bar: 'bg-amber-500',
+            text: 'text-amber-700',
+        };
+    }
+
+    return {
+        badge: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+        bar: 'bg-emerald-500',
+        text: 'text-emerald-700',
+    };
+};
 
 export default function DepartmentBudgets() {
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
+
     const [baseDepartments, setBaseDepartments] = useState<Department[]>([]);
-    const [departments, setDepartments] = useState<DepartmentBudget[]>([]);
     const [loading, setLoading] = useState(true);
+
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
     const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getLatestMonthRange);
-    const [totalStats, setTotalStats] = useState({
-        totalBudget: 0,
-        totalSpent: 0,
-        utilization: 0
-    });
-    const [expandedDept, setExpandedDept] = useState<string | null>(null);
+
+    const [expandedDept, setExpandedDept] = useState<{ id: string; rangeKey: string } | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
 
-    // Editing State
     const [editingDept, setEditingDept] = useState<DepartmentBudget | null>(null);
     const [editValue, setEditValue] = useState('');
     const [saving, setSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [saveError, setSaveError] = useState<string | null>(null);
 
-    // Check if current user can edit a department's budget
-    const canEditBudget = (dept: DepartmentBudget): boolean => {
-        if (!currentUser) return false;
-
-        // System Admin can edit all budgets
-        if (currentUser.role === UserRole.SYSTEM_ADMIN) {
-            return true;
-        }
-
-        // Senior Manager can edit their own department's budget
-        if (currentUser.role === UserRole.SENIOR_MANAGER) {
-            const userDeptId = typeof currentUser.department === 'string'
-                ? currentUser.department
-                : currentUser.department?.id;
-            return userDeptId === dept.id;
-        }
-
-        // Other roles cannot edit budgets
-        return false;
-    };
+    const datePickerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const loadInitialData = async () => {
             try {
                 setLoading(true);
-                const depts = await departmentsApi.getAll();
-                setBaseDepartments(depts);
+                const departments = await departmentsApi.getAll();
+                setBaseDepartments(departments);
             } catch (error) {
                 console.error('Failed to load department budgets:', error);
             } finally {
                 setLoading(false);
             }
         };
-        loadInitialData();
+
+        void loadInitialData();
     }, []);
 
     useEffect(() => {
-        if (!baseDepartments.length) return;
+        if (!showDatePicker) return;
 
+        const handleClickOutside = (event: MouseEvent) => {
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+                setShowDatePicker(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showDatePicker]);
+
+    useEffect(() => {
+        if (!editingDept) return;
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                handleCloseEditModal();
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            document.body.style.overflow = 'unset';
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editingDept, saving]);
+
+    const dateRangeKey = `${activeDateRange.start || 'all'}|${activeDateRange.end || 'all'}`;
+
+    const departments = useMemo<DepartmentBudget[]>(() => {
         const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
+        const spendMap = getCategorySpendTotals(selectedRange);
 
-        // Get spending data for current timeframe
-        const departmentSpendMap = getCategorySpendTotals(selectedRange);
+        const withBudget = baseDepartments.map((department) => {
+            const budget = Number(department.budget) > 0 ? Number(department.budget) : 0;
+            const spent = spendMap[department.name] || 0;
 
-        const processedDepts = baseDepartments.map((dept) => {
-            // Use actual budget from DB or default to 0
-            const budget = dept.budget && Number(dept.budget) > 0 ? Number(dept.budget) : 0;
+            const usersFallback = (department as Department & { users?: unknown[] }).users;
+            const memberCount = typeof department.metrics?.userCount === 'number'
+                ? department.metrics.userCount
+                : Array.isArray(usersFallback) ? usersFallback.length : 0;
 
-            // Use real spending data based on timeframe
-            const spent = departmentSpendMap[dept.name] || 0;
+            const utilization = budget > 0 ? Math.round((spent / budget) * 100) : 0;
+            const remaining = budget - spent;
 
             return {
-                ...dept,
-                budget, // Store as number for calculation
+                ...department,
+                budget,
                 spent,
-                metrics: {
-                    pendingCount: 0,
-                    userCount: (dept as any).metrics?.userCount || (dept as any).users?.length || 0
-                }
+                memberCount,
+                utilization,
+                remaining,
             };
         });
 
-        // Sort by spent descending
-        processedDepts.sort((a, b) => b.spent - a.spent);
-
-        setDepartments(processedDepts);
-
-        const totalLimit = processedDepts.reduce((sum, d) => sum + (d.budget || 0), 0);
-        const totalSpent = processedDepts.reduce((sum, d) => sum + d.spent, 0);
-
-        setTotalStats({
-            totalBudget: totalLimit,
-            totalSpent,
-            utilization: totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
-        });
+        return withBudget.sort((a, b) => b.spent - a.spent);
     }, [baseDepartments, activeDateRange]);
 
-    useEffect(() => {
-        setExpandedDept(null);
-        setBreakdownData({});
-    }, [activeDateRange?.start, activeDateRange?.end]);
+    const stats = useMemo(() => {
+        const totalBudget = departments.reduce((sum, department) => sum + department.budget, 0);
+        const totalSpent = departments.reduce((sum, department) => sum + department.spent, 0);
+        const utilization = totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0;
+        const remaining = totalBudget - totalSpent;
+
+        const overBudget = departments.filter((department) => department.utilization > 100).length;
+        const nearLimit = departments.filter((department) => department.utilization >= 85 && department.utilization <= 100).length;
+
+        return {
+            totalBudget,
+            totalSpent,
+            utilization,
+            remaining,
+            overBudget,
+            nearLimit,
+        };
+    }, [departments]);
+
+    const chartData = useMemo(
+        () => departments.map((department) => ({
+            name: department.name,
+            utilization: Math.min(department.utilization, 100),
+            spent: department.spent,
+            budget: department.budget,
+        })),
+        [departments],
+    );
+
+    const canEditBudget = (department: DepartmentBudget): boolean => {
+        if (!currentUser) return false;
+
+        if (currentUser.role === UserRole.SYSTEM_ADMIN) {
+            return true;
+        }
+
+        if (currentUser.role === UserRole.SENIOR_MANAGER) {
+            const userDepartmentId = typeof currentUser.department === 'string'
+                ? currentUser.department
+                : currentUser.department?.id;
+            return userDepartmentId === department.id;
+        }
+
+        return false;
+    };
 
     const applyDateRange = (days: number) => {
         const end = new Date();
         const start = new Date();
         start.setDate(start.getDate() - days);
+
         const startStr = start.toISOString().split('T')[0];
         const endStr = end.toISOString().split('T')[0];
 
         setDateRange({ start: '', end: '' });
         setActiveDateRange({ start: startStr, end: endStr });
         setShowDatePicker(false);
+        setExpandedDept(null);
     };
 
     const applyCustomDateRange = () => {
         if (!dateRange.start || !dateRange.end) return;
+
         setActiveDateRange({ start: dateRange.start, end: dateRange.end });
         setShowDatePicker(false);
+        setExpandedDept(null);
     };
 
     const clearDateRange = () => {
         setDateRange({ start: '', end: '' });
         setActiveDateRange({});
         setShowDatePicker(false);
+        setExpandedDept(null);
     };
 
-    const handleEditClick = (dept: DepartmentBudget) => {
-        setEditingDept(dept);
-        setEditValue(dept.budget?.toString() || '0');
+    const handleEditClick = (department: DepartmentBudget) => {
+        setEditingDept(department);
+        setEditValue(department.budget.toString());
         setValidationError(null);
         setSaveError(null);
     };
@@ -207,19 +287,22 @@ export default function DepartmentBudgets() {
         try {
             await departmentsApi.update(editingDept.id, { budget: newBudget });
 
-            // Update baseDepartments so the effect re-runs
-            setBaseDepartments(prev => prev.map(d =>
-                d.id === editingDept.id ? { ...d, budget: newBudget } : d
-            ));
+            setBaseDepartments((prev) => prev.map((department) => (
+                department.id === editingDept.id
+                    ? { ...department, budget: newBudget }
+                    : department
+            )));
 
             handleCloseEditModal(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to update budget:', error);
-            const apiError = error?.response?.data?.error;
+            const apiError = (error as { response?: { data?: { error?: unknown } } })?.response?.data?.error;
+
             if (typeof apiError === 'string') {
                 setSaveError(apiError);
-            } else if (Array.isArray(apiError) && typeof apiError[0]?.message === 'string') {
-                setSaveError(apiError[0].message);
+            } else if (Array.isArray(apiError) && typeof apiError[0] === 'object' && apiError[0] !== null && 'message' in apiError[0]) {
+                const message = (apiError[0] as { message?: unknown }).message;
+                setSaveError(typeof message === 'string' ? message : 'Failed to save budget. Please try again.');
             } else {
                 setSaveError('Failed to save budget. Please try again.');
             }
@@ -228,37 +311,22 @@ export default function DepartmentBudgets() {
         }
     };
 
-    const handleExpand = (dept: DepartmentBudget) => {
-        if (expandedDept === dept.id) {
+    const handleExpand = (department: DepartmentBudget) => {
+        if (expandedDept?.id === department.id && expandedDept.rangeKey === dateRangeKey) {
             setExpandedDept(null);
             return;
         }
 
-        setExpandedDept(dept.id);
-        if (!breakdownData[dept.id]) {
+        setExpandedDept({ id: department.id, rangeKey: dateRangeKey });
+
+        const cacheKey = `${dateRangeKey}|${department.id}`;
+
+        if (!breakdownData[cacheKey]) {
             const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
-            const data = getCategoryBreakdown(dept.name, selectedRange);
-            setBreakdownData(prev => ({ ...prev, [dept.id]: data }));
+            const data = getCategoryBreakdown(department.name, selectedRange);
+            setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
         }
     };
-
-    useEffect(() => {
-        if (!editingDept) return;
-
-        const handleEscape = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                handleCloseEditModal();
-            }
-        };
-
-        document.addEventListener('keydown', handleEscape);
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            document.removeEventListener('keydown', handleEscape);
-            document.body.style.overflow = 'unset';
-        };
-    }, [editingDept, saving]);
 
     const draftBudget = Number(editValue.replace(/,/g, '').trim());
     const previewBudget = Number.isFinite(draftBudget) ? draftBudget : 0;
@@ -272,232 +340,273 @@ export default function DepartmentBudgets() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <Button variant="ghost" className="p-2" onClick={() => navigate('/')}>
-                        <ArrowLeft className="h-5 w-5" />
-                    </Button>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Departmental Budget Tracking</h1>
-                        <p className="text-sm text-gray-500">Overview of budget allocation and consumption across all departments</p>
-                        {(activeDateRange.start || activeDateRange.end) && (
-                            <p className="text-sm text-gray-500 mt-1">
-                                Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
-                                <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
+            <section className="relative rounded-2xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/60 to-accent-50/70 p-6 shadow-sm">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-accent-200/50 blur-3xl" />
+
+                <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="flex items-start gap-3">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">Finance Control</p>
+                            <h1 className="mt-2 text-3xl font-bold text-gray-900">Departmental Budget Tracking</h1>
+                            <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                                Manage allocation, monitor utilization, and prevent overspend across all departments.
                             </p>
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-medium text-primary-700">
+                                <Calendar className="h-3.5 w-3.5" />
+                                {formatRangeLabel(activeDateRange)}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div ref={datePickerRef} className="relative flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => setShowDatePicker((prev) => !prev)} className="border-white/70 bg-white/90 backdrop-blur">
+                            <Calendar className="mr-2 h-4 w-4" /> Date Range
+                        </Button>
+
+                        {showDatePicker && (
+                            <div className="absolute right-0 top-full z-[120] mt-2 w-[22rem] rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-gray-900">Filter by Date</h3>
+                                    <button onClick={() => setShowDatePicker(false)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => applyDateRange(7)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 7 days</button>
+                                    <button onClick={() => applyDateRange(30)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 30 days</button>
+                                    <button onClick={() => applyDateRange(90)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 90 days</button>
+                                    <button onClick={() => applyDateRange(365)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Year to date</button>
+                                </div>
+
+                                <div className="mt-4 border-t border-gray-100 pt-4">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Custom Range</p>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <DatePicker
+                                            value={dateRange.start}
+                                            onChange={(value) => setDateRange((prev) => ({ ...prev, start: value }))}
+                                            placeholder="Start"
+                                            className="w-full text-sm"
+                                        />
+                                        <DatePicker
+                                            value={dateRange.end}
+                                            onChange={(value) => setDateRange((prev) => ({ ...prev, end: value }))}
+                                            placeholder="End"
+                                            className="w-full text-sm"
+                                        />
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                        <Button size="sm" variant="outline" onClick={clearDateRange}>Clear</Button>
+                                        <Button size="sm" onClick={applyCustomDateRange} disabled={!dateRange.start || !dateRange.end}>Apply</Button>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                     </div>
                 </div>
 
-                <div className="relative">
-                    <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
-                        <Calendar className="mr-2 h-4 w-4" /> Date Range
-                    </Button>
-
-                    {showDatePicker && (
-                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-30">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-semibold text-gray-900">Select Date Range</h3>
-                                <button onClick={() => setShowDatePicker(false)} className="text-gray-400 hover:text-gray-600">
-                                    <X className="h-4 w-4" />
-                                </button>
-                            </div>
-
-                            <div className="space-y-2 mb-4">
-                                <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
-                                <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
-                                <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
-                                <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
-                            </div>
-
-                            <div className="border-t pt-4">
-                                <p className="text-xs text-gray-500 mb-2">Custom Range</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    <DatePicker
-                                        value={dateRange.start}
-                                        onChange={(val) => setDateRange({ ...dateRange, start: val })}
-                                        placeholder="Start Date"
-                                        className="text-sm w-full"
-                                    />
-                                    <DatePicker
-                                        value={dateRange.end}
-                                        onChange={(val) => setDateRange({ ...dateRange, end: val })}
-                                        placeholder="End Date"
-                                        className="text-sm w-full"
-                                    />
-                                </div>
-                                <Button
-                                    onClick={applyCustomDateRange}
-                                    size="sm"
-                                    className="w-full mt-2"
-                                    disabled={!dateRange.start || !dateRange.end}
-                                >
-                                    Apply Custom Range
-                                </Button>
-                            </div>
+                <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Total Budget
+                            <DollarSign className="h-4 w-4 text-primary-600" />
                         </div>
-                    )}
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(stats.totalBudget)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Annual allocation</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Total Spent
+                            <TrendingUp className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-amber-700">{formatCurrency(stats.totalSpent)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Across selected range</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Remaining Budget
+                            <PieChart className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(stats.remaining)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Available to spend</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Portfolio Utilization
+                            <ShieldCheck className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{stats.utilization}%</p>
+                        <p className="mt-1 text-xs text-gray-500">{stats.overBudget} over budget, {stats.nearLimit} near limit</p>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            {/* High Level Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard
-                    title="Total Budget Allocated"
-                    value={`£${totalStats.totalBudget.toLocaleString()}`}
-                    color="blue"
-                    icon={DollarSign}
-                    trend={{ value: 'Annual Cap', isPositive: true, label: 'fixed' }}
-                />
-                <StatCard
-                    title="Total Spent YTD"
-                    value={`£${totalStats.totalSpent.toLocaleString()}`}
-                    color="orange"
-                    icon={TrendingUp}
-                    trend={{ value: `${totalStats.utilization}%`, isPositive: true, label: 'utilized' }}
-                />
-                <StatCard
-                    title="Remaining Budget"
-                    value={`£${(totalStats.totalBudget - totalStats.totalSpent).toLocaleString()}`}
-                    color="primary"
-                    icon={PieChart}
-                    trend={{ value: `${100 - totalStats.utilization}%`, isPositive: true, label: 'available' }}
-                />
-            </div>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <section className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Department Breakdown</h3>
+                            <p className="text-sm text-gray-500">Click a department to inspect category-level spend composition.</p>
+                        </div>
+                    </div>
 
-            {/* Main Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="space-y-3">
+                        {departments.map((department) => {
+                            const styles = getUtilizationStyles(department.utilization);
+                            const isExpanded = expandedDept?.id === department.id && expandedDept.rangeKey === dateRangeKey;
+                            const cacheKey = `${dateRangeKey}|${department.id}`;
+                            const breakdown = breakdownData[cacheKey] || [];
+                            const breakdownTotal = breakdown.reduce((sum, item) => sum + item.amount, 0);
+                            const progress = Math.min(Math.max(department.utilization, 0), 100);
 
-                {/* Department List */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <h3 className="font-semibold text-gray-900 mb-6">Department Breakdown</h3>
-                        <div className="space-y-8">
-                            {departments.map((dept, index) => {
-                                const currentBudget = dept.budget || 0;
-                                const percentage = currentBudget > 0 ? Math.round((dept.spent / currentBudget) * 100) : 0;
-                                const remaining = currentBudget - dept.spent;
-                                const color = COLORS[index % COLORS.length];
-                                const isExpanded = expandedDept === dept.id;
-                                const breakdown = breakdownData[dept.id] || [];
-
-                                return (
-                                    <div key={dept.id} className="relative group">
-                                        <div className="mb-2 flex items-end justify-between cursor-pointer" onClick={() => handleExpand(dept)}>
+                            return (
+                                <article key={department.id} className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleExpand(department)}
+                                        className="flex w-full items-start justify-between gap-3 text-left"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <ChevronDown className={cn('mt-0.5 h-4 w-4 text-gray-400 transition-transform', isExpanded && 'rotate-180')} />
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isExpanded && "rotate-180")} />
-                                                    <h4 className="font-semibold text-gray-900">{dept.name}</h4>
-                                                    <span className="px-2 py-0.5 rounded text-[10px] bg-gray-100 text-gray-500 font-medium">
-                                                        {dept.metrics.userCount} Members
+                                                    <p className="font-semibold text-gray-900">{department.name}</p>
+                                                    <span className="rounded-full border border-gray-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-600">
+                                                        {department.memberCount} members
                                                     </span>
-                                                    {canEditBudget(dept) && (
+                                                    {canEditBudget(department) && (
                                                         <button
                                                             onClick={(event) => {
                                                                 event.stopPropagation();
-                                                                handleEditClick(dept);
+                                                                handleEditClick(department);
                                                             }}
-                                                            className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-primary-600 transition-opacity"
+                                                            className="inline-flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-500 transition hover:border-primary-200 hover:text-primary-700"
                                                             title="Edit Budget"
                                                         >
                                                             <Edit2 className="h-3 w-3" />
                                                         </button>
                                                     )}
                                                 </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="flex items-center justify-end gap-2 mb-1">
-                                                    <span className="text-xs font-medium text-gray-500">
-                                                        £{dept.spent.toLocaleString()} / £{currentBudget.toLocaleString()}
-                                                    </span>
-                                                    <span className={cn("text-lg font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
-                                                        {percentage}%
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-primary-600 font-medium">
-                                                    £{remaining.toLocaleString()} Available
+                                                <p className="mt-1 text-xs text-gray-500">
+                                                    Spent {formatCurrency(department.spent)} of {formatCurrency(department.budget)}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="h-3 w-full overflow-hidden rounded-full bg-gray-100">
-                                            <div
-                                                className="h-full rounded-full transition-all duration-500 ease-out"
-                                                style={{
-                                                    width: `${Math.min(percentage, 100)}%`,
-                                                    backgroundColor: color
-                                                }}
-                                            />
+                                        <div className="text-right">
+                                            <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${styles.badge}`}>
+                                                {department.utilization}%
+                                            </span>
+                                            <p className={cn('mt-1 text-xs font-medium', styles.text)}>
+                                                {department.remaining >= 0 ? `${formatCurrency(department.remaining)} available` : `${formatCurrency(Math.abs(department.remaining))} over`}
+                                            </p>
                                         </div>
+                                    </button>
 
-                                        {isExpanded && (
-                                            <div className="mt-4 rounded-lg bg-gray-50 px-4 py-4 text-sm animate-in slide-in-from-top-2 duration-200">
-                                                <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">Category Breakdown</h4>
-
-                                                {breakdown.length > 0 ? (
-                                                    <div className="space-y-2">
-                                                        {breakdown.map((item, idx) => (
-                                                            <div key={idx} className="flex items-center justify-between text-xs">
-                                                                <span className="text-gray-600">{item.category}</span>
-                                                                <span className="font-medium text-gray-900">£{item.amount.toLocaleString()}</span>
-                                                            </div>
-                                                        ))}
-                                                        <div className="mt-2 flex items-center justify-between border-t border-gray-200 pt-2 text-xs font-semibold">
-                                                            <span>Total</span>
-                                                            <span>£{breakdown.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}</span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-xs italic text-gray-400">No detailed spend data available.</p>
-                                                )}
-                                            </div>
-                                        )}
+                                    <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
+                                        <div className={cn('h-full rounded-full transition-all duration-500', styles.bar)} style={{ width: `${progress}%` }} />
                                     </div>
-                                );
-                            })}
+
+                                    {isExpanded && (
+                                        <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
+                                            <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">Category Breakdown</h4>
+
+                                            {breakdown.length > 0 ? (
+                                                <div className="mt-3 space-y-2">
+                                                    {breakdown.map((item) => {
+                                                        const width = breakdownTotal > 0 ? Math.round((item.amount / breakdownTotal) * 100) : 0;
+                                                        return (
+                                                            <div key={`${department.id}-${item.category}`}>
+                                                                <div className="mb-1 flex items-center justify-between text-xs">
+                                                                    <span className="text-gray-600">{item.category}</span>
+                                                                    <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
+                                                                </div>
+                                                                <div className="h-1.5 w-full rounded-full bg-gray-100">
+                                                                    <div className="h-full rounded-full bg-primary-500" style={{ width: `${Math.max(width, 4)}%` }} />
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    <div className="mt-2 border-t border-gray-100 pt-2 text-xs font-semibold text-gray-700">
+                                                        Total: {formatCurrency(breakdownTotal)}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="mt-2 text-xs italic text-gray-500">No category breakdown available for this range.</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </article>
+                            );
+                        })}
+                    </div>
+                </section>
+
+                <section className="space-y-6">
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                        <div className="mb-4 flex items-start justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-gray-900">Budget Utilization</h3>
+                                <p className="text-sm text-gray-500">Department utilization percentage (capped at 100%).</p>
+                            </div>
+                            <BarChart3 className="h-5 w-5 text-primary-600" />
+                        </div>
+
+                        <div className="h-[320px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 10, top: 4, bottom: 4 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke="#f3f4f6" />
+                                    <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={(value) => `${value}%`} axisLine={false} tickLine={false} />
+                                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={95} tick={{ fontSize: 11, fill: '#64748b' }} />
+                                    <Tooltip
+                                        cursor={{ fill: 'transparent' }}
+                                        formatter={(value: number | string | undefined, name: string | undefined, payload) => {
+                                            const item = payload?.payload as { spent?: number; budget?: number } | undefined;
+                                            if (name === 'utilization') {
+                                                return [`${Number(value || 0).toFixed(0)}%`, 'Utilization'];
+                                            }
+                                            return [
+                                                `${formatCurrency(Number(item?.spent || 0))} / ${formatCurrency(Number(item?.budget || 0))}`,
+                                                name || 'Value',
+                                            ];
+                                        }}
+                                        contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Bar dataKey="utilization" radius={[0, 5, 5, 0]} barSize={16}>
+                                        {chartData.map((_, index) => (
+                                            <Cell key={`budget-cell-${index}`} fill={BAR_COLORS[index % BAR_COLORS.length]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                </div>
 
-                {/* Utilization Chart */}
-                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 mb-6">Budget Utilization</h3>
-                    <div className="h-[400px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={departments} layout="vertical" margin={{ left: 10 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
-                                <XAxis type="number" hide />
-                                <YAxis
-                                    dataKey="name"
-                                    type="category"
-                                    axisLine={false}
-                                    tickLine={false}
-                                    width={100}
-                                    tick={{ fontSize: 11, fill: '#6b7280' }}
-                                />
-                                <Tooltip
-                                    cursor={{ fill: 'transparent' }}
-                                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                />
-                                <Bar dataKey="spent" name="Spent" radius={[0, 4, 4, 0]} barSize={20}>
-                                    {departments.map((_, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                        <h3 className="text-lg font-semibold text-gray-900">Risk Summary</h3>
+                        <div className="mt-4 space-y-2 text-sm">
+                            <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                                Over budget departments: <span className="font-semibold">{stats.overBudget}</span>
+                            </div>
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700">
+                                Near limit departments: <span className="font-semibold">{stats.nearLimit}</span>
+                            </div>
+                            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
+                                Healthy departments: <span className="font-semibold">{Math.max(departments.length - stats.overBudget - stats.nearLimit, 0)}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                </section>
             </div>
 
-            {/* Edit Budget Modal */}
             {editingDept && createPortal(
                 <div
-                    className="fixed inset-0 z-[120] bg-slate-950/50 backdrop-blur-sm p-4 flex items-center justify-center animate-in fade-in duration-200"
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
                     onClick={() => handleCloseEditModal()}
                 >
                     <div
-                        className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-2 duration-200"
+                        className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
                         <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-blue-700 px-6 py-5 text-white">
@@ -519,22 +628,19 @@ export default function DepartmentBudgets() {
                         </div>
 
                         <div className="space-y-5 px-6 py-6">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Current Budget</p>
-                                    <p className="mt-1 text-lg font-semibold text-slate-900">£{(editingDept.budget || 0).toLocaleString()}</p>
+                                    <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(editingDept.budget)}</p>
                                 </div>
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Spent</p>
-                                    <p className="mt-1 text-lg font-semibold text-slate-900">£{spentAmount.toLocaleString()}</p>
+                                    <p className="mt-1 text-lg font-semibold text-slate-900">{formatCurrency(spentAmount)}</p>
                                 </div>
                                 <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
                                     <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Projected Remaining</p>
-                                    <p className={cn(
-                                        "mt-1 text-lg font-semibold",
-                                        projectedRemaining < 0 ? "text-red-600" : "text-emerald-600"
-                                    )}>
-                                        £{projectedRemaining.toLocaleString()}
+                                    <p className={cn('mt-1 text-lg font-semibold', projectedRemaining < 0 ? 'text-red-600' : 'text-emerald-600')}>
+                                        {formatCurrency(projectedRemaining)}
                                     </p>
                                 </div>
                             </div>
@@ -550,9 +656,9 @@ export default function DepartmentBudgets() {
                                         type="text"
                                         inputMode="decimal"
                                         className={cn(
-                                            "w-full rounded-xl border px-10 py-3 text-base font-medium text-slate-900 outline-none transition-all",
-                                            "focus:ring-4 focus:ring-blue-500/10",
-                                            validationError ? "border-red-300 focus:border-red-400" : "border-slate-300 focus:border-blue-500"
+                                            'w-full rounded-xl border px-10 py-3 text-base font-medium text-slate-900 outline-none transition-all',
+                                            'focus:ring-4 focus:ring-blue-500/10',
+                                            validationError ? 'border-red-300 focus:border-red-400' : 'border-slate-300 focus:border-blue-500',
                                         )}
                                         value={editValue}
                                         onChange={(event) => {
@@ -592,14 +698,14 @@ export default function DepartmentBudgets() {
                             <Button
                                 onClick={handleSaveBudget}
                                 disabled={saving}
-                                className="h-10 px-6 bg-blue-600 hover:bg-blue-700 font-semibold shadow-sm shadow-blue-200"
+                                className="h-10 bg-blue-600 px-6 font-semibold shadow-sm shadow-blue-200 hover:bg-blue-700"
                             >
                                 {saving ? 'Saving Budget...' : 'Save Budget'}
                             </Button>
                         </div>
                     </div>
                 </div>,
-                document.body
+                document.body,
             )}
         </div>
     );

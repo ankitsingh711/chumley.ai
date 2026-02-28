@@ -1,24 +1,77 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { pdfService } from '../services/pdf.service';
-import { Download, Calendar, Filter, X, Check, FileText } from 'lucide-react';
+import {
+    Download,
+    Calendar,
+    Filter,
+    X,
+    Check,
+    FileText,
+    BarChart3,
+    Wallet,
+    Clock3,
+    ShieldCheck,
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DatePicker } from '../components/ui/DatePicker';
-import { StatCard } from '../components/dashboard/StatCard';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
-import type { KPIMetrics, MonthlySpendData, PurchaseRequest } from '../types/api';
+import type { KPIMetrics, MonthlySpendData, PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
 import { RequestStatus } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
+
+type TransactionFilter = 'ALL' | RequestStatusType;
+
+const DEPARTMENT_COLORS: Record<string, string> = {
+    Marketing: '#f97316',
+    Support: '#ec4899',
+    Tech: '#3b82f6',
+    Fleet: '#8b5cf6',
+    Finance: '#84cc16',
+    'Sector Group': '#eab308',
+    'Trade Group': '#14b8a6',
+    'HR & Recruitment': '#22c55e',
+    Assets: '#a855f7',
+    Sales: '#94a3b8',
+    Unassigned: '#cbd5e1',
+};
+
+const FALLBACK_COLORS = ['#6366f1', '#f43f5e', '#06b6d4', '#10b981', '#f59e0b', '#d946ef'];
+
+const formatCurrency = (value: number) =>
+    `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const formatRangeLabel = (start?: string, end?: string) => {
+    if (!start && !end) return 'All Time';
+    const startLabel = start ? new Date(start).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Beginning';
+    const endLabel = end ? new Date(end).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today';
+    return `${startLabel} - ${endLabel}`;
+};
+
+const getStatusClasses = (status: RequestStatusType) => {
+    switch (status) {
+        case RequestStatus.APPROVED:
+            return 'border border-emerald-200 bg-emerald-50 text-emerald-700';
+        case RequestStatus.PENDING:
+            return 'border border-amber-200 bg-amber-50 text-amber-700';
+        case RequestStatus.IN_PROGRESS:
+            return 'border border-sky-200 bg-sky-50 text-sky-700';
+        case RequestStatus.REJECTED:
+            return 'border border-rose-200 bg-rose-50 text-rose-700';
+        default:
+            return 'border border-gray-200 bg-gray-100 text-gray-700';
+    }
+};
 
 export default function Reports() {
     const [metrics, setMetrics] = useState<KPIMetrics | null>(null);
     const [spendData, setSpendData] = useState<MonthlySpendData[]>([]);
     const [allRequests, setAllRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showDatePicker, setShowDatePicker] = useState(false);
+
     const defaultEnd = new Date();
     const defaultStart = new Date();
     defaultStart.setMonth(defaultStart.getMonth() - 5);
@@ -26,13 +79,45 @@ export default function Reports() {
     const defaultEndStr = defaultEnd.toISOString().split('T')[0];
 
     const [dateRange, setDateRange] = useState({ start: defaultStartStr, end: defaultEndStr });
-    const [activeDateRange, setActiveDateRange] = useState<{ start?: string, end?: string }>({ start: defaultStartStr, end: defaultEndStr });
-    const [transactionFilter, setTransactionFilter] = useState('ALL');
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>({ start: defaultStartStr, end: defaultEndStr });
+
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('ALL');
     const [showTransactionFilter, setShowTransactionFilter] = useState(false);
 
+    const datePickerRef = useRef<HTMLDivElement>(null);
+    const transactionFilterRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
-        loadData(defaultStartStr, defaultEndStr);
+        void loadData(defaultStartStr, defaultEndStr);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        if (!showDatePicker) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+                setShowDatePicker(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showDatePicker]);
+
+    useEffect(() => {
+        if (!showTransactionFilter) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            if (transactionFilterRef.current && !transactionFilterRef.current.contains(event.target as Node)) {
+                setShowTransactionFilter(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showTransactionFilter]);
 
     const loadData = async (startDate?: string, endDate?: string) => {
         try {
@@ -42,9 +127,13 @@ export default function Reports() {
                 reportsApi.getMonthlySpend(startDate, endDate),
                 requestsApi.getAll(),
             ]);
+
+            const requestsData: PurchaseRequest[] = isPaginatedResponse(requestsResponse)
+                ? requestsResponse.data
+                : requestsResponse;
+
             setMetrics(kpiData);
             setSpendData(monthlyData);
-            const requestsData: PurchaseRequest[] = isPaginatedResponse(requestsResponse) ? requestsResponse.data : requestsResponse;
             setAllRequests(requestsData);
         } catch (error) {
             console.error('Failed to load reports data:', error);
@@ -53,31 +142,105 @@ export default function Reports() {
         }
     };
 
+    const applyDateRange = (days: number) => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - days);
+
+        const startStr = start.toISOString().split('T')[0];
+        const endStr = end.toISOString().split('T')[0];
+
+        setDateRange({ start: startStr, end: endStr });
+        setActiveDateRange({ start: startStr, end: endStr });
+        setShowDatePicker(false);
+        void loadData(startStr, endStr);
+    };
+
+    const applyCustomDateRange = () => {
+        if (!dateRange.start || !dateRange.end) return;
+
+        setActiveDateRange({ start: dateRange.start, end: dateRange.end });
+        setShowDatePicker(false);
+        void loadData(dateRange.start, dateRange.end);
+    };
+
+    const clearDateRange = () => {
+        setDateRange({ start: defaultStartStr, end: defaultEndStr });
+        setActiveDateRange({ start: defaultStartStr, end: defaultEndStr });
+        setShowDatePicker(false);
+        void loadData(defaultStartStr, defaultEndStr);
+    };
+
+    const departments = useMemo(() => {
+        const deptSet = new Set<string>();
+
+        spendData.forEach((item) => {
+            Object.keys(item).forEach((key) => {
+                if (key !== 'month' && key !== 'spend' && key !== 'requestCount') {
+                    deptSet.add(key);
+                }
+            });
+        });
+
+        return Array.from(deptSet);
+    }, [spendData]);
+
+    const filteredTransactions = useMemo(() => {
+        return allRequests
+            .filter((request) => transactionFilter === 'ALL' || request.status === transactionFilter)
+            .slice(0, 10);
+    }, [allRequests, transactionFilter]);
+
+    const kpi = useMemo(() => {
+        const totalRequests = metrics?.totalRequests ?? 0;
+        const approvedRequests = metrics?.approvedRequests ?? 0;
+        const rejectedRequests = metrics?.rejectedRequests ?? 0;
+        const pendingRequests = metrics?.pendingRequests ?? 0;
+        const approvalRate = totalRequests > 0 ? Math.round((approvedRequests / totalRequests) * 100) : 0;
+
+        return {
+            totalSpend: metrics?.totalSpend ?? 0,
+            totalRequests,
+            approvedRequests,
+            rejectedRequests,
+            pendingRequests,
+            totalOrders: metrics?.totalOrders ?? 0,
+            avgProcessingTime: metrics?.avgProcessingTime ?? 0,
+            approvalRate,
+        };
+    }, [metrics]);
+
+    const breakdownData = useMemo(() => {
+        return [
+            { name: 'Approved', value: kpi.approvedRequests, color: '#10b981' },
+            { name: 'Pending', value: kpi.pendingRequests, color: '#f59e0b' },
+            { name: 'Rejected', value: kpi.rejectedRequests, color: '#ef4444' },
+        ];
+    }, [kpi.approvedRequests, kpi.pendingRequests, kpi.rejectedRequests]);
+
     const handleExportData = async () => {
         try {
             const response = await requestsApi.getAll();
-            const allRequests: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
+            const requestsData: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
 
-            // Create CSV content
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
-            const rows = allRequests.map((req: PurchaseRequest) => [
-                req.id.slice(0, 8),
-                formatDateTime(req.createdAt),
-                req.requester?.name || 'Unknown',
-                req.requester?.department || 'N/A',
-                req.totalAmount,
-                req.status.replace(/_/g, ' ')
+            const rows = requestsData.map((request) => [
+                request.id.slice(0, 8),
+                formatDateTime(request.createdAt),
+                request.requester?.name || 'Unknown',
+                typeof request.requester?.department === 'string'
+                    ? request.requester.department
+                    : request.requester?.department?.name || 'N/A',
+                request.totalAmount,
+                request.status.replace(/_/g, ' '),
             ]);
 
-            const csvContent = [
-                headers.join(','),
-                ...rows.map((row: any[]) => row.join(','))
-            ].join('\n');
+            const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
-            // Download CSV
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
             const url = URL.createObjectURL(blob);
+
             link.setAttribute('href', url);
             link.setAttribute('download', `procurement_report_${new Date().toISOString().split('T')[0]}.csv`);
             link.style.visibility = 'hidden';
@@ -93,363 +256,379 @@ export default function Reports() {
     const handleExportPDF = async () => {
         try {
             const response = await requestsApi.getAll();
-            const allRequests: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
+            const requestsData: PurchaseRequest[] = isPaginatedResponse(response) ? response.data : response;
+
             const headers = ['ID', 'Date', 'Requester', 'Department', 'Amount', 'Status'];
-            const rows = allRequests.map((req: PurchaseRequest) => [
-                req.id.slice(0, 8),
-                formatDateTime(req.createdAt),
-                req.requester?.name || 'Unknown',
-                req.requester?.department || 'N/A',
-                `£${Number(req.totalAmount).toLocaleString()}`,
-                req.status.replace(/_/g, ' ')
+            const rows = requestsData.map((request) => [
+                request.id.slice(0, 8),
+                formatDateTime(request.createdAt),
+                request.requester?.name || 'Unknown',
+                typeof request.requester?.department === 'string'
+                    ? request.requester.department
+                    : request.requester?.department?.name || 'N/A',
+                formatCurrency(Number(request.totalAmount)),
+                request.status.replace(/_/g, ' '),
             ]);
 
-            pdfService.exportToPDF(
-                'Procurement Reports',
-                headers,
-                rows,
-                'procurement_report'
-            );
+            pdfService.exportToPDF('Procurement Reports', headers, rows, 'procurement_report');
         } catch (error) {
             console.error('PDF Export failed:', error);
             alert('Failed to export PDF');
         }
     };
 
-    const applyDateRange = (days: number) => {
-        const end = new Date();
-        const start = new Date();
-        start.setDate(start.getDate() - days);
-
-        const startStr = start.toISOString().split('T')[0];
-        const endStr = end.toISOString().split('T')[0];
-
-        setDateRange({ start: startStr, end: endStr });
-        setActiveDateRange({ start: startStr, end: endStr });
-        setShowDatePicker(false);
-        loadData(startStr, endStr);
-    };
-
-    const applyCustomDateRange = () => {
-        if (dateRange.start && dateRange.end) {
-            setActiveDateRange({ start: dateRange.start, end: dateRange.end });
-            setShowDatePicker(false);
-            loadData(dateRange.start, dateRange.end);
-        }
-    };
-
-    const clearDateRange = () => {
-        setDateRange({ start: defaultStartStr, end: defaultEndStr });
-        setActiveDateRange({ start: defaultStartStr, end: defaultEndStr });
-        setShowDatePicker(false);
-        loadData(defaultStartStr, defaultEndStr);
-    };
-
-    const departments = useMemo(() => {
-        const depts = new Set<string>();
-        spendData.forEach(item => {
-            Object.keys(item).forEach(key => {
-                if (key !== 'month' && key !== 'spend' && key !== 'requestCount') {
-                    depts.add(key);
-                }
-            });
-        });
-        return Array.from(depts);
-    }, [spendData]);
-
     if (loading) {
         return <ReportsSkeleton />;
     }
 
-    const DEPARTMENT_COLORS: Record<string, string> = {
-        'Marketing': '#f97316', // Orange
-        'Support': '#ec4899',   // Pink
-        'Tech': '#3b82f6',   // Blue
-        'Fleet': '#8b5cf6',     // Purple
-        'Finance': '#84cc16',   // Lime Green
-        'Sector Group': '#eab308', // Yellow
-        'Trade Group': '#14b8a6',  // Teal
-        'HR & Recruitment': '#22c55e', // Green
-        'Assets': '#a855f7', // Light purple
-        'Sales': '#94a3b8', // Gray fallback
-        'Unassigned': '#cbd5e1', // Light Gray
-    };
-
-    const FALLBACK_COLORS = [
-        '#6366f1', '#f43f5e', '#06b6d4', '#10b981', '#f59e0b', '#d946ef'
-    ];
-
-    const breakdownData = [
-        { name: 'Approved', value: metrics?.approvedRequests || 0, color: '#10b981' },
-        { name: 'Pending', value: metrics?.pendingRequests || 0, color: '#f59e0b' },
-        { name: 'Rejected', value: metrics?.rejectedRequests || 0, color: '#ef4444' },
-    ];
-
-    const totalRequests = metrics?.totalRequests || 0;
-
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Reports & Analytics</h1>
-                    {(activeDateRange.start !== defaultStartStr || activeDateRange.end !== defaultEndStr) && (
-                        <p className="text-sm text-gray-500 mt-1">
-                            Filtered: {activeDateRange.start ? new Date(activeDateRange.start).toLocaleDateString() : 'Beginning'} - {activeDateRange.end ? new Date(activeDateRange.end).toLocaleDateString() : 'Today'}
-                            <button onClick={clearDateRange} className="ml-2 text-primary-600 hover:text-primary-700 font-medium">Clear</button>
+            <section className="relative rounded-2xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/60 to-accent-50/70 p-6 shadow-sm">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-accent-200/50 blur-3xl" />
+
+                <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">Insights Workspace</p>
+                        <h1 className="mt-2 text-3xl font-bold text-gray-900">Reports & Analytics</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                            Understand procurement spend, approval performance, and transaction quality with a single source of truth.
                         </p>
-                    )}
-                </div>
-                <div className="flex gap-2">
-                    <div className="relative">
-                        <Button variant="outline" onClick={() => setShowDatePicker(!showDatePicker)}>
+                        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white/80 px-3 py-1 text-xs font-medium text-primary-700">
+                            <Calendar className="h-3.5 w-3.5" />
+                            {formatRangeLabel(activeDateRange.start, activeDateRange.end)}
+                        </div>
+                    </div>
+
+                    <div ref={datePickerRef} className="relative flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => setShowDatePicker((prev) => !prev)} className="border-white/70 bg-white/90 backdrop-blur">
                             <Calendar className="mr-2 h-4 w-4" /> Date Range
+                        </Button>
+                        <Button variant="outline" onClick={handleExportData} className="border-white/70 bg-white/90 backdrop-blur">
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                        <Button variant="outline" onClick={handleExportPDF} className="border-white/70 bg-white/90 backdrop-blur">
+                            <FileText className="mr-2 h-4 w-4" /> Export PDF
                         </Button>
 
                         {showDatePicker && (
-                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 p-4 z-10">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="font-semibold text-gray-900">Select Date Range</h3>
-                                    <button onClick={() => setShowDatePicker(false)} className="text-gray-400 hover:text-gray-600">
+                            <div className="absolute right-0 top-full z-[120] mt-2 w-[22rem] rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
+                                <div className="mb-3 flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-gray-900">Filter by Date</h3>
+                                    <button onClick={() => setShowDatePicker(false)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
                                         <X className="h-4 w-4" />
                                     </button>
                                 </div>
 
-                                <div className="space-y-2 mb-4">
-                                    <button onClick={() => applyDateRange(7)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 7 days</button>
-                                    <button onClick={() => applyDateRange(30)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 30 days</button>
-                                    <button onClick={() => applyDateRange(90)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 90 days</button>
-                                    <button onClick={() => applyDateRange(150)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">Last 6 Months</button>
-                                    <button onClick={() => applyDateRange(365)} className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 rounded">This Year</button>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button onClick={() => applyDateRange(7)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 7 days</button>
+                                    <button onClick={() => applyDateRange(30)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 30 days</button>
+                                    <button onClick={() => applyDateRange(90)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 90 days</button>
+                                    <button onClick={() => applyDateRange(150)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 6 months</button>
+                                    <button onClick={() => applyDateRange(365)} className="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Year to date</button>
                                 </div>
 
-                                <div className="border-t pt-4">
-                                    <p className="text-xs text-gray-500 mb-2">Custom Range</p>
+                                <div className="mt-4 border-t border-gray-100 pt-4">
+                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Custom Range</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         <DatePicker
                                             value={dateRange.start}
-                                            onChange={(val) => setDateRange({ ...dateRange, start: val })}
-                                            placeholder="Start Date"
-                                            className="text-sm w-full"
+                                            onChange={(value) => setDateRange((prev) => ({ ...prev, start: value }))}
+                                            placeholder="Start"
+                                            className="w-full text-sm"
                                         />
                                         <DatePicker
                                             value={dateRange.end}
-                                            onChange={(val) => setDateRange({ ...dateRange, end: val })}
-                                            placeholder="End Date"
-                                            className="text-sm w-full"
+                                            onChange={(value) => setDateRange((prev) => ({ ...prev, end: value }))}
+                                            placeholder="End"
+                                            className="w-full text-sm"
                                         />
                                     </div>
-                                    <Button
-                                        onClick={applyCustomDateRange}
-                                        size="sm"
-                                        className="w-full mt-2"
-                                        disabled={!dateRange.start || !dateRange.end}
-                                    >
-                                        Apply Custom Range
-                                    </Button>
+                                    <div className="mt-2 grid grid-cols-2 gap-2">
+                                        <Button size="sm" variant="outline" onClick={clearDateRange}>Reset</Button>
+                                        <Button size="sm" onClick={applyCustomDateRange} disabled={!dateRange.start || !dateRange.end}>Apply</Button>
+                                    </div>
                                 </div>
                             </div>
                         )}
                     </div>
-                    <Button className="bg-primary-700" onClick={handleExportData}>
-                        <Download className="mr-2 h-4 w-4" /> Export CSV
-                    </Button>
-                    <Button className="bg-primary-700" onClick={handleExportPDF}>
-                        <FileText className="mr-2 h-4 w-4" /> Export PDF
-                    </Button>
                 </div>
-            </div>
 
-            {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard
-                    title="Total Spend YTD"
-                    value={`£${(metrics?.totalSpend ?? 0).toLocaleString()}`}
-                    trend={{ value: '+12.4%', isPositive: true, label: 'vs last year' }}
-                    color="primary"
-                />
-                <StatCard
-                    title="Active Requests"
-                    value={metrics?.pendingRequests.toString() || '0'}
-                    trend={{ value: `${metrics?.totalRequests || 0} total`, isPositive: true, label: 'this period' }}
-                    color="orange"
-                />
-                <StatCard
-                    title="Avg. Processing Time"
-                    value={`${metrics?.avgProcessingTime?.toFixed(1) || '0'} Days`}
-                    trend={{ value: '-0.5%', isPositive: true, label: 'vs last month' }}
-                    color="purple"
-                />
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Spend Trends - Area Chart */}
-                <div className="lg:col-span-2 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="font-semibold text-gray-900">Monthly Spend Trends</h3>
-                            <p className="text-xs text-gray-500">Spend visualization for recent months</p>
+                <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Total Spend
+                            <Wallet className="h-4 w-4 text-primary-600" />
                         </div>
-                        <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">Last {spendData.length} Months</div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(kpi.totalSpend)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Across selected period</p>
                     </div>
-                    <div className="h-64 w-full">
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Total Requests
+                            <BarChart3 className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{kpi.totalRequests}</p>
+                        <p className="mt-1 text-xs text-gray-500">Procurement requests recorded</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Avg Processing
+                            <Clock3 className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-amber-700">{kpi.avgProcessingTime.toFixed(1)} days</p>
+                        <p className="mt-1 text-xs text-gray-500">Request approval cycle</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Approval Rate
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-emerald-700">{kpi.approvalRate}%</p>
+                        <p className="mt-1 text-xs text-gray-500">{kpi.rejectedRequests} rejected in range</p>
+                    </div>
+                </div>
+            </section>
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <section className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Monthly Spend Trends</h3>
+                            <p className="text-sm text-gray-500">Department-level stacked spend over time.</p>
+                        </div>
+                        <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+                            {spendData.length} months
+                        </span>
+                    </div>
+
+                    <div className="h-72 w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={spendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                                 <defs>
-                                    {departments.map((dept, index) => {
-                                        const color = DEPARTMENT_COLORS[dept] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+                                    {departments.map((department, index) => {
+                                        const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
                                         return (
-                                            <linearGradient key={dept} id={`color${dept.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor={color} stopOpacity={0.8} />
-                                                <stop offset="95%" stopColor={color} stopOpacity={0.2} />
+                                            <linearGradient key={department} id={`color${department.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor={color} stopOpacity={0.85} />
+                                                <stop offset="95%" stopColor={color} stopOpacity={0.18} />
                                             </linearGradient>
                                         );
                                     })}
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} dy={10} />
+
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fontSize: 12, fill: '#9ca3af' }}
-                                    tickFormatter={(val) => val >= 1000000 ? `£${(val / 1000000).toFixed(1)}M` : `£${(val / 1000).toFixed(0)}k`}
+                                    tick={{ fontSize: 12, fill: '#94a3b8' }}
+                                    tickFormatter={(value) => value >= 1000000
+                                        ? `£${(value / 1000000).toFixed(1)}M`
+                                        : `£${(value / 1000).toFixed(0)}k`}
                                 />
                                 <Tooltip
-                                    formatter={(value: any, name: any) => [`£${Number(value || 0).toLocaleString()}`, name]}
-                                    labelStyle={{ color: '#374151', fontWeight: 'bold', marginBottom: '4px' }}
-                                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    formatter={(value: number | string | undefined, name: string | undefined) => [formatCurrency(Number(value || 0)), name ?? 'Value']}
+                                    labelStyle={{ color: '#334155', fontWeight: 'bold', marginBottom: '4px' }}
+                                    contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                                 />
-                                {departments.map((dept, index) => {
-                                    const color = DEPARTMENT_COLORS[dept] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+
+                                {departments.map((department, index) => {
+                                    const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
                                     return (
                                         <Area
-                                            key={dept}
+                                            key={department}
                                             type="monotone"
-                                            dataKey={dept}
+                                            dataKey={department}
                                             stackId="1"
                                             stroke={color}
                                             strokeWidth={2}
                                             fillOpacity={1}
-                                            fill={`url(#color${dept.replace(/[^a-zA-Z0-9]/g, '')})`}
+                                            fill={`url(#color${department.replace(/[^a-zA-Z0-9]/g, '')})`}
                                         />
                                     );
                                 })}
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px', fontSize: '12px' }} />
+
+                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
-                </div>
+                </section>
 
-                {/* Breakdown - Donut */}
-                <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 mb-6">Request Breakdown</h3>
-                    <div className="h-48 w-full flex items-center justify-center relative">
-                        <svg viewBox="0 0 100 100" className="h-40 w-40 -rotate-90">
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f3f4f6" strokeWidth="10" />
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="10" strokeDasharray={`${(breakdownData[0].value / totalRequests) * 251} 251`} strokeLinecap="round" />
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#f59e0b" strokeWidth="10" strokeDasharray={`${(breakdownData[1].value / totalRequests) * 251} 251`} strokeDashoffset={`-${(breakdownData[0].value / totalRequests) * 251}`} strokeLinecap="round" />
-                            <circle cx="50" cy="50" r="40" fill="none" stroke="#ef4444" strokeWidth="10" strokeDasharray={`${(breakdownData[2].value / totalRequests) * 251} 251`} strokeDashoffset={`-${((breakdownData[0].value + breakdownData[1].value) / totalRequests) * 251}`} strokeLinecap="round" />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-bold text-gray-900">{totalRequests}</span>
-                            <span className="text-xs text-gray-400">TOTAL</span>
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+                    <div className="mb-5 flex items-start justify-between gap-3">
+                        <div>
+                            <h3 className="text-lg font-semibold text-gray-900">Request Mix</h3>
+                            <p className="text-sm text-gray-500">Distribution by current status.</p>
                         </div>
+                        <span className="whitespace-nowrap rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+                            {kpi.totalRequests} total
+                        </span>
                     </div>
 
-                    <div className="space-y-3 mt-4">
-                        {breakdownData.map((item) => (
-                            <div key={item.name} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }}></span>
-                                    <span className="text-gray-600">{item.name}</span>
-                                </div>
-                                <span className="font-medium text-gray-900">{item.value}</span>
-                            </div>
-                        ))}
+                    <div className="h-56 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={breakdownData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={58}
+                                    outerRadius={82}
+                                    dataKey="value"
+                                    strokeWidth={0}
+                                >
+                                    {breakdownData.map((entry) => (
+                                        <Cell key={entry.name} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                            </PieChart>
+                        </ResponsiveContainer>
                     </div>
-                </div>
+
+                    <div className="space-y-2">
+                        {breakdownData.map((item) => {
+                            const percentage = kpi.totalRequests > 0 ? Math.round((item.value / kpi.totalRequests) * 100) : 0;
+                            return (
+                                <div key={item.name} className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
+                                    <div className="mb-1 flex items-center justify-between text-sm">
+                                        <div className="flex items-center gap-2">
+                                            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                            <span className="text-gray-700">{item.name}</span>
+                                        </div>
+                                        <span className="font-semibold text-gray-900">{item.value}</span>
+                                    </div>
+                                    <div className="h-1.5 w-full rounded-full bg-gray-200">
+                                        <div
+                                            className="h-full rounded-full"
+                                            style={{ width: `${Math.max(percentage, item.value > 0 ? 5 : 0)}%`, backgroundColor: item.color }}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </section>
             </div>
 
-            {/* Transactions Table */}
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-900">Recent Transactions</h3>
-                    <div className="flex gap-2 relative">
+            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-3 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-6">
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+                        <p className="text-sm text-gray-500">Latest requests in the selected date range.</p>
+                    </div>
+
+                    <div ref={transactionFilterRef} className="relative">
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => setShowTransactionFilter(!showTransactionFilter)}
-                            className={transactionFilter !== 'ALL' ? 'bg-gray-100 text-primary-600' : ''}
+                            onClick={() => setShowTransactionFilter((prev) => !prev)}
+                            className={transactionFilter !== 'ALL' ? 'border-primary-200 bg-primary-50 text-primary-700' : ''}
                         >
-                            <Filter className="h-3 w-3 mr-1" />
-                            {transactionFilter === 'ALL' ? 'Filter' : transactionFilter.replace(/_/g, ' ')}
+                            <Filter className="mr-2 h-3.5 w-3.5" />
+                            {transactionFilter === 'ALL' ? 'All Statuses' : transactionFilter.replace(/_/g, ' ')}
                         </Button>
 
                         {showTransactionFilter && (
-                            <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                                {['ALL', ...Object.values(RequestStatus)].map((status) => (
+                            <div className="absolute right-0 top-full z-[110] mt-2 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                                {(['ALL', ...Object.values(RequestStatus)] as TransactionFilter[]).map((status) => (
                                     <button
                                         key={status}
                                         onClick={() => {
                                             setTransactionFilter(status);
                                             setShowTransactionFilter(false);
                                         }}
-                                        className="w-full px-4 py-2 text-sm text-left hover:bg-gray-50 flex items-center justify-between"
+                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
                                     >
-                                        <span className={status === transactionFilter ? 'font-medium text-primary-600' : 'text-gray-700'}>
+                                        <span className={status === transactionFilter ? 'font-medium text-primary-700' : 'text-gray-700'}>
                                             {status === 'ALL' ? 'All Transactions' : status.replace(/_/g, ' ')}
                                         </span>
-                                        {status === transactionFilter && <Check className="h-3 w-3 text-primary-600" />}
+                                        {status === transactionFilter && <Check className="h-3.5 w-3.5 text-primary-700" />}
                                     </button>
                                 ))}
                             </div>
                         )}
                     </div>
                 </div>
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                        <tr>
-                            <th className="px-6 py-3">Reference ID</th>
-                            <th className="px-6 py-3">Date</th>
-                            <th className="px-6 py-3">Requester</th>
-                            <th className="px-6 py-3">Amount</th>
-                            <th className="px-6 py-3">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-sm">
-                        {allRequests
-                            .filter(req => transactionFilter === 'ALL' || req.status === transactionFilter)
-                            .slice(0, 10)
-                            .map(req => (
-                                <tr key={req.id}>
-                                    <td className="px-6 py-3 text-primary-600 font-medium">#{req.id.slice(0, 8)}</td>
-                                    <td className="px-6 py-3 text-gray-500">
-                                        {(() => {
-                                            const { date, time } = getDateAndTime(req.createdAt);
+
+                {filteredTransactions.length === 0 ? (
+                    <div className="px-6 py-14 text-center text-sm text-gray-500">
+                        No transactions found for this filter.
+                    </div>
+                ) : (
+                    <>
+                        <div className="hidden lg:block">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[920px] text-left text-sm">
+                                    <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th className="px-6 py-3 font-semibold">Reference</th>
+                                            <th className="px-6 py-3 font-semibold">Date</th>
+                                            <th className="px-6 py-3 font-semibold">Requester</th>
+                                            <th className="px-6 py-3 font-semibold">Department</th>
+                                            <th className="px-6 py-3 font-semibold">Amount</th>
+                                            <th className="px-6 py-3 font-semibold">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredTransactions.map((request) => {
+                                            const { date, time } = getDateAndTime(request.createdAt);
+                                            const department = typeof request.requester?.department === 'string'
+                                                ? request.requester.department
+                                                : request.requester?.department?.name || 'N/A';
+
                                             return (
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-gray-900">{date}</span>
-                                                    <span className="text-xs text-gray-500">{time}</span>
-                                                </div>
+                                                <tr key={request.id} className="bg-white transition hover:bg-primary-50/30">
+                                                    <td className="px-6 py-4 font-semibold text-primary-700">#{request.id.slice(0, 8)}</td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-medium text-gray-900">{date}</p>
+                                                        <p className="text-xs text-gray-500">{time}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-700">{request.requester?.name || 'Unknown'}</td>
+                                                    <td className="px-6 py-4 text-gray-600">{department}</td>
+                                                    <td className="px-6 py-4 font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(request.status)}`}>
+                                                            {request.status.replace(/_/g, ' ')}
+                                                        </span>
+                                                    </td>
+                                                </tr>
                                             );
-                                        })()}
-                                    </td>
-                                    <td className="px-6 py-3">{req.requester?.name || 'Unknown'}</td>
-                                    <td className="px-6 py-3 font-medium">£{Number(req.totalAmount).toLocaleString()}</td>
-                                    <td className="px-6 py-3">
-                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.status === 'APPROVED' ? 'bg-green-100 text-green-700' :
-                                            req.status === 'PENDING' ? 'bg-orange-100 text-orange-700' :
-                                                req.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' :
-                                                    'bg-red-100 text-red-700'
-                                            }`}>
-                                            {req.status.replace(/_/g, ' ')}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                    </tbody>
-                </table>
-            </div>
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 p-4 lg:hidden">
+                            {filteredTransactions.map((request) => {
+                                const { date, time } = getDateAndTime(request.createdAt);
+                                const department = typeof request.requester?.department === 'string'
+                                    ? request.requester.department
+                                    : request.requester?.department?.name || 'N/A';
+
+                                return (
+                                    <article key={request.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <p className="text-sm font-semibold text-primary-700">#{request.id.slice(0, 8)}</p>
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(request.status)}`}>
+                                                {request.status.replace(/_/g, ' ')}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 text-sm text-gray-700">
+                                            <p><span className="font-medium text-gray-900">Requester:</span> {request.requester?.name || 'Unknown'}</p>
+                                            <p><span className="font-medium text-gray-900">Department:</span> {department}</p>
+                                            <p><span className="font-medium text-gray-900">Date:</span> {date} at {time}</p>
+                                            <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </section>
         </div>
     );
 }
