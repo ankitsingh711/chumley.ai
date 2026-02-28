@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-    ArrowLeft,
     TrendingUp,
     DollarSign,
     PieChart,
@@ -12,7 +11,6 @@ import {
     BarChart3,
     ShieldCheck,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { Button } from '../components/ui/Button';
 import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
@@ -69,7 +67,6 @@ const getUtilizationStyles = (utilization: number) => {
 };
 
 export default function DepartmentBudgets() {
-    const navigate = useNavigate();
     const { user: currentUser } = useAuth();
 
     const [baseDepartments, setBaseDepartments] = useState<Department[]>([]);

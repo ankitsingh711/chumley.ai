@@ -358,6 +358,15 @@ export default function Suppliers() {
                             </button>
                         ))}
                     </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                        <span className="font-medium text-gray-700">
+                            {filteredSuppliers.length} supplier{filteredSuppliers.length === 1 ? '' : 's'} visible
+                        </span>
+                        <span>
+                            Filter: <span className="font-medium text-gray-900">{activeFilter}</span> | View: <span className="font-medium text-gray-900 capitalize">{viewMode}</span>
+                        </span>
+                    </div>
                 </div>
             </section>
 

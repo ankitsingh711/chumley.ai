@@ -359,20 +359,30 @@ export default function SupplierProfile() {
                                 <section className="rounded-xl border border-gray-200 bg-white p-5">
                                     <div className="mb-4 flex items-center justify-between">
                                         <h3 className="text-lg font-semibold text-gray-900">Recent Requests & Orders</h3>
-                                        <Button variant="ghost" size="sm">View All</Button>
+                                        <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+                                            Latest {Math.min(6, supplier.requests?.length || 0)}
+                                        </span>
                                     </div>
 
                                     <div className="space-y-2">
                                         {supplier.requests && supplier.requests.length > 0 ? (
                                             supplier.requests.slice(0, 6).map((request) => (
-                                                <div key={request.id} className="grid grid-cols-12 items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm">
+                                                <button
+                                                    key={request.id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedRequest(request);
+                                                        setShowRequestModal(true);
+                                                    }}
+                                                    className="grid w-full grid-cols-12 items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 text-left text-sm transition hover:border-primary-200 hover:bg-primary-50/30"
+                                                >
                                                     <span className="col-span-4 font-semibold text-primary-700">#{request.id.slice(0, 8)}</span>
                                                     <span className="col-span-3 text-gray-500">{new Date(request.createdAt).toLocaleDateString('en-GB')}</span>
                                                     <span className="col-span-2 font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</span>
                                                     <span className={`col-span-3 inline-flex justify-center rounded-full px-2 py-0.5 text-xs font-semibold ${getRequestStatusClasses(request.status)}`}>
                                                         {request.status.replace(/_/g, ' ')}
                                                     </span>
-                                                </div>
+                                                </button>
                                             ))
                                         ) : (
                                             <p className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">No recent activity.</p>

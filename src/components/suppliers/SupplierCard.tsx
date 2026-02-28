@@ -85,8 +85,9 @@ function getCategoryIcon(category: string) {
     return { icon: Package, color: 'text-gray-500 bg-gray-50' };
 }
 
-function formatSpend(value: string) {
-    const number = parseInt(value.replace(/[^0-9]/g, ''), 10);
+function formatSpend(value: string | number) {
+    const normalized = typeof value === 'number' ? value.toString() : value;
+    const number = parseInt(normalized.replace(/[^0-9]/g, ''), 10);
 
     if (Number.isNaN(number)) return value;
     if (number >= 1000000) return `£${(number / 1000000).toFixed(1)}m`;
@@ -107,6 +108,11 @@ export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCar
     const statusStyle = STATUS_STYLES[statusKey] || 'border border-gray-200 bg-gray-100 text-gray-700';
     const statusLabel = getStatusLabel(supplier.status);
     const isPending = statusKey === 'review_pending' || statusKey === 'pending';
+    const spendDisplay = formatSpend(
+        typeof supplier.stats.totalSpendValue === 'number'
+            ? supplier.stats.totalSpendValue
+            : supplier.stats.totalSpend
+    );
 
     return (
         <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
@@ -139,8 +145,14 @@ export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCar
                         <p className="truncate text-xs text-gray-500">{supplier.contact.role}</p>
                     </div>
                     <button
+                        type="button"
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-400 transition hover:border-primary-200 hover:text-primary-700"
-                        title={supplier.contactEmail || 'Contact Supplier'}
+                        title={supplier.contactEmail ? `Email ${supplier.contact.name}` : 'No email available'}
+                        disabled={!supplier.contactEmail}
+                        onClick={() => {
+                            if (!supplier.contactEmail) return;
+                            window.location.href = `mailto:${supplier.contactEmail}`;
+                        }}
                     >
                         <Mail className="h-4 w-4" />
                     </button>
@@ -154,7 +166,7 @@ export const SupplierCard = memo(function SupplierCard({ supplier }: SupplierCar
                 </div>
                 <div className="rounded-lg border border-gray-100 bg-white p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Total Spend</p>
-                    <p className="mt-1 text-3xl font-bold text-gray-900">{formatSpend(supplier.stats.totalSpend)}</p>
+                    <p className="mt-1 text-3xl font-bold text-gray-900">{spendDisplay}</p>
                 </div>
             </div>
 
