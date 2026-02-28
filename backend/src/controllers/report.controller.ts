@@ -5,6 +5,18 @@ import { startOfMonth, subMonths, format } from 'date-fns';
 import prisma from '../config/db';
 import { CacheService } from '../utils/cache';
 
+const normalizeDepartmentLabel = (value?: string | null): string | undefined => {
+    if (!value) return undefined;
+
+    const trimmed = value.trim();
+    const lowered = trimmed.toLowerCase();
+
+    if (lowered === 'royston' || lowered === 'roystton') {
+        return 'Chessington';
+    }
+
+    return trimmed;
+};
 
 export const getKPIs = async (req: Request, res: Response) => {
     try {
@@ -114,8 +126,8 @@ export const getKPIs = async (req: Request, res: Response) => {
         const departmentSpend: Record<string, number> = {};
         ordersWithDept.forEach(order => {
             // Prioritize budgetCategory set on the request, fallback to user department name
-            const budgetCategory = order.request?.budgetCategory;
-            const departmentName = order.request?.requester?.department?.name;
+            const budgetCategory = normalizeDepartmentLabel(order.request?.budgetCategory);
+            const departmentName = normalizeDepartmentLabel(order.request?.requester?.department?.name);
             const category = budgetCategory || departmentName || 'General / Uncategorized';
             departmentSpend[category] = (departmentSpend[category] || 0) + Number(order.totalAmount);
         });
@@ -246,12 +258,13 @@ export const getMonthlySpend = async (req: Request, res: Response) => {
             const amount = Number(order.totalAmount);
 
             // Prioritize budgetCategory, fallback to department name
-            const budgetCategory = order.request?.budgetCategory;
+            const budgetCategory = normalizeDepartmentLabel(order.request?.budgetCategory);
             // Handle case where department might be a string or object with name property, 
             // but prisma strongly types relations usually so we expect an object or null
-            const objDeptName = typeof order.request?.requester?.department === 'object' && order.request?.requester?.department !== null
+            const objDeptNameRaw = typeof order.request?.requester?.department === 'object' && order.request?.requester?.department !== null
                 ? (order.request?.requester?.department as any).name
                 : order.request?.requester?.department;
+            const objDeptName = normalizeDepartmentLabel(objDeptNameRaw);
 
             const category = budgetCategory || objDeptName || 'General / Uncategorized';
 

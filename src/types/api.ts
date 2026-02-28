@@ -18,7 +18,6 @@ export type UserStatus = (typeof UserStatus)[keyof typeof UserStatus];
 
 export const Branch = {
     CHESSINGTON: 'CHESSINGTON',
-    ROYSTON: 'ROYSTON',
 } as const;
 
 export type Branch = (typeof Branch)[keyof typeof Branch];

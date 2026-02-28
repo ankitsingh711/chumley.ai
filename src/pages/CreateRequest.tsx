@@ -231,8 +231,7 @@ export default function CreateRequest() {
                                         setSelectedSubCategoryId('');
                                     }}
                                     options={[
-                                        { value: Branch.CHESSINGTON, label: 'Chessington' },
-                                        { value: Branch.ROYSTON, label: 'Royston' }
+                                        { value: Branch.CHESSINGTON, label: 'Chessington' }
                                     ]}
                                     placeholder="Select Center..."
                                     className="w-full"
@@ -453,5 +452,4 @@ export default function CreateRequest() {
         </div>
     );
 }
-
 

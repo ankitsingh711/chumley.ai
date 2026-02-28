@@ -6,6 +6,8 @@ interface DateRange {
     endDate: Date;
 }
 
+const DEPARTMENT_NAME_EXCLUSIONS = ['Royston', 'Roystton', 'royston', 'roystton'];
+
 export class DepartmentService {
     /**
      * Get department hierarchy tree
@@ -134,6 +136,11 @@ export class DepartmentService {
                 return [];
             }
         }
+
+        where = {
+            ...where,
+            name: { notIn: DEPARTMENT_NAME_EXCLUSIONS },
+        };
 
         const departments = await prisma.department.findMany({
             where,

@@ -73,7 +73,7 @@ async function main() {
         OrderStatus.IN_PROGRESS, OrderStatus.SENT, OrderStatus.COMPLETED,
         OrderStatus.COMPLETED, OrderStatus.SENT,
     ];
-    const branches = [Branch.CHESSINGTON, Branch.ROYSTON];
+    const branches = [Branch.CHESSINGTON];
 
     const createdRequests: { id: string; supplierId: string; totalAmount: any; status: RequestStatus }[] = [];
 
