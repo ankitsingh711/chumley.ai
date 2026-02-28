@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { Button } from './ui/Button';
+
+type PageToken = number | 'ellipsis-left' | 'ellipsis-right';
 
 interface PaginationProps {
     currentPage: number;
@@ -9,113 +10,131 @@ interface PaginationProps {
     onPageChange: (page: number) => void;
 }
 
+function getPaginationTokens(currentPage: number, totalPages: number): PageToken[] {
+    if (totalPages <= 7) {
+        return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const tokens: PageToken[] = [1];
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPages - 1, currentPage + 1);
+
+    if (start > 2) {
+        tokens.push('ellipsis-left');
+    }
+
+    for (let page = start; page <= end; page += 1) {
+        tokens.push(page);
+    }
+
+    if (end < totalPages - 1) {
+        tokens.push('ellipsis-right');
+    }
+
+    tokens.push(totalPages);
+
+    return tokens;
+}
+
 export function Pagination({ currentPage, totalPages, total, limit, onPageChange }: PaginationProps) {
-    const startItem = (currentPage - 1) * limit + 1;
-    const endItem = Math.min(currentPage * limit, total);
+    if (totalPages <= 1) return null;
+
+    const startItem = total === 0 ? 0 : (currentPage - 1) * limit + 1;
+    const endItem = total === 0 ? 0 : Math.min(currentPage * limit, total);
 
     const isFirstPage = currentPage === 1;
     const isLastPage = currentPage === totalPages;
 
+    const pageTokens = getPaginationTokens(currentPage, totalPages);
+
+    const goToPage = (page: number) => {
+        const boundedPage = Math.min(totalPages, Math.max(1, page));
+        onPageChange(boundedPage);
+    };
+
+    const navButtonClass =
+        'inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-primary-200 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 disabled:cursor-not-allowed disabled:opacity-40';
+
     return (
-        <div className="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-3 sm:px-6 rounded-b-lg">
-            <div className="flex flex-1 justify-between sm:hidden">
-                <Button
-                    variant="outline"
-                    onClick={() => onPageChange(currentPage - 1)}
-                    disabled={isFirstPage}
-                    size="sm"
-                >
-                    Previous
-                </Button>
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Page {currentPage} of {totalPages}
-                </span>
-                <Button
-                    variant="outline"
-                    onClick={() => onPageChange(currentPage + 1)}
-                    disabled={isLastPage}
-                    size="sm"
-                >
-                    Next
-                </Button>
-            </div>
-            <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+        <div className="rounded-2xl border border-gray-200 bg-gradient-to-r from-white via-white to-primary-50/30 p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                        Showing <span className="font-medium">{startItem}</span> to{' '}
-                        <span className="font-medium">{endItem}</span> of{' '}
-                        <span className="font-medium">{total}</span> results
+                    <p className="text-sm font-semibold text-gray-900">
+                        Showing {startItem} to {endItem} of {total} results
                     </p>
+                    <p className="text-xs text-gray-500">Page {currentPage} of {totalPages}</p>
                 </div>
-                <div>
-                    <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
-                        <button
-                            onClick={() => onPageChange(1)}
-                            disabled={isFirstPage}
-                            className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="First page"
-                        >
-                            <span className="sr-only">First</span>
-                            <ChevronsLeft className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                        <button
-                            onClick={() => onPageChange(currentPage - 1)}
-                            disabled={isFirstPage}
-                            className="relative inline-flex items-center px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Previous page"
-                        >
-                            <span className="sr-only">Previous</span>
-                            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-                        </button>
 
-                        {/* Page numbers */}
-                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                            let pageNum: number;
+                <nav className="flex flex-wrap items-center gap-1.5" aria-label="Pagination">
+                    <button
+                        onClick={() => goToPage(1)}
+                        disabled={isFirstPage}
+                        className={navButtonClass}
+                        title="First page"
+                        aria-label="Go to first page"
+                    >
+                        <ChevronsLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
 
-                            if (totalPages <= 5) {
-                                pageNum = i + 1;
-                            } else if (currentPage <= 3) {
-                                pageNum = i + 1;
-                            } else if (currentPage >= totalPages - 2) {
-                                pageNum = totalPages - 4 + i;
-                            } else {
-                                pageNum = currentPage - 2 + i;
-                            }
+                    <button
+                        onClick={() => goToPage(currentPage - 1)}
+                        disabled={isFirstPage}
+                        className={navButtonClass}
+                        title="Previous page"
+                        aria-label="Go to previous page"
+                    >
+                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+                    </button>
 
+                    {pageTokens.map((token, index) => {
+                        if (typeof token !== 'number') {
                             return (
-                                <button
-                                    key={pageNum}
-                                    onClick={() => onPageChange(pageNum)}
-                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${currentPage === pageNum
-                                            ? 'z-10 bg-primary-600 text-white focus:z-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600'
-                                            : 'text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0'
-                                        }`}
+                                <span
+                                    key={`${token}-${index}`}
+                                    className="inline-flex h-9 w-6 items-center justify-center text-sm text-gray-400"
                                 >
-                                    {pageNum}
-                                </button>
+                                    ...
+                                </span>
                             );
-                        })}
+                        }
 
-                        <button
-                            onClick={() => onPageChange(currentPage + 1)}
-                            disabled={isLastPage}
-                            className="relative inline-flex items-center px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Next page"
-                        >
-                            <span className="sr-only">Next</span>
-                            <ChevronRight className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                        <button
-                            onClick={() => onPageChange(totalPages)}
-                            disabled={isLastPage}
-                            className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Last page"
-                        >
-                            <span className="sr-only">Last</span>
-                            <ChevronsRight className="h-5 w-5" aria-hidden="true" />
-                        </button>
-                    </nav>
-                </div>
+                        const isActive = currentPage === token;
+                        return (
+                            <button
+                                key={token}
+                                onClick={() => goToPage(token)}
+                                className={`inline-flex h-9 min-w-9 items-center justify-center rounded-lg border px-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-300 ${
+                                    isActive
+                                        ? 'border-primary-700 bg-primary-700 text-white shadow-sm'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:border-primary-200 hover:text-primary-700'
+                                }`}
+                                aria-current={isActive ? 'page' : undefined}
+                            >
+                                {token}
+                            </button>
+                        );
+                    })}
+
+                    <button
+                        onClick={() => goToPage(currentPage + 1)}
+                        disabled={isLastPage}
+                        className={navButtonClass}
+                        title="Next page"
+                        aria-label="Go to next page"
+                    >
+                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+
+                    <button
+                        onClick={() => goToPage(totalPages)}
+                        disabled={isLastPage}
+                        className={navButtonClass}
+                        title="Last page"
+                        aria-label="Go to last page"
+                    >
+                        <ChevronsRight className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                </nav>
             </div>
         </div>
     );

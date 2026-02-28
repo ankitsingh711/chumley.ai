@@ -1,10 +1,25 @@
-import { useEffect, useState, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Download, Filter, Eye, Plus, Check, X, Trash2, Search, ShoppingBag, FileText, ReceiptText, ExternalLink } from 'lucide-react';
+import {
+    Download,
+    Filter,
+    Eye,
+    Plus,
+    Check,
+    X,
+    Trash2,
+    Search,
+    ShoppingBag,
+    FileText,
+    ReceiptText,
+    ExternalLink,
+    Wallet,
+    BarChart3,
+} from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { ConfirmationModal } from '../components/ui/ConfirmationModal';
 import { RequestsSkeleton } from '../components/skeletons/RequestsSkeleton';
+import { RequestDetailsModal } from '../components/requests/RequestDetailsModal';
 import { useAuth } from '../hooks/useAuth';
 import { requestsApi } from '../services/requests.service';
 import { ordersApi } from '../services/orders.service';
@@ -17,17 +32,52 @@ import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 const APPROVED_SUPPLIER_STATUSES = new Set(['STANDARD', 'PREFERRED', 'ACTIVE']);
 
+type FilterValue = 'all' | RequestStatusType;
+
+const formatCurrency = (value: number) =>
+    `£${value.toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const formatStatusLabel = (status: RequestStatusType) =>
+    status === RequestStatus.IN_PROGRESS ? 'In Progress' : status.replace(/_/g, ' ');
+
+const getStatusClasses = (status: RequestStatusType) => {
+    switch (status) {
+        case RequestStatus.APPROVED:
+            return 'border border-emerald-200 bg-emerald-50 text-emerald-700';
+        case RequestStatus.REJECTED:
+            return 'border border-rose-200 bg-rose-50 text-rose-700';
+        case RequestStatus.PENDING:
+            return 'border border-amber-200 bg-amber-50 text-amber-700';
+        case RequestStatus.IN_PROGRESS:
+            return 'border border-sky-200 bg-sky-50 text-sky-700';
+        default:
+            return 'border border-gray-200 bg-gray-100 text-gray-700';
+    }
+};
+
+const getDepartmentName = (department: unknown) => {
+    if (!department) return 'Unassigned';
+    if (typeof department === 'object' && 'name' in department && typeof department.name === 'string') {
+        return department.name;
+    }
+    if (typeof department === 'string') {
+        return department;
+    }
+    return 'Unassigned';
+};
+
 export default function Requests() {
     const navigate = useNavigate();
     const { id: requestIdFromUrl } = useParams<{ id: string }>();
     const { user } = useAuth();
+
     const [requests, setRequests] = useState<PurchaseRequest[]>([]);
     const [loading, setLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | RequestStatusType>('all');
+    const [filter, setFilter] = useState<FilterValue>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [updating, setUpdating] = useState<string | null>(null);
     const [selectedRequest, setSelectedRequest] = useState<PurchaseRequest | null>(null);
-    const [showFilterModal, setShowFilterModal] = useState(false);
+    const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
     const [advancedFilters, setAdvancedFilters] = useState({
         dateFrom: '',
         dateTo: '',
@@ -36,7 +86,6 @@ export default function Requests() {
         requester: '',
     });
 
-    // Modal State
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         title: string;
@@ -52,50 +101,65 @@ export default function Requests() {
         variant: 'warning',
         confirmText: 'Confirm',
         showCancel: true,
-        onConfirm: () => { },
+        onConfirm: () => {
+            // no-op
+        },
     });
 
-    // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [total, setTotal] = useState(0);
     const limit = 10;
 
-    const filterModalRef = useRef<HTMLDivElement>(null);
-
     useEffect(() => {
         loadRequests();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentPage]); // Refetch when page changes
+    }, [currentPage]);
 
-    // Auto-open request modal if ID is in URL
     useEffect(() => {
-        if (requestIdFromUrl && requests.length > 0) {
-            const request = requests.find(r => r.id === requestIdFromUrl);
-            if (request) {
-                setSelectedRequest(request);
+        let isActive = true;
+
+        const openRequestFromUrl = async () => {
+            if (!requestIdFromUrl) {
+                setSelectedRequest(null);
+                return;
             }
-        }
-    }, [requestIdFromUrl, requests]);
 
-    // Close filter modal when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (filterModalRef.current && !filterModalRef.current.contains(event.target as Node)) {
-                setShowFilterModal(false);
+            if (selectedRequest?.id === requestIdFromUrl) {
+                return;
+            }
+
+            const inCurrentPage = requests.find((request) => request.id === requestIdFromUrl);
+            if (inCurrentPage) {
+                setSelectedRequest(inCurrentPage);
+                return;
+            }
+
+            try {
+                const request = await requestsApi.getById(requestIdFromUrl);
+                if (isActive) {
+                    setSelectedRequest(request);
+                }
+            } catch (error) {
+                console.error('Failed to open request from URL:', error);
+                if (isActive) {
+                    setSelectedRequest(null);
+                    navigate('/requests', { replace: true });
+                }
             }
         };
 
-        if (showFilterModal) {
-            document.addEventListener('mousedown', handleClickOutside);
+        if (!loading) {
+            openRequestFromUrl();
         }
 
         return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
+            isActive = false;
         };
-    }, [showFilterModal]);
+    }, [requestIdFromUrl, requests, selectedRequest?.id, loading, navigate]);
 
     const loadRequests = async () => {
+        setLoading(true);
         try {
             const response = await requestsApi.getAll(currentPage, limit);
 
@@ -119,7 +183,7 @@ export default function Requests() {
         setUpdating(id);
         try {
             await requestsApi.updateStatus(id, { status });
-            await loadRequests(); // Reload to get updated data
+            await loadRequests();
         } catch (error) {
             console.error('Failed to update status:', error);
             const errorMessage =
@@ -142,15 +206,17 @@ export default function Requests() {
                 try {
                     await requestsApi.delete(id);
                     await loadRequests();
-                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
-                    if (selectedRequest?.id === id) closeModal();
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                    if (selectedRequest?.id === id) {
+                        closeModal();
+                    }
                 } catch (error) {
                     console.error('Failed to delete request:', error);
                     alert('Failed to delete request');
                 } finally {
                     setUpdating(null);
                 }
-            }
+            },
         });
     };
 
@@ -161,11 +227,11 @@ export default function Requests() {
             setConfirmModal({
                 isOpen: true,
                 title: 'Missing Supplier',
-                message: 'Cannot create order: No supplier selected for this request.',
+                message: 'Cannot create order: no supplier selected for this request.',
                 variant: 'info',
                 confirmText: 'OK',
                 showCancel: false,
-                onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                onConfirm: () => setConfirmModal((prev) => ({ ...prev, isOpen: false })),
             });
             return;
         }
@@ -173,7 +239,7 @@ export default function Requests() {
         setConfirmModal({
             isOpen: true,
             title: 'Create Purchase Order',
-            message: `Are you sure you want to generate a Purchase Order for Request #${request.id.slice(0, 8)}?\n\nAmount: £${Number(request.totalAmount).toLocaleString()}`,
+            message: `Generate a Purchase Order for request #${request.id.slice(0, 8)} with amount ${formatCurrency(Number(request.totalAmount))}?`,
             variant: 'warning',
             confirmText: 'Create Order',
             showCancel: true,
@@ -182,15 +248,15 @@ export default function Requests() {
                 try {
                     await ordersApi.create({
                         requestId: request.id,
-                        supplierId: supplierId,
-                        totalAmount: request.totalAmount
+                        supplierId,
+                        totalAmount: request.totalAmount,
                     });
-                    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
                     navigate('/orders');
-                } catch (error: any) {
+                } catch (error: unknown) {
                     console.error('Failed to create order:', error);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const msg = (error as any).response?.data?.error || 'Failed to create Purchase Order';
+                    const msg = (error as { response?: { data?: { error?: string } } })?.response?.data?.error
+                        || 'Failed to create Purchase Order';
                     setConfirmModal({
                         isOpen: true,
                         title: 'Error Creating Order',
@@ -198,42 +264,177 @@ export default function Requests() {
                         variant: 'danger',
                         confirmText: 'OK',
                         showCancel: false,
-                        onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                        onConfirm: () => setConfirmModal((prev) => ({ ...prev, isOpen: false })),
                     });
                 } finally {
                     setUpdating(null);
                 }
-            }
+            },
         });
     };
 
     const handleViewDetails = (request: PurchaseRequest) => {
         setSelectedRequest(request);
+        navigate(`/requests/${request.id}`);
     };
 
     const closeModal = () => {
         setSelectedRequest(null);
+        if (requestIdFromUrl) {
+            navigate('/requests', { replace: true });
+        }
+    };
+
+    const normalizeSupplierStatus = (status?: string | null) => status?.trim().toUpperCase() || '';
+
+    const isSupplierApprovalBlocked = (request: PurchaseRequest) => {
+        if (!request.supplierId) return false;
+        const normalizedStatus = normalizeSupplierStatus(request.supplier?.status);
+        if (!normalizedStatus) return false;
+        return !APPROVED_SUPPLIER_STATUSES.has(normalizedStatus);
+    };
+
+    const getSupplierStatusLabel = (request: PurchaseRequest) => request.supplier?.status?.trim() || 'Unknown';
+
+    const getSupplierApprovalBlockReason = (request: PurchaseRequest) => {
+        if (!request.supplierId) return '';
+        if (!isSupplierApprovalBlocked(request)) return '';
+        return `Cannot approve request until supplier is approved. Current supplier status: ${getSupplierStatusLabel(request)}`;
+    };
+
+    const navigateToSupplierApproval = (request: PurchaseRequest) => {
+        if (!request.supplierId) return;
+        navigate(`/suppliers/${request.supplierId}`);
+    };
+
+    const canUserApprove = (request: PurchaseRequest) => {
+        if (!user) return false;
+
+        if (user.role === UserRole.SYSTEM_ADMIN) return true;
+
+        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
+            if (!request.requester) return false;
+
+            if (typeof request.requester.department === 'object' && request.requester.department !== null) {
+                return user.departmentId === request.requester.department.id;
+            }
+        }
+
+        return false;
+    };
+
+    const filteredRequests = useMemo(() => {
+        let list = filter === 'all'
+            ? requests
+            : filter === RequestStatus.PENDING
+                ? requests.filter((request) => request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS)
+                : requests.filter((request) => request.status === filter);
+
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase();
+            list = list.filter((request) =>
+                request.id.toLowerCase().includes(query)
+                || request.requester?.name?.toLowerCase().includes(query)
+                || request.requester?.email?.toLowerCase().includes(query)
+                || request.supplier?.name?.toLowerCase().includes(query)
+            );
+        }
+
+        if (advancedFilters.dateFrom) {
+            list = list.filter((request) => new Date(request.createdAt) >= new Date(advancedFilters.dateFrom));
+        }
+        if (advancedFilters.dateTo) {
+            list = list.filter((request) => new Date(request.createdAt) <= new Date(advancedFilters.dateTo));
+        }
+        if (advancedFilters.minAmount) {
+            list = list.filter((request) => Number(request.totalAmount) >= Number(advancedFilters.minAmount));
+        }
+        if (advancedFilters.maxAmount) {
+            list = list.filter((request) => Number(request.totalAmount) <= Number(advancedFilters.maxAmount));
+        }
+        if (advancedFilters.requester) {
+            const requesterQuery = advancedFilters.requester.toLowerCase();
+            list = list.filter((request) =>
+                request.requester?.name?.toLowerCase().includes(requesterQuery)
+                || request.requester?.email?.toLowerCase().includes(requesterQuery)
+            );
+        }
+
+        return list;
+    }, [requests, filter, searchQuery, advancedFilters]);
+
+    const summary = useMemo(() => {
+        const pendingCount = requests.filter(
+            (request) => request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS,
+        ).length;
+        const approved = requests.filter((request) => request.status === RequestStatus.APPROVED);
+        const approvedValue = approved.reduce((sum, request) => sum + Number(request.totalAmount || 0), 0);
+        const totalValue = requests.reduce((sum, request) => sum + Number(request.totalAmount || 0), 0);
+        const avgValue = requests.length > 0 ? totalValue / requests.length : 0;
+
+        return {
+            pendingCount,
+            approvedValue,
+            totalValue,
+            avgValue,
+        };
+    }, [requests]);
+
+    const filterTabs: Array<{ value: FilterValue; label: string; count: number }> = [
+        { value: 'all', label: 'All Requests', count: requests.length },
+        {
+            value: RequestStatus.PENDING,
+            label: 'Needs Review',
+            count: requests.filter((request) => request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS).length,
+        },
+        {
+            value: RequestStatus.APPROVED,
+            label: 'Approved',
+            count: requests.filter((request) => request.status === RequestStatus.APPROVED).length,
+        },
+        {
+            value: RequestStatus.REJECTED,
+            label: 'Rejected',
+            count: requests.filter((request) => request.status === RequestStatus.REJECTED).length,
+        },
+    ];
+
+    const activeFilterCount = useMemo(() => {
+        const advancedCount = Object.values(advancedFilters).filter(Boolean).length;
+        const statusCount = filter === 'all' ? 0 : 1;
+        const searchCount = searchQuery ? 1 : 0;
+        return advancedCount + statusCount + searchCount;
+    }, [advancedFilters, filter, searchQuery]);
+
+    const handleResetFilters = () => {
+        setFilter('all');
+        setSearchQuery('');
+        setAdvancedFilters({
+            dateFrom: '',
+            dateTo: '',
+            minAmount: '',
+            maxAmount: '',
+            requester: '',
+        });
     };
 
     const handleExportCSV = () => {
-        // Convert requests to CSV format
         const headers = ['ID', 'Requester', 'Email', 'Items', 'Date', 'Amount', 'Status'];
         const csvRows = [headers.join(',')];
 
-        filteredRequests.forEach(req => {
+        filteredRequests.forEach((request) => {
             const row = [
-                req.id,
-                `"${req.requester?.name || 'Unknown'}"`,
-                `"${req.requester?.email || ''}"`,
-                req.items?.length || 0,
-                formatDateTime(req.createdAt),
-                Number(req.totalAmount).toFixed(2),
-                req.status
+                request.id,
+                `"${request.requester?.name || 'Unknown'}"`,
+                `"${request.requester?.email || ''}"`,
+                request.items?.length || 0,
+                formatDateTime(request.createdAt),
+                Number(request.totalAmount).toFixed(2),
+                request.status,
             ];
             csvRows.push(row.join(','));
         });
 
-        // Create blob and download
         const csvContent = csvRows.join('\n');
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');
@@ -249,20 +450,20 @@ export default function Requests() {
 
     const handleExportPDF = () => {
         const headers = ['ID', 'Requester', 'Items', 'Date', 'Amount', 'Status'];
-        const rows = filteredRequests.map(req => [
-            req.id.slice(0, 8),
-            req.requester?.name || 'Unknown',
-            (req.items?.length || 0).toString(),
-            formatDateTime(req.createdAt),
-            `£${Number(req.totalAmount).toLocaleString()}`,
-            req.status.replace(/_/g, ' ')
+        const rows = filteredRequests.map((request) => [
+            request.id.slice(0, 8),
+            request.requester?.name || 'Unknown',
+            (request.items?.length || 0).toString(),
+            formatDateTime(request.createdAt),
+            `£${Number(request.totalAmount).toLocaleString()}`,
+            request.status.replace(/_/g, ' '),
         ]);
 
         pdfService.exportToPDF(
             'Purchase Requests',
             headers,
             rows,
-            'purchase_requests'
+            'purchase_requests',
         );
     };
 
@@ -278,14 +479,14 @@ export default function Requests() {
                 type: 'Request' as const,
                 supplier: {
                     name: request.supplier?.name || 'Pending Supplier Selection',
-                    address: request.supplier?.contactEmail || ''
+                    address: request.supplier?.contactEmail || '',
                 },
                 delivery: {
                     recipient: request.requester?.name || 'Aspect Representative',
                     address: request.deliveryLocation || '',
-                    date: request.expectedDeliveryDate ? new Date(request.expectedDeliveryDate).toLocaleDateString() : 'N/A'
+                    date: request.expectedDeliveryDate ? new Date(request.expectedDeliveryDate).toLocaleDateString() : 'N/A',
                 },
-                items: (request.items || []).map(item => {
+                items: (request.items || []).map((item) => {
                     const gross = Number(item.totalPrice) || 0;
                     const net = gross / 1.2;
                     const vat = gross - net;
@@ -295,17 +496,16 @@ export default function Requests() {
                         qty: Number(item.quantity) || 1,
                         net,
                         vat,
-                        gross
+                        gross,
                     };
                 }),
                 totals: {
                     net: totalNet,
                     vat: totalVat,
-                    gross: totalGross
-                }
+                    gross: totalGross,
+                },
             };
 
-            // If no items available, add a fallback row
             if (documentData.items.length === 0) {
                 documentData.items.push({
                     code: 'MISC',
@@ -313,7 +513,7 @@ export default function Requests() {
                     qty: 1,
                     net: totalNet,
                     vat: totalVat,
-                    gross: totalGross
+                    gross: totalGross,
                 });
             }
 
@@ -327,115 +527,94 @@ export default function Requests() {
                 variant: 'danger',
                 confirmText: 'OK',
                 showCancel: false,
-                onConfirm: () => setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                onConfirm: () => setConfirmModal((prev) => ({ ...prev, isOpen: false })),
             });
         }
     };
 
-    // Apply status filter
-    let filteredRequests = filter === 'all'
-        ? requests
-        : filter === RequestStatus.PENDING
-            ? requests.filter(req => req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS)
-            : requests.filter(req => req.status === filter);
+    const renderActionArea = (request: PurchaseRequest) => {
+        const canApproveRequest = canUserApprove(request)
+            && (request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS);
 
-    // Apply search query
-    if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        filteredRequests = filteredRequests.filter(req =>
-            req.id.toLowerCase().includes(query) ||
-            req.requester?.name?.toLowerCase().includes(query) ||
-            req.requester?.email?.toLowerCase().includes(query)
+        const canDeleteRequest = request.status === RequestStatus.IN_PROGRESS
+            && (user?.id === request.requesterId || user?.role === UserRole.SYSTEM_ADMIN)
+            && !canUserApprove(request);
+
+        return (
+            <div className="flex items-center gap-2">
+                {canApproveRequest && (
+                    isSupplierApprovalBlocked(request) && request.supplierId ? (
+                        <button
+                            className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100"
+                            onClick={() => navigateToSupplierApproval(request)}
+                            title={getSupplierApprovalBlockReason(request)}
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Review Supplier
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                                onClick={() => handleStatusUpdate(request.id, RequestStatus.APPROVED)}
+                                disabled={updating === request.id}
+                                title="Approve"
+                            >
+                                <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                                onClick={() => handleStatusUpdate(request.id, RequestStatus.REJECTED)}
+                                disabled={updating === request.id}
+                                title="Reject"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </>
+                    )
+                )}
+
+                {canDeleteRequest && (
+                    <button
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:opacity-50"
+                        onClick={() => handleDelete(request.id)}
+                        disabled={updating === request.id}
+                        title="Delete"
+                    >
+                        <Trash2 className="h-4 w-4" />
+                    </button>
+                )}
+
+                {request.status === RequestStatus.APPROVED && (
+                    request.order ? (
+                        <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 transition hover:bg-emerald-100"
+                            onClick={() => navigate(`/orders?search=${request.order?.id}`)}
+                            title="View Purchase Order"
+                        >
+                            <ReceiptText className="h-4 w-4" />
+                        </button>
+                    ) : (
+                        <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                            onClick={() => handleCreateOrder(request)}
+                            disabled={updating === request.id}
+                            title="Create Purchase Order"
+                        >
+                            <ShoppingBag className="h-4 w-4" />
+                        </button>
+                    )
+                )}
+
+                <button
+                    onClick={() => handleViewDetails(request)}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700"
+                    title="View request"
+                >
+                    <Eye className="h-4 w-4" />
+                </button>
+            </div>
         );
-    }
-
-    // Apply advanced filters
-    if (advancedFilters.dateFrom) {
-        filteredRequests = filteredRequests.filter(req =>
-            new Date(req.createdAt) >= new Date(advancedFilters.dateFrom)
-        );
-    }
-    if (advancedFilters.dateTo) {
-        filteredRequests = filteredRequests.filter(req =>
-            new Date(req.createdAt) <= new Date(advancedFilters.dateTo)
-        );
-    }
-    if (advancedFilters.minAmount) {
-        filteredRequests = filteredRequests.filter(req =>
-            Number(req.totalAmount) >= Number(advancedFilters.minAmount)
-        );
-    }
-    if (advancedFilters.maxAmount) {
-        filteredRequests = filteredRequests.filter(req =>
-            Number(req.totalAmount) <= Number(advancedFilters.maxAmount)
-        );
-    }
-    if (advancedFilters.requester) {
-        filteredRequests = filteredRequests.filter(req =>
-            req.requester?.name?.toLowerCase().includes(advancedFilters.requester.toLowerCase()) ||
-            req.requester?.email?.toLowerCase().includes(advancedFilters.requester.toLowerCase())
-        );
-    }
-
-    const handleApplyFilters = () => {
-        setShowFilterModal(false);
-    };
-
-    const handleResetFilters = () => {
-        setAdvancedFilters({
-            dateFrom: '',
-            dateTo: '',
-            minAmount: '',
-            maxAmount: '',
-            requester: '',
-        });
-    };
-
-    // Check if user can approve a specific request
-    const canUserApprove = (req: PurchaseRequest) => {
-        if (!user) return false;
-
-        // System Admin can approve everything
-        if (user.role === UserRole.SYSTEM_ADMIN) return true;
-
-        // Managers can approve requests from their own department
-        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
-            // If request has no requester info, safest is to say no
-            if (!req.requester) return false;
-
-            // Check department match
-            // Handle case where department is an object (relation) or string (legacy/flat)
-            if (typeof req.requester.department === 'object' && req.requester.department !== null) {
-                return user.departmentId === req.requester.department.id;
-            }
-
-            // Should verify against user.departmentId, but if req has string department name, we can't easily check match unless we know user's department name
-            // For now, rely on ID match which is more robust
-        }
-
-        return false;
-    };
-
-    const normalizeSupplierStatus = (status?: string | null) => status?.trim().toUpperCase() || '';
-
-    const isSupplierApprovalBlocked = (req: PurchaseRequest) => {
-        if (!req.supplierId) return false;
-        const normalizedStatus = normalizeSupplierStatus(req.supplier?.status);
-        if (!normalizedStatus) return false;
-        return !APPROVED_SUPPLIER_STATUSES.has(normalizedStatus);
-    };
-
-    const getSupplierStatusLabel = (req: PurchaseRequest) => req.supplier?.status?.trim() || 'Unknown';
-
-    const getSupplierApprovalBlockReason = (req: PurchaseRequest) => {
-        if (!req.supplierId) return '';
-        if (!isSupplierApprovalBlocked(req)) return '';
-        return `Cannot approve request until supplier is approved. Current supplier status: ${getSupplierStatusLabel(req)}`;
-    };
-
-    const navigateToSupplierApproval = (req: PurchaseRequest) => {
-        if (!req.supplierId) return;
-        navigate(`/suppliers/${req.supplierId}`);
     };
 
     if (loading) {
@@ -444,552 +623,347 @@ export default function Requests() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Purchase Requests</h1>
-                    <p className="text-sm text-gray-500">Manage and track internal purchase requisitions.</p>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" onClick={handleExportCSV}><Download className="mr-2 h-4 w-4" /> Export CSV</Button>
-                    <Button variant="outline" onClick={handleExportPDF}><FileText className="mr-2 h-4 w-4" /> Export PDF</Button>
-                    {user?.role !== UserRole.SYSTEM_ADMIN && (
-                        <Button onClick={() => navigate('/requests/new')}><Plus className="mr-2 h-4 w-4" /> New Request</Button>
-                    )}
-                </div>
-            </div>
+            <section className="relative overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/60 to-accent-50/70 p-6 shadow-sm">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-accent-200/50 blur-3xl" />
 
-            <div className="rounded-xl border border-gray-100 bg-white shadow-sm">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-xl">
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={filter === 'all' ? 'bg-white border shadow-sm' : ''}
-                            onClick={() => setFilter('all')}
-                        >
-                            All Requests
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={filter === RequestStatus.PENDING ? 'bg-white border shadow-sm' : ''}
-                            onClick={() => setFilter(RequestStatus.PENDING)}
-                        >
-                            Pending
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className={filter === RequestStatus.APPROVED ? 'bg-white border shadow-sm' : ''}
-                            onClick={() => setFilter(RequestStatus.APPROVED)}
-                        >
-                            Approved
-                        </Button>
+                <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">Procurement Workspace</p>
+                        <h1 className="mt-2 text-3xl font-bold text-gray-900">Purchase Requests</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                            Review, approve, and convert requests to orders with clear decision support for supplier and budget status.
+                        </p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                        <div className="relative w-64">
-                            <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder="Search requests..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full rounded-md border border-gray-200 py-2 pl-9 pr-4 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500 bg-white"
-                            />
-                        </div>
-
-                        <div className="relative">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-gray-500"
-                                onClick={() => setShowFilterModal(!showFilterModal)}
-                            >
-                                <Filter className="h-4 w-4 mr-2" /> Filter
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={handleExportCSV} className="border-white/70 bg-white/90 backdrop-blur">
+                            <Download className="mr-2 h-4 w-4" /> Export CSV
+                        </Button>
+                        <Button variant="outline" onClick={handleExportPDF} className="border-white/70 bg-white/90 backdrop-blur">
+                            <FileText className="mr-2 h-4 w-4" /> Export PDF
+                        </Button>
+                        {user?.role !== UserRole.SYSTEM_ADMIN && (
+                            <Button onClick={() => navigate('/requests/new')} className="bg-primary-700 hover:bg-primary-800">
+                                <Plus className="mr-2 h-4 w-4" /> New Request
                             </Button>
+                        )}
+                    </div>
+                </div>
 
-                            {/* Filter Dropdown */}
-                            {showFilterModal && (
-                                <div ref={filterModalRef} className="absolute right-0 top-full mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 p-4">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-semibold text-gray-900">Advanced Filters</h3>
-                                            <button onClick={handleResetFilters} className="text-xs text-primary-600 hover:text-primary-700">
-                                                Reset All
-                                            </button>
-                                        </div>
+                <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Total Requests
+                            <FileText className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{requests.length}</p>
+                        <p className="mt-1 text-xs text-gray-500">Loaded on this page</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Needs Review
+                            <Filter className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-amber-700">{summary.pendingCount}</p>
+                        <p className="mt-1 text-xs text-gray-500">Pending and in-progress requests</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Approved Value
+                            <Wallet className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(summary.approvedValue)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Approved requests on this page</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Average Ticket
+                            <BarChart3 className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(summary.avgValue)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Per request on this page</p>
+                    </div>
+                </div>
+            </section>
 
-                                        {/* Date Range */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-2">Date Range</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input
-                                                    type="date"
-                                                    value={advancedFilters.dateFrom}
-                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateFrom: e.target.value })}
-                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="From"
-                                                />
-                                                <input
-                                                    type="date"
-                                                    value={advancedFilters.dateTo}
-                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, dateTo: e.target.value })}
-                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="To"
-                                                />
-                                            </div>
-                                        </div>
+            <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white px-4 py-4 lg:px-6">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            {filterTabs.map((tab) => (
+                                <button
+                                    key={tab.value}
+                                    onClick={() => setFilter(tab.value)}
+                                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
+                                        filter === tab.value
+                                            ? 'border-primary-200 bg-primary-600 text-white shadow-sm'
+                                            : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-700'
+                                    }`}
+                                >
+                                    <span>{tab.label}</span>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs ${filter === tab.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
 
-                                        {/* Amount Range */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-2">Amount Range</label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <input
-                                                    type="number"
-                                                    value={advancedFilters.minAmount}
-                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, minAmount: e.target.value })}
-                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="Min (£)"
-                                                />
-                                                <input
-                                                    type="number"
-                                                    value={advancedFilters.maxAmount}
-                                                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, maxAmount: e.target.value })}
-                                                    className="rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                    placeholder="Max (£)"
-                                                />
-                                            </div>
-                                        </div>
+                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div className="relative w-full lg:max-w-md">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Search by ID, requester, supplier, or email"
+                                    value={searchQuery}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-4 text-sm text-gray-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                />
+                            </div>
 
-                                        {/* Requester Search */}
-                                        <div>
-                                            <label className="block text-xs font-medium text-gray-700 mb-2">Requester</label>
-                                            <input
-                                                type="text"
-                                                value={advancedFilters.requester}
-                                                onChange={(e) => setAdvancedFilters({ ...advancedFilters, requester: e.target.value })}
-                                                className="w-full rounded border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                                placeholder="Search by name or email"
-                                            />
-                                        </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowAdvancedFilters((prev) => !prev)}
+                                    className={showAdvancedFilters ? 'border-primary-300 bg-primary-50 text-primary-700' : ''}
+                                >
+                                    <Filter className="mr-2 h-4 w-4" />
+                                    Advanced Filters
+                                    {activeFilterCount > 0 && (
+                                        <span className="ml-2 rounded-full bg-primary-600 px-2 py-0.5 text-xs text-white">
+                                            {activeFilterCount}
+                                        </span>
+                                    )}
+                                </Button>
 
-                                        {/* Apply Button */}
-                                        <Button
-                                            onClick={handleApplyFilters}
-                                            className="w-full bg-primary-600 hover:bg-primary-600"
-                                            size="sm"
-                                        >
-                                            Apply Filters
-                                        </Button>
-                                    </div>
-                                </div>
-                            )}
+                                {activeFilterCount > 0 && (
+                                    <Button variant="ghost" onClick={handleResetFilters} className="text-gray-500">
+                                        Reset
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </div>
+                </div>
+
+                {showAdvancedFilters && (
+                    <div className="border-b border-gray-100 bg-gray-50 px-4 py-4 lg:px-6">
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+                            <label className="space-y-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Date From
+                                <input
+                                    type="date"
+                                    value={advancedFilters.dateFrom}
+                                    onChange={(event) => setAdvancedFilters({ ...advancedFilters, dateFrom: event.target.value })}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Date To
+                                <input
+                                    type="date"
+                                    value={advancedFilters.dateTo}
+                                    onChange={(event) => setAdvancedFilters({ ...advancedFilters, dateTo: event.target.value })}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Min Amount
+                                <input
+                                    type="number"
+                                    value={advancedFilters.minAmount}
+                                    onChange={(event) => setAdvancedFilters({ ...advancedFilters, minAmount: event.target.value })}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                    placeholder="0"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Max Amount
+                                <input
+                                    type="number"
+                                    value={advancedFilters.maxAmount}
+                                    onChange={(event) => setAdvancedFilters({ ...advancedFilters, maxAmount: event.target.value })}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                    placeholder="50000"
+                                />
+                            </label>
+                            <label className="space-y-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Requester
+                                <input
+                                    type="text"
+                                    value={advancedFilters.requester}
+                                    onChange={(event) => setAdvancedFilters({ ...advancedFilters, requester: event.target.value })}
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-normal text-gray-700 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
+                                    placeholder="Name or email"
+                                />
+                            </label>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 text-xs text-gray-500 lg:px-6">
+                    <p>
+                        Showing <span className="font-semibold text-gray-700">{filteredRequests.length}</span> requests
+                        {activeFilterCount > 0 ? ' after filters' : ''}.
+                    </p>
+                    <p className="hidden sm:block">
+                        Page <span className="font-semibold text-gray-700">{currentPage}</span> of <span className="font-semibold text-gray-700">{totalPages}</span>
+                    </p>
                 </div>
 
                 {filteredRequests.length === 0 ? (
-                    <div className="p-12 text-center text-gray-500 rounded-b-xl">
-                        No requests found. {filter !== 'all' && 'Try changing the filter.'}
+                    <div className="px-6 py-14 text-center">
+                        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                            <FileText className="h-6 w-6" />
+                        </div>
+                        <h3 className="mt-4 text-lg font-semibold text-gray-900">No requests match your filters</h3>
+                        <p className="mt-1 text-sm text-gray-500">
+                            Adjust status, search, or advanced filters to find the records you need.
+                        </p>
+                        {activeFilterCount > 0 && (
+                            <Button variant="outline" onClick={handleResetFilters} className="mt-5">
+                                Reset All Filters
+                            </Button>
+                        )}
                     </div>
                 ) : (
-                    <div className="overflow-hidden rounded-b-xl">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-white border-b border-gray-100 text-gray-500 uppercase text-xs">
-                                <tr>
-                                    <th className="px-6 py-4 font-medium">ID</th>
-                                    <th className="px-6 py-4 font-medium">Requester</th>
-                                    <th className="px-6 py-4 font-medium">Items</th>
-                                    <th className="px-6 py-4 font-medium">Date</th>
-                                    <th className="px-6 py-4 font-medium">Amount</th>
-                                    <th className="px-6 py-4 font-medium">Status</th>
-                                    <th className="px-6 py-4 font-medium">Actions</th>
-                                    <th className="px-6 py-4 font-medium text-right"></th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {filteredRequests.map((req) => (
-                                    <tr key={req.id} className="hover:bg-gray-50/50">
-                                        <td className="px-6 py-4 font-medium text-primary-600">
-                                            #{req.id.slice(0, 8)}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-sm">
-                                                    {req.requester?.name?.charAt(0) || 'U'}
-                                                </div>
-                                                <span className="font-medium text-gray-900">{req.requester?.name || 'Unknown'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-gray-500">{req.items?.length || 0} items</td>
-                                        <td className="px-6 py-4 text-gray-500">
-                                            {(() => {
-                                                const { date, time } = getDateAndTime(req.createdAt);
-                                                return (
-                                                    <div className="flex flex-col">
-                                                        <span className="font-medium text-gray-900">{date}</span>
-                                                        <span className="text-xs text-gray-500">{time}</span>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </td>
-                                        <td className="px-6 py-4 font-bold text-gray-900">£{Number(req.totalAmount).toLocaleString()}</td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium 
-                                            ${req.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
-                                                    req.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
-                                                        req.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
-                                                            'bg-gray-100 text-gray-700'}`}>
-                                                {req.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : req.status}
-                                            </span>
-                                            {(req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) &&
-                                                isSupplierApprovalBlocked(req) && (
-                                                <div className="mt-1.5">
-                                                    <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
-                                                        Supplier: {getSupplierStatusLabel(req)}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            {canUserApprove(req) && (req.status === RequestStatus.PENDING || req.status === RequestStatus.IN_PROGRESS) && (
-                                                isSupplierApprovalBlocked(req) && req.supplierId ? (
-                                                    <button
-                                                        className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
-                                                        onClick={() => navigateToSupplierApproval(req)}
-                                                        title={getSupplierApprovalBlockReason(req)}
-                                                    >
-                                                        <ExternalLink className="h-3.5 w-3.5" />
-                                                        Review Supplier
-                                                    </button>
-                                                ) : (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-green-50 text-green-600 disabled:opacity-50"
-                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.APPROVED)}
-                                                            disabled={updating === req.id}
-                                                            title="Approve"
-                                                        >
-                                                            <Check className="h-4 w-4" />
-                                                        </button>
-                                                        <button
-                                                            className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                            onClick={() => handleStatusUpdate(req.id, RequestStatus.REJECTED)}
-                                                            disabled={updating === req.id}
-                                                            title="Reject"
-                                                        >
-                                                            <X className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )
-                                            )}
-                                            {/* User can delete their own draft only if they are NOT an approver who sees approval actions (avoids duplicates/confusion) */}
-                                            {req.status === RequestStatus.IN_PROGRESS && (user?.id === req.requesterId || user?.role === UserRole.SYSTEM_ADMIN) && !canUserApprove(req) && (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                                        onClick={() => handleDelete(req.id)}
-                                                        disabled={updating === req.id}
-                                                        title="Delete"
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {/* Create PO Button for Approved Requests */}
-                                            {req.status === RequestStatus.APPROVED && (
-                                                req.order ? (
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-emerald-50 text-emerald-600 disabled:opacity-50"
-                                                        onClick={() => navigate(`/orders?search=${req.order?.id}`)} // Or navigate to specific order
-                                                        title="View Purchase Order"
-                                                    >
-                                                        <ReceiptText className="h-4 w-4" />
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        className="p-1.5 rounded hover:bg-blue-50 text-blue-600 disabled:opacity-50"
-                                                        onClick={() => handleCreateOrder(req)}
-                                                        disabled={updating === req.id}
-                                                        title="Create Purchase Order"
-                                                    >
-                                                        <ShoppingBag className="h-4 w-4" />
-                                                    </button>
-                                                )
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleViewDetails(req)}
-                                                className="p-1 hover:text-primary-600 text-gray-400"
-                                            >
-                                                <Eye className="h-4 w-4" />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
-            </div>
-
-            {/* Request Detail Modal */}
-            {
-                selectedRequest && createPortal(
-                    <div
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[100] p-4"
-                        onClick={closeModal}
-                    >
-                        <div
-                            className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            {/* Modal Header */}
-                            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-                                <div>
-                                    <h2 className="text-xl font-bold text-gray-900">Request Details</h2>
-                                    <p className="text-sm text-gray-500">#{selectedRequest.id.slice(0, 8)}</p>
-                                </div>
-                                <button
-                                    onClick={closeModal}
-                                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                                >
-                                    <X className="h-5 w-5 text-gray-500" />
-                                </button>
-                            </div>
-
-                            {/* Modal Content */}
-                            <div className="p-6 space-y-6">
-                                {/* Status & Amount */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="bg-gray-50 rounded-lg p-4">
-                                        <p className="text-xs text-gray-500 uppercase font-medium mb-1">Status</p>
-                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium 
-                                        ${selectedRequest.status === RequestStatus.APPROVED ? 'bg-green-100 text-green-700' :
-                                                selectedRequest.status === RequestStatus.REJECTED ? 'bg-red-100 text-red-700' :
-                                                    selectedRequest.status === RequestStatus.PENDING ? 'bg-blue-50 text-blue-700' :
-                                                        'bg-gray-100 text-gray-700'}`}>
-                                            {selectedRequest.status === RequestStatus.IN_PROGRESS ? 'IN PROGRESS' : selectedRequest.status}
-                                        </span>
-                                    </div>
-                                    <div className="bg-gray-50 rounded-lg p-4">
-                                        <p className="text-xs text-gray-500 uppercase font-medium mb-1">Total Amount</p>
-                                        <p className="text-2xl font-bold text-gray-900">£{Number(selectedRequest.totalAmount).toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                {/* Information Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {/* Supplier Info */}
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Supplier Information</h3>
-                                        {selectedRequest.supplier ? (
-                                            <div className="bg-gray-50 rounded-lg p-4 space-y-2 h-full">
-                                                <div className="flex items-center gap-3">
-                                                    {selectedRequest.supplier.logoUrl ? (
-                                                        <img
-                                                            src={selectedRequest.supplier.logoUrl}
-                                                            alt={selectedRequest.supplier.name}
-                                                            className="h-10 w-10 rounded-full object-cover bg-white ring-2 ring-gray-100"
-                                                        />
-                                                    ) : (
-                                                        <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold ring-2 ring-white">
-                                                            {selectedRequest.supplier.name.charAt(0)}
-                                                        </div>
-                                                    )}
-                                                    <div>
-                                                        <p className="font-medium text-gray-900">{selectedRequest.supplier.name}</p>
-                                                        <p className="text-sm text-gray-500">{selectedRequest.supplier.category}</p>
-                                                    </div>
-                                                </div>
-                                                {(selectedRequest.supplier.contactName || selectedRequest.supplier.contactEmail) && (
-                                                    <div className="pt-3 mt-1 border-t border-gray-200">
-                                                        <p className="text-xs text-gray-500 uppercase mb-1">Contact Person</p>
-                                                        {selectedRequest.supplier.contactName && (
-                                                            <p className="text-sm font-medium text-gray-900">{selectedRequest.supplier.contactName}</p>
+                    <>
+                        <div className="hidden xl:block">
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[980px] text-left text-sm">
+                                    <thead className="border-b border-gray-100 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th className="px-6 py-3 font-semibold">Request</th>
+                                            <th className="px-6 py-3 font-semibold">Requester</th>
+                                            <th className="px-6 py-3 font-semibold">Supplier</th>
+                                            <th className="px-6 py-3 font-semibold">Submitted</th>
+                                            <th className="px-6 py-3 font-semibold">Amount</th>
+                                            <th className="px-6 py-3 font-semibold">Status</th>
+                                            <th className="px-6 py-3 font-semibold">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {filteredRequests.map((request) => {
+                                            const { date, time } = getDateAndTime(request.createdAt);
+                                            return (
+                                                <tr key={request.id} className="bg-white transition hover:bg-primary-50/30">
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-semibold text-primary-700">#{request.id.slice(0, 8)}</p>
+                                                        <p className="mt-0.5 text-xs text-gray-500">{request.items?.length || 0} items</p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-medium text-gray-900">{request.requester?.name || 'Unknown'}</p>
+                                                        <p className="text-xs text-gray-500">{request.requester?.email || 'No email'}</p>
+                                                        <p className="mt-0.5 text-xs text-gray-400">{getDepartmentName(request.requester?.department)}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-medium text-gray-900">{request.supplier?.name || 'Not assigned'}</p>
+                                                        {request.supplier?.status ? (
+                                                            <p className="mt-0.5 text-xs text-gray-500">{request.supplier.status}</p>
+                                                        ) : (
+                                                            <p className="mt-0.5 text-xs text-gray-400">Supplier pending</p>
                                                         )}
-                                                        {selectedRequest.supplier.contactEmail && (
-                                                            <p className="text-sm text-gray-500">{selectedRequest.supplier.contactEmail}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="font-medium text-gray-900">{date}</p>
+                                                        <p className="text-xs text-gray-500">{time}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(request.status)}`}>
+                                                            {formatStatusLabel(request.status)}
+                                                        </span>
+                                                        {(request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS) && isSupplierApprovalBlocked(request) && (
+                                                            <p className="mt-1 text-xs font-medium text-amber-700">
+                                                                Supplier: {getSupplierStatusLabel(request)}
+                                                            </p>
                                                         )}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        ) : (
-                                            <div className="bg-gray-50 rounded-lg p-4 h-full flex items-center justify-center text-gray-400 text-sm italic">
-                                                No supplier selected
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Requester Info */}
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-900 mb-3">Requester Information</h3>
-                                        <div className="bg-gray-50 rounded-lg p-4 space-y-2 h-full">
-                                            <div className="flex items-center gap-3">
-                                                <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center text-white font-semibold ring-2 ring-white">
-                                                    {selectedRequest.requester?.name?.charAt(0) || 'U'}
-                                                </div>
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{selectedRequest.requester?.name || 'Unknown'}</p>
-                                                    <p className="text-sm text-gray-500">{selectedRequest.requester?.email}</p>
-                                                </div>
-                                            </div>
-                                            {selectedRequest.requester?.department && (
-                                                <div className="pt-3 mt-1 border-t border-gray-200">
-                                                    <p className="text-xs text-gray-500 uppercase mb-1">Department</p>
-                                                    <p className="text-sm font-medium text-gray-900">
-                                                        {typeof selectedRequest.requester.department === 'object'
-                                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                            ? (selectedRequest.requester.department as any)?.name
-                                                            : selectedRequest.requester.department}
-                                                    </p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Items */}
-                                <div>
-                                    <h3 className="text-sm font-semibold text-gray-900 mb-3">Items ({selectedRequest.items?.length || 0})</h3>
-                                    <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-gray-50 text-xs uppercase text-gray-500">
-                                                <tr>
-                                                    <th className="px-4 py-2 text-left">Description</th>
-                                                    <th className="px-4 py-2 text-center">Quantity</th>
-                                                    <th className="px-4 py-2 text-right">Unit Price</th>
-                                                    <th className="px-4 py-2 text-right">Total</th>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {renderActionArea(request)}
+                                                    </td>
                                                 </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-200">
-                                                {selectedRequest.items?.map((item, idx) => (
-                                                    <tr key={idx} className="hover:bg-gray-50">
-                                                        <td className="px-4 py-3">{item.description}</td>
-                                                        <td className="px-4 py-3 text-center">{item.quantity}</td>
-                                                        <td className="px-4 py-3 text-right">£{Number(item.unitPrice).toLocaleString()}</td>
-                                                        <td className="px-4 py-3 text-right font-medium">£{Number(item.quantity * item.unitPrice).toLocaleString()}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                {/* Dates */}
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-medium mb-1">Created</p>
-                                        <p className="text-sm text-gray-900">{new Date(selectedRequest.createdAt).toLocaleString()}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500 uppercase font-medium mb-1">Last Updated</p>
-                                        <p className="text-sm text-gray-900">{new Date(selectedRequest.updatedAt).toLocaleString()}</p>
-                                    </div>
-                                </div>
-
-                                {/* Actions */}
-                                {canUserApprove(selectedRequest) && (selectedRequest.status === RequestStatus.PENDING || selectedRequest.status === RequestStatus.IN_PROGRESS) && (
-                                    isSupplierApprovalBlocked(selectedRequest) && selectedRequest.supplierId ? (
-                                        <div className="pt-4 border-t space-y-2">
-                                            <Button
-                                                onClick={() => {
-                                                    navigateToSupplierApproval(selectedRequest);
-                                                    closeModal();
-                                                }}
-                                                variant="outline"
-                                                className="w-full border-amber-300 text-amber-700 hover:bg-amber-50"
-                                                title={getSupplierApprovalBlockReason(selectedRequest)}
-                                            >
-                                                <ExternalLink className="mr-2 h-4 w-4" /> Open Supplier To Approve
-                                            </Button>
-                                            <p className="text-xs text-amber-700">
-                                                {getSupplierApprovalBlockReason(selectedRequest)}
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <div className="pt-4 border-t flex gap-3">
-                                            <Button
-                                                onClick={() => {
-                                                    handleStatusUpdate(selectedRequest.id, RequestStatus.APPROVED);
-                                                    closeModal();
-                                                }}
-                                                className="flex-1 bg-green-600 hover:bg-green-700"
-                                                disabled={updating === selectedRequest.id}
-                                                title="Approve"
-                                            >
-                                                <Check className="mr-2 h-4 w-4" /> Approve
-                                            </Button>
-                                            <Button
-                                                onClick={() => {
-                                                    handleStatusUpdate(selectedRequest.id, RequestStatus.REJECTED);
-                                                    closeModal();
-                                                }}
-                                                variant="outline"
-                                                className="flex-1 border-red-300 text-red-600 hover:bg-red-50"
-                                            >
-                                                <X className="mr-2 h-4 w-4" /> Reject
-                                            </Button>
-                                        </div>
-                                    )
-                                )}
-
-                                <div className="pt-4 border-t flex flex-wrap gap-3">
-                                    <Button onClick={() => handleDownloadPDF(selectedRequest)} variant="outline" className="flex-1">
-                                        <FileText className="mr-2 h-4 w-4" /> Download PDF
-                                    </Button>
-                                </div>
-
-                                {/* Create PO Action for Approved Requests */}
-                                {selectedRequest.status === RequestStatus.APPROVED && (
-                                    selectedRequest.order ? (
-                                        <div className="pt-4 border-t">
-                                            <Button
-                                                onClick={() => navigate(`/orders?search=${selectedRequest.order?.id}`)}
-                                                className="w-full bg-emerald-600 hover:bg-emerald-700"
-                                                disabled={updating === selectedRequest.id}
-                                            >
-                                                <ReceiptText className="mr-2 h-4 w-4" /> View Purchase Order
-                                            </Button>
-                                        </div>
-                                    ) : (
-                                        <div className="pt-4 border-t">
-                                            <Button
-                                                onClick={() => handleCreateOrder(selectedRequest)}
-                                                className="w-full bg-blue-600 hover:bg-blue-700"
-                                                disabled={updating === selectedRequest.id}
-                                            >
-                                                <ShoppingBag className="mr-2 h-4 w-4" /> Create Purchase Order
-                                            </Button>
-                                        </div>
-                                    )
-                                )}
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    </div>,
-                    document.body
-                )
-            }
 
-            {/* Pagination */}
+                        <div className="space-y-3 p-4 xl:hidden">
+                            {filteredRequests.map((request) => {
+                                const { date, time } = getDateAndTime(request.createdAt);
+                                return (
+                                    <article key={request.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="text-sm font-semibold text-primary-700">#{request.id.slice(0, 8)}</p>
+                                                <p className="mt-0.5 text-xs text-gray-500">{request.items?.length || 0} items</p>
+                                            </div>
+                                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(request.status)}`}>
+                                                {formatStatusLabel(request.status)}
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-3 grid gap-2 text-sm">
+                                            <p className="text-gray-700">
+                                                <span className="font-medium text-gray-900">Requester:</span> {request.requester?.name || 'Unknown'}
+                                            </p>
+                                            <p className="text-gray-700">
+                                                <span className="font-medium text-gray-900">Supplier:</span> {request.supplier?.name || 'Not assigned'}
+                                            </p>
+                                            <p className="text-gray-700">
+                                                <span className="font-medium text-gray-900">Submitted:</span> {date} at {time}
+                                            </p>
+                                            <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                        </div>
+
+                                        {(request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS) && isSupplierApprovalBlocked(request) && (
+                                            <p className="mt-3 text-xs font-medium text-amber-700">
+                                                Supplier status requires approval: {getSupplierStatusLabel(request)}
+                                            </p>
+                                        )}
+
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {renderActionArea(request)}
+                                        </div>
+                                    </article>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
+            </section>
+
             {!loading && totalPages > 1 && (
-                <div className="mt-6">
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        total={total}
-                        limit={limit}
-                        onPageChange={(page) => setCurrentPage(page)}
-                    />
-                </div>
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    total={total}
+                    limit={limit}
+                    onPageChange={(page) => setCurrentPage(page)}
+                />
             )}
+
+            <RequestDetailsModal
+                request={selectedRequest}
+                isOpen={!!selectedRequest}
+                onClose={closeModal}
+                onStatusUpdate={handleStatusUpdate}
+                onCreateOrder={handleCreateOrder}
+                onDownloadPDF={handleDownloadPDF}
+                onNavigateToSupplier={navigateToSupplierApproval}
+                getSupplierBlockReason={getSupplierApprovalBlockReason}
+                isSupplierApprovalBlocked={isSupplierApprovalBlocked}
+                isUpdating={selectedRequest ? updating === selectedRequest.id : false}
+                canApprove={selectedRequest ? canUserApprove(selectedRequest) : false}
+            />
 
             <ConfirmationModal
                 isOpen={confirmModal.isOpen}
-                onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
                 onConfirm={confirmModal.onConfirm}
                 title={confirmModal.title}
                 message={confirmModal.message}

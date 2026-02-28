@@ -1,13 +1,11 @@
 import { memo, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
-import { useNavigate } from 'react-router-dom';
 import type { Department } from '../../services/departments.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
-import { ChevronDown } from 'lucide-react';
-// TODO: Uncomment to use API data instead of hardcoded data
-// import { reportsApi } from '../../services/reports.service';
 import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 
 interface BudgetTrackerProps {
@@ -16,19 +14,47 @@ interface BudgetTrackerProps {
     dateRange?: { start?: string; end?: string };
 }
 
-const COLORS = [
-    'bg-yellow-500',
-    'bg-green-500',
-    'bg-red-500',
-    'bg-emerald-500',
-    'bg-blue-500',
-    'bg-indigo-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-orange-500',
-    'bg-primary-500',
-];
+interface TrackedDepartment {
+    id: string;
+    name: string;
+    limit: number;
+    spent: number;
+}
 
+const BUDGET_LIMITS: Record<string, number> = {
+    Marketing: 350000,
+    Tech: 135000,
+    Finance: 40000,
+    'HR & Recruitment': 10000,
+    Fleet: 200000,
+    Support: 300000,
+};
+
+const DEFAULT_LIMIT = 50000;
+
+const getProgressStyles = (percentage: number) => {
+    if (percentage >= 100) {
+        return {
+            bar: 'bg-red-500',
+            badge: 'border border-red-200 bg-red-50 text-red-700',
+            icon: 'text-red-600',
+        };
+    }
+
+    if (percentage >= 85) {
+        return {
+            bar: 'bg-amber-500',
+            badge: 'border border-amber-200 bg-amber-50 text-amber-700',
+            icon: 'text-amber-600',
+        };
+    }
+
+    return {
+        bar: 'bg-emerald-500',
+        badge: 'border border-emerald-200 bg-emerald-50 text-emerald-700',
+        icon: 'text-emerald-600',
+    };
+};
 
 export const BudgetTracker = memo(function BudgetTracker({
     departmentSpend = {},
@@ -38,187 +64,170 @@ export const BudgetTracker = memo(function BudgetTracker({
     const navigate = useNavigate();
     const { user } = useAuth();
 
-    // Monthly budget limits as requested
-    const BUDGET_LIMITS: Record<string, number> = {
-        'Marketing': 350000,
-        'Tech': 135000,
-        'Finance': 40000,
-        'HR & Recruitment': 10000,
-        'Fleet': 200000,
-        'Support': 300000,
-    };
-
-    // Default limit for illustration since we don't have it in DB yet
-    const DEFAULT_LIMIT = 50000;
-
-    // State for expanded department
-    const [expandedDept, setExpandedDept] = useState<string | null>(null);
+    const dateRangeKey = `${dateRange?.start || 'all'}|${dateRange?.end || 'all'}`;
+    const [expandedDept, setExpandedDept] = useState<{ id: string; rangeKey: string } | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
 
-    // Create a map of department spend for easy lookup
-    const spendMap = departmentSpend;
-
-    // Memoize sortedDepartments to avoid recalculation on every render
-    const sortedDepartments = useMemo(() => {
-        // Combine seeded departments with any extra spend categories (fallback)
-        // We prioritize the seeded departments list to show correct names.
-        const trackedDepartments = departments.map((dept, index) => {
-            // Use embedded metrics from backend if available (new standard), otherwise fallback to props map
-            const spendFromMetrics = (dept as any).metrics?.totalSpent;
-            const spendFromMap = spendMap[dept.name] || 0;
+    const sortedDepartments = useMemo<TrackedDepartment[]>(() => {
+        const base = departments.map((department) => {
+            const spendFromMetrics = department.metrics?.totalSpent;
+            const spendFromMap = departmentSpend[department.name] || 0;
 
             return {
-                id: dept.id,
-                name: dept.name,
-                limit: BUDGET_LIMITS[dept.name] || DEFAULT_LIMIT, // Placeholder until limits are in DB
-                color: COLORS[index % COLORS.length],
-                spent: spendFromMetrics !== undefined ? spendFromMetrics : spendFromMap
+                id: department.id,
+                name: department.name,
+                limit: BUDGET_LIMITS[department.name] || DEFAULT_LIMIT,
+                spent: typeof spendFromMetrics === 'number' ? spendFromMetrics : spendFromMap,
             };
         });
 
-        // If there is spend for a category NOT in the departments list (e.g. old data or unassigned), add it
-        Object.entries(spendMap).forEach(([name, amount]) => {
-            if (!trackedDepartments.find(d => d.name === name)) {
-                trackedDepartments.push({
+        Object.entries(departmentSpend).forEach(([name, amount]) => {
+            if (!base.find((department) => department.name === name)) {
+                base.push({
                     id: `unassigned-${name}`,
                     name,
                     limit: BUDGET_LIMITS[name] || DEFAULT_LIMIT,
-                    color: 'bg-gray-400',
-                    spent: amount
+                    spent: amount,
                 });
             }
         });
 
-        return trackedDepartments.sort((a, b) => b.spent - a.spent);
-    }, [departments, spendMap]);
+        return base.sort((a, b) => b.spent - a.spent);
+    }, [departments, departmentSpend]);
 
-    // TODO: Uncomment below to use API breakdown data instead of hardcoded data
-    // const handleExpand = async (deptId: string) => {
-    //     if (expandedDept === deptId) { setExpandedDept(null); return; }
-    //     setExpandedDept(deptId);
-    //     if (!breakdownData[deptId] && !deptId.startsWith('unassigned-')) {
-    //         try {
-    //             const data = await reportsApi.getDepartmentSpendBreakdown(deptId);
-    //             setBreakdownData(prev => ({ ...prev, [deptId]: data }));
-    //         } catch (error) {
-    //             console.error(`Failed to fetch breakdown for department ${deptId}`, error);
-    //         }
-    //     }
-    // };
-
-    // Using hardcoded breakdown data
-    const handleExpand = (deptId: string) => {
-        if (expandedDept === deptId) {
+    const handleExpand = (departmentId: string) => {
+        if (expandedDept?.id === departmentId && expandedDept.rangeKey === dateRangeKey) {
             setExpandedDept(null);
             return;
         }
 
-        setExpandedDept(deptId);
+        setExpandedDept({ id: departmentId, rangeKey: dateRangeKey });
 
-        if (!breakdownData[deptId]) {
-            const dept = sortedDepartments.find(d => d.id === deptId);
-            const deptName = dept?.name || deptId.replace('unassigned-', '');
-            // Pass the dateRange from props to filter the breakdown correctly
-            const data = getCategoryBreakdown(deptName, dateRange);
-            setBreakdownData(prev => ({ ...prev, [deptId]: data }));
+        const cacheKey = `${dateRangeKey}|${departmentId}`;
+
+        if (!breakdownData[cacheKey]) {
+            const department = sortedDepartments.find((item) => item.id === departmentId);
+            const departmentName = department?.name || departmentId.replace('unassigned-', '');
+            const data = getCategoryBreakdown(departmentName, dateRange);
+            setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
         }
     };
 
-    // When dateRange changes, we should clear cached breakdown data
-    // so it refetches cleanly when re-expanding
-    useMemo(() => {
-        setBreakdownData({});
-        setExpandedDept(null);
-    }, [dateRange?.start, dateRange?.end]);
+    const overLimitCount = sortedDepartments.filter((department) => department.spent > department.limit).length;
 
     return (
-        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-            <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <h3 className="font-semibold text-gray-900">Departmental Budget Tracking</h3>
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h3 className="text-lg font-semibold text-gray-900">Department Budget Tracking</h3>
+                    <p className="mt-1 text-sm text-gray-500">Spend vs monthly limits with category-level breakdown.</p>
+                </div>
                 <div className="flex items-center gap-2">
+                    {overLimitCount > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            {overLimitCount} over budget
+                        </span>
+                    )}
                     {user?.role === UserRole.SYSTEM_ADMIN && (
                         <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            className="h-8 text-primary-600 hover:text-primary-700 whitespace-nowrap"
+                            className="h-8"
                             onClick={() => navigate('/budgets')}
                         >
-                            View All
+                            View Budgets
                         </Button>
                     )}
                 </div>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-3">
                 {sortedDepartments.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">No department data available.</p>
+                    <p className="rounded-lg border border-gray-100 bg-gray-50 p-4 text-sm text-gray-500">No department spend data available.</p>
                 ) : (
-                    sortedDepartments.map((dept) => {
-                        const percentage = Math.round((dept.spent / dept.limit) * 100);
-                        const remaining = dept.limit - dept.spent;
-                        const isExpanded = expandedDept === dept.id;
-                        const breakdown = breakdownData[dept.id] || [];
+                    sortedDepartments.map((department) => {
+                        const percentageRaw = department.limit > 0 ? (department.spent / department.limit) * 100 : 0;
+                        const percentage = Math.round(percentageRaw);
+                        const progressWidth = Math.min(Math.max(percentageRaw, 0), 100);
+                        const remaining = department.limit - department.spent;
+                        const isExpanded = expandedDept?.id === department.id && expandedDept.rangeKey === dateRangeKey;
+                        const breakdown = breakdownData[`${dateRangeKey}|${department.id}`] || [];
+                        const breakdownTotal = breakdown.reduce((sum, item) => sum + item.amount, 0);
+                        const styles = getProgressStyles(percentage);
 
                         return (
-                            <div key={dept.id} className="group">
-                                <div
-                                    className="mb-2 flex items-end justify-between cursor-pointer"
-                                    onClick={() => handleExpand(dept.id)}
+                            <article key={department.id} className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
+                                <button
+                                    type="button"
+                                    onClick={() => handleExpand(department.id)}
+                                    className="flex w-full items-start justify-between gap-3 text-left"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <ChevronDown className={cn("h-4 w-4 text-gray-400 transition-transform", isExpanded && "rotate-180")} />
+                                        <ChevronDown className={cn('mt-0.5 h-4 w-4 text-gray-400 transition-transform', isExpanded && 'rotate-180')} />
                                         <div>
-                                            <p className="font-medium text-gray-900">{dept.name}</p>
+                                            <p className="font-medium text-gray-900">{department.name}</p>
+                                            <p className="mt-0.5 text-xs text-gray-500">
+                                                Spent {formatCurrency(department.spent)} of {formatCurrency(department.limit)}
+                                            </p>
                                         </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className={cn("text-sm font-bold", percentage > 90 ? "text-red-600" : "text-gray-900")}>
-                                            {percentage}%
-                                        </p>
-                                        <p className="text-xs text-gray-400">REMAINING: £{remaining.toLocaleString()}</p>
-                                    </div>
-                                </div>
 
-                                <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 mb-2">
+                                    <div className="text-right">
+                                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${styles.badge}`}>
+                                            {percentage}%
+                                        </span>
+                                        <p className="mt-1 text-xs text-gray-500">
+                                            {remaining >= 0 ? 'Remaining' : 'Over by'} {formatCurrency(Math.abs(remaining))}
+                                        </p>
+                                    </div>
+                                </button>
+
+                                <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-gray-200">
                                     <div
-                                        className={cn("h-full rounded-full transition-all duration-500", dept.color)}
-                                        style={{ width: `${Math.min(percentage, 100)}%` }}
+                                        className={cn('h-full rounded-full transition-all duration-500', styles.bar)}
+                                        style={{ width: `${progressWidth}%` }}
                                     />
                                 </div>
 
-                                <div className="flex justify-between text-[10px] text-gray-400">
-                                    <span>Spent: £{dept.spent.toLocaleString()}</span>
-                                    <span>Limit: £{dept.limit.toLocaleString()}</span>
-                                </div>
-
-                                {/* Breakdown Dropdown */}
                                 {isExpanded && (
-                                    <div className="mt-4 pl-6 pr-2 py-3 bg-gray-50 rounded-md text-sm animate-in slide-in-from-top-2 duration-200">
-                                        <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Category Breakdown</h4>
+                                    <div className="mt-4 rounded-lg border border-gray-200 bg-white p-3">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Category Breakdown</p>
 
                                         {breakdown.length > 0 ? (
-                                            <div className="space-y-2">
-                                                {breakdown.map((item, idx) => (
-                                                    <div key={idx} className="flex justify-between items-center text-xs">
-                                                        <span className="text-gray-600">{item.category}</span>
-                                                        <span className="font-medium text-gray-900">£{item.amount.toLocaleString()}</span>
-                                                    </div>
-                                                ))}
-                                                <div className="pt-2 mt-2 border-t border-gray-200 flex justify-between items-center text-xs font-semibold">
-                                                    <span>Total</span>
-                                                    <span>£{breakdown.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}</span>
+                                            <div className="mt-3 space-y-2">
+                                                {breakdown.map((item) => {
+                                                    const width = breakdownTotal > 0 ? Math.round((item.amount / breakdownTotal) * 100) : 0;
+                                                    return (
+                                                        <div key={`${department.id}-${item.category}`}>
+                                                            <div className="mb-1 flex items-center justify-between text-xs">
+                                                                <span className="text-gray-600">{item.category}</span>
+                                                                <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
+                                                            </div>
+                                                            <div className="h-1.5 w-full rounded-full bg-gray-100">
+                                                                <div className="h-full rounded-full bg-primary-500" style={{ width: `${Math.max(width, 4)}%` }} />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <div className="mt-3 border-t border-gray-100 pt-2 text-xs font-semibold text-gray-700">
+                                                    Total: {formatCurrency(breakdownTotal)}
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className="text-xs text-gray-400 italic">No detailed spend data available.</p>
+                                            <p className="mt-2 text-xs italic text-gray-500">No category breakdown available for this range.</p>
                                         )}
                                     </div>
                                 )}
-                            </div>
+                            </article>
                         );
                     })
                 )}
             </div>
-        </div>
+        </section>
     );
 });
+
+function formatCurrency(value: number) {
+    return `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+}

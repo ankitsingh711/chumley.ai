@@ -7,6 +7,13 @@ export interface Department {
     budget: number;
     createdAt: string;
     updatedAt: string;
+    metrics?: {
+        totalSpent?: number;
+        requestCount?: number;
+        pendingCount?: number;
+        userCount?: number;
+        [key: string]: number | undefined;
+    };
 }
 
 export const departmentsApi = {
