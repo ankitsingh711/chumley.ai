@@ -14,6 +14,8 @@ import {
     List,
     CalendarClock,
     ArrowUpDown,
+    CheckCircle2,
+    Info,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
@@ -168,6 +170,28 @@ export default function Catalog() {
         setParentCandidates([]);
     };
 
+    useEffect(() => {
+        if (!showModal) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && !saving) {
+                setShowModal(false);
+                setEditingId(null);
+                setParentCandidates([]);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.removeEventListener('keydown', handleEscape);
+        };
+    }, [showModal, saving]);
+
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         try {
@@ -267,6 +291,12 @@ export default function Catalog() {
 
         return [{ value: '', label: 'No parent (Top-level category)' }, ...options];
     }, [formData.departmentId, parentCandidates]);
+
+    const selectedDepartmentName = departments.find((department) => department.id === formData.departmentId)?.name || 'Not selected';
+    const selectedParentName = formData.parentId
+        ? parentOptions.find((option) => option.value === formData.parentId)?.label || 'Unknown parent'
+        : 'No parent';
+    const canSubmit = !saving && Boolean(formData.name.trim()) && Boolean(formData.departmentId);
 
     return (
         <div className="space-y-6">
@@ -628,118 +658,198 @@ export default function Catalog() {
 
             {showModal && createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
                     onClick={handleCloseModal}
                 >
                     <div
-                        className="w-full max-w-xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
+                        className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between border-b border-gray-100 bg-gradient-to-r from-white via-primary-50/40 to-white p-6">
+                        <header className="relative border-b border-gray-100 bg-gradient-to-r from-white via-primary-50/55 to-accent-50/45 px-5 py-4 sm:px-6">
+                            <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary-200/30 blur-2xl" />
                             <div>
-                                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700">
+                                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">
                                     {editingId ? 'Update Category' : 'New Category'}
                                 </p>
-                                <h2 className="mt-1 text-xl font-bold text-gray-900">
+                                <h2 className="mt-1 text-3xl font-bold text-gray-900">
                                     {editingId ? 'Edit Catalog Category' : 'Create Catalog Category'}
                                 </h2>
-                                <p className="mt-1 text-sm text-gray-500">
-                                    Define category structure, ownership department, and parent hierarchy.
+                                <p className="mt-1 text-sm text-gray-600">
+                                    {editingId
+                                        ? 'Update category metadata and hierarchy without changing spend history.'
+                                        : 'Define category structure, ownership department, and parent hierarchy.'}
                                 </p>
                             </div>
                             <button
                                 type="button"
                                 onClick={handleCloseModal}
-                                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                                className="absolute right-5 top-4 inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:bg-gray-50 sm:right-6"
+                                aria-label="Close category modal"
                             >
-                                <X className="h-5 w-5" />
+                                <X className="h-4 w-4" />
                             </button>
-                        </div>
+                        </header>
 
-                        <form onSubmit={handleSubmit} className="space-y-4 p-6">
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Category Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.name}
-                                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    placeholder="e.g. SaaS Subscriptions"
-                                />
-                            </div>
+                        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+                            <div className="grid min-h-0 flex-1 gap-6 overflow-y-auto p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+                                <div className="space-y-5">
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="mb-4 text-base font-semibold text-gray-900">Category Details</h3>
 
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-                                <textarea
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
-                                    className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none transition focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    placeholder="Describe what should be purchased under this category"
-                                />
-                            </div>
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                Category Name <span className="text-red-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <Package className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={formData.name}
+                                                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                                                    className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-4 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                                    placeholder="e.g. SaaS Subscriptions"
+                                                />
+                                            </div>
+                                        </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                                        Department <span className="text-red-500">*</span>
-                                    </label>
-                                    <Select
-                                        value={formData.departmentId}
-                                        onChange={(value) => {
-                                            setFormData((prev) => ({ ...prev, departmentId: value, parentId: '' }));
-                                            void loadParentCandidates(value, editingId || undefined);
-                                        }}
-                                        options={departments.map((department) => ({
-                                            value: department.id,
-                                            label: department.name,
-                                        }))}
-                                        disabled={Boolean(editingId)}
-                                        triggerClassName="h-11"
-                                    />
+                                        <div className="mt-4">
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                                            <textarea
+                                                rows={4}
+                                                value={formData.description}
+                                                onChange={(event) => setFormData((prev) => ({ ...prev, description: event.target.value }))}
+                                                className="w-full resize-none rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                                placeholder="Describe what should be purchased under this category"
+                                            />
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="mb-4 text-base font-semibold text-gray-900">Ownership & Hierarchy</h3>
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                    Department <span className="text-red-500">*</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <Building2 className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                                    <Select
+                                                        value={formData.departmentId}
+                                                        onChange={(value) => {
+                                                            setFormData((prev) => ({ ...prev, departmentId: value, parentId: '' }));
+                                                            void loadParentCandidates(value, editingId || undefined);
+                                                        }}
+                                                        options={departments.map((department) => ({
+                                                            value: department.id,
+                                                            label: department.name,
+                                                        }))}
+                                                        disabled={Boolean(editingId)}
+                                                        triggerClassName="h-11 pl-9"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">Parent Category</label>
+                                                <div className="relative">
+                                                    <FolderTree className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                                    <Select
+                                                        value={formData.parentId}
+                                                        onChange={(value) => setFormData((prev) => ({ ...prev, parentId: value }))}
+                                                        options={parentOptions}
+                                                        disabled={!formData.departmentId || loadingParentCandidates}
+                                                        placeholder={loadingParentCandidates ? 'Loading categories...' : 'Select parent'}
+                                                        triggerClassName="h-11 pl-9"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                                            <span className="inline-flex items-center gap-1">
+                                                <ArrowUpDown className="h-3.5 w-3.5" />
+                                                Use top-level categories for broad spend areas and sub-categories for approval precision.
+                                            </span>
+                                        </div>
+                                    </section>
                                 </div>
 
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">Parent Category</label>
-                                    <Select
-                                        value={formData.parentId}
-                                        onChange={(value) => setFormData((prev) => ({ ...prev, parentId: value }))}
-                                        options={parentOptions}
-                                        disabled={!formData.departmentId || loadingParentCandidates}
-                                        placeholder={loadingParentCandidates ? 'Loading categories...' : 'Select parent'}
-                                        triggerClassName="h-11"
-                                    />
+                                <aside className="space-y-4 xl:sticky xl:top-0 xl:self-start">
+                                    <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                                        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Live Summary</h3>
+                                        <div className="mt-3 space-y-3 text-sm">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-gray-500">Mode</span>
+                                                <span className="font-medium text-gray-900">{editingId ? 'Edit existing' : 'Create new'}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-gray-500">Department</span>
+                                                <span className="max-w-[11rem] truncate font-medium text-gray-900">{selectedDepartmentName}</span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-gray-500">Type</span>
+                                                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                                    formData.parentId
+                                                        ? 'border border-amber-200 bg-amber-50 text-amber-700'
+                                                        : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+                                                }`}
+                                                >
+                                                    {formData.parentId ? 'Sub-Category' : 'Top-Level'}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="text-gray-500">Parent</span>
+                                                <span className="max-w-[11rem] truncate font-medium text-gray-900">{selectedParentName}</span>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Readiness</h3>
+                                        <div className="mt-3 space-y-2 text-sm">
+                                            <p className={`inline-flex items-center gap-2 ${formData.name.trim() ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                Category name
+                                            </p>
+                                            <p className={`inline-flex items-center gap-2 ${formData.departmentId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                Department ownership
+                                            </p>
+                                            <p className={`inline-flex items-center gap-2 ${formData.parentId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                                <CheckCircle2 className="h-4 w-4" />
+                                                Parent link (optional)
+                                            </p>
+                                        </div>
+                                    </section>
+
+                                    <p className="inline-flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                                        <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                        Clear category descriptions improve request routing and reporting quality.
+                                    </p>
+                                </aside>
+                            </div>
+
+                            <footer className="flex-shrink-0 border-t border-gray-100 bg-white/95 px-5 py-4 sm:px-6">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCloseModal}
+                                        className="sm:min-w-[9rem]"
+                                        disabled={saving}
+                                    >
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        className="bg-primary-700 hover:bg-primary-800 sm:min-w-[12rem]"
+                                        disabled={!canSubmit}
+                                    >
+                                        {saving ? 'Saving...' : editingId ? 'Update Category' : 'Create Category'}
+                                    </Button>
                                 </div>
-                            </div>
-
-                            <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-500">
-                                <span className="inline-flex items-center gap-1">
-                                    <ArrowUpDown className="h-3.5 w-3.5" />
-                                    Use top-level categories for broad spend areas and sub-categories for approval precision.
-                                </span>
-                            </div>
-
-                            <div className="flex gap-3 border-t border-gray-100 pt-4">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleCloseModal}
-                                    className="flex-1"
-                                    disabled={saving}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    className="flex-1 bg-primary-700 hover:bg-primary-800"
-                                    disabled={saving || !formData.name.trim() || !formData.departmentId}
-                                >
-                                    {saving ? 'Saving...' : editingId ? 'Update Category' : 'Create Category'}
-                                </Button>
-                            </div>
+                            </footer>
                         </form>
                     </div>
                 </div>,

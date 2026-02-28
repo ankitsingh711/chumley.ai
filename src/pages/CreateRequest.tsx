@@ -1,7 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
-import { Plus, Trash2 } from 'lucide-react';
+import {
+    Plus,
+    Trash2,
+    ChevronRight,
+    ClipboardList,
+    Landmark,
+    Layers3,
+    Truck,
+    CircleAlert,
+    Info,
+    ReceiptText,
+    Hash,
+    PoundSterling,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
 import { suppliersApi } from '../services/suppliers.service';
@@ -20,6 +33,13 @@ interface ItemRow {
     quantity: number | '';
     unitPrice: number | '';
 }
+
+interface SupplierWithDepartments extends Supplier {
+    departments?: Array<{ id: string }>;
+}
+
+const formatCurrency = (value: number) =>
+    `£${Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export default function CreateRequest() {
     const navigate = useNavigate();
@@ -45,12 +65,7 @@ export default function CreateRequest() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => {
-        fetchSuppliers();
-        loadDepartments();
-    }, []);
-
-    const fetchSuppliers = async () => {
+    const fetchSuppliers = useCallback(async () => {
         try {
             const response = await suppliersApi.getAll();
             const data = isPaginatedResponse(response) ? response.data : response;
@@ -58,9 +73,9 @@ export default function CreateRequest() {
         } catch (error) {
             console.error('Failed to fetch suppliers:', error);
         }
-    };
+    }, []);
 
-    const loadDepartments = async () => {
+    const loadDepartments = useCallback(async () => {
         try {
             const data = await departmentsApi.getAll();
             setDepartments(data);
@@ -76,7 +91,12 @@ export default function CreateRequest() {
         } catch (err) {
             console.error('Failed to load departments', err);
         }
-    };
+    }, [user?.departmentId, user?.role]);
+
+    useEffect(() => {
+        void fetchSuppliers();
+        void loadDepartments();
+    }, [fetchSuppliers, loadDepartments]);
 
     useEffect(() => {
         if (branch && selectedDepartmentId) {
@@ -89,10 +109,41 @@ export default function CreateRequest() {
     }, [branch, selectedDepartmentId]);
 
     const isStaffCategory = (name: string) => /\bstaff\b/i.test(name);
-    const parentCategories = categories.filter(c => !c.parentId && !isStaffCategory(c.name));
+    const parentCategories = categories.filter((category) => !category.parentId && !isStaffCategory(category.name));
     const subCategories = selectedCategoryId
-        ? categories.filter(c => c.parentId === selectedCategoryId && !isStaffCategory(c.name))
+        ? categories.filter((category) => category.parentId === selectedCategoryId && !isStaffCategory(category.name))
         : [];
+
+    const availableDepartments = useMemo(
+        () => departments.filter((department) => (
+            user?.role === UserRole.SYSTEM_ADMIN || department.id === user?.departmentId
+        )),
+        [departments, user?.departmentId, user?.role],
+    );
+
+    const filteredSuppliers = useMemo(
+        () => suppliers.filter((supplier) => {
+            if (!selectedDepartmentId) return true;
+            const supplierWithDepartments = supplier as SupplierWithDepartments;
+            const supplierDepartments = supplierWithDepartments.departments;
+            if (!supplierDepartments || supplierDepartments.length === 0) return true;
+            return supplierDepartments.some((department) => department.id === selectedDepartmentId);
+        }),
+        [suppliers, selectedDepartmentId],
+    );
+
+    const selectedDepartment = departments.find((department) => department.id === selectedDepartmentId);
+    const selectedSupplier = suppliers.find((supplier) => supplier.id === selectedSupplierId);
+    const selectedCategory = categories.find((category) => category.id === selectedCategoryId);
+    const selectedSubCategory = categories.find((category) => category.id === selectedSubCategoryId);
+
+    const itemsWithTotals = items.map((item) => ({
+        ...item,
+        total: Number(item.quantity || 0) * Number(item.unitPrice || 0),
+    }));
+    const validLineItems = items.filter((item) =>
+        item.description.trim() && Number(item.quantity) > 0 && Number(item.unitPrice) > 0
+    );
 
     const addItem = () => {
         setItems([...items, { description: '', quantity: '', unitPrice: '' }]);
@@ -114,12 +165,21 @@ export default function CreateRequest() {
         return items.reduce((sum, item) => sum + (Number(item.quantity || 0) * Number(item.unitPrice || 0)), 0);
     };
 
+    const totalAmount = calculateTotal();
+    const finalCategoryId = subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId;
+    const selectedCategoryLabel = selectedSubCategory?.name || selectedCategory?.name || 'Not selected';
+    const canSubmit = Boolean(
+        validLineItems.length > 0
+        && selectedSupplierId
+        && selectedDepartmentId
+        && finalCategoryId,
+    );
+
     const handleSubmit = async () => {
         setError('');
 
         // Validation
-        const validItems = items.filter(item => item.description && Number(item.quantity) > 0 && Number(item.unitPrice) > 0);
-        if (validItems.length === 0) {
+        if (validLineItems.length === 0) {
             setError('Please add at least one valid item');
             return;
         }
@@ -134,8 +194,6 @@ export default function CreateRequest() {
             return;
         }
 
-        const finalCategoryId = subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId;
-
         if (!finalCategoryId) {
             setError(subCategories.length > 0 ? 'Please select a spending subcategory' : 'Please select a spending category');
             return;
@@ -146,311 +204,403 @@ export default function CreateRequest() {
             const data: CreateRequestInput = {
                 reason: reason || undefined,
                 supplierId: selectedSupplierId,
-                budgetCategory: departments.find(d => d.id === selectedDepartmentId)?.name,
-                categoryId: (subCategories.length > 0 ? selectedSubCategoryId : selectedCategoryId) || undefined,
-                items: validItems.map(item => ({
+                budgetCategory: selectedDepartment?.name,
+                categoryId: finalCategoryId || undefined,
+                items: validLineItems.map((item) => ({
                     description: item.description,
                     quantity: Number(item.quantity),
                     unitPrice: Number(item.unitPrice)
                 })),
-                branch: branch,
+                branch,
             };
 
             await requestsApi.create(data);
             navigate('/requests');
-        } catch (err: any) {
-            setError(err.response?.data?.error || 'Failed to create request');
+        } catch (err: unknown) {
+            const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+                || 'Failed to create request';
+            setError(message);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleSupplierAdded = (newSupplier: any) => {
+    const handleSupplierAdded = (newSupplier: Supplier) => {
         // optimistically add to list or reload
-        setSuppliers(prev => [...prev, newSupplier]);
+        setSuppliers((prev) => [...prev, newSupplier]);
         setSelectedSupplierId(newSupplier.id);
         // loadSuppliers(); // optionally reload to get full data if needed
     };
 
     return (
-        <div className="max-w-5xl mx-auto space-y-6 pb-20">
+        <div className="space-y-6 pb-20">
             <AddSupplierModal
                 isOpen={showAddSupplierModal}
                 onClose={() => setShowAddSupplierModal(false)}
                 onSuccess={handleSupplierAdded}
                 isRestricted={user?.role !== UserRole.SYSTEM_ADMIN}
             />
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+
+            <section className="relative overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/60 to-accent-50/70 p-6 shadow-sm">
+                <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-primary-200/40 blur-3xl" />
+                <div className="pointer-events-none absolute -bottom-20 left-10 h-48 w-48 rounded-full bg-accent-200/50 blur-3xl" />
+
+                <div className="relative flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
                     <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mb-1">
-                            <span className="cursor-pointer hover:text-gray-900" onClick={() => navigate('/requests')}>Requests</span>
-                            <span>›</span>
-                            <span className="font-medium text-gray-900">New Purchase Request</span>
+                        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">
+                            <button
+                                type="button"
+                                className="transition hover:text-primary-800"
+                                onClick={() => navigate('/requests')}
+                            >
+                                Requests
+                            </button>
+                            <ChevronRight className="h-3.5 w-3.5 text-primary-500" />
+                            <span>New Purchase Request</span>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Create Purchase Request</h1>
-                        <p className="text-sm text-gray-500">Specify details for internal review and vendor processing.</p>
+                        <h1 className="mt-2 text-3xl font-bold text-gray-900">Create Purchase Request</h1>
+                        <p className="mt-2 max-w-2xl text-sm text-gray-600">
+                            Build a complete request package with the right supplier, category, and line-item detail for fast approvals.
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" onClick={() => navigate('/requests')} className="border-white/70 bg-white/90 backdrop-blur">
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-primary-700 hover:bg-primary-800"
+                            onClick={handleSubmit}
+                            disabled={loading || !canSubmit}
+                        >
+                            {loading ? 'Submitting...' : 'Submit for Approval'}
+                        </Button>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => navigate('/requests')}>Cancel</Button>
-                    <Button
-                        className="bg-primary-700 hover:bg-primary-600"
-                        onClick={handleSubmit}
-                        disabled={loading}
-                    >
-                        {loading ? 'Submitting...' : 'Submit for Approval'}
-                    </Button>
+
+                <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Active Line Items
+                            <ClipboardList className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-gray-900">{validLineItems.length}</p>
+                        <p className="mt-1 text-xs text-gray-500">Valid rows ready for submission</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Department
+                            <Landmark className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 text-lg font-semibold text-gray-900">{selectedDepartment?.name || 'Not selected'}</p>
+                        <p className="mt-1 text-xs text-gray-500">Budget owner for this request</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Supplier
+                            <Truck className="h-4 w-4 text-primary-600" />
+                        </div>
+                        <p className="mt-2 truncate text-lg font-semibold text-gray-900">{selectedSupplier?.name || 'Not selected'}</p>
+                        <p className="mt-1 text-xs text-gray-500">Vendor for fulfilment</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
+                        <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
+                            Request Total
+                            <ReceiptText className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(totalAmount)}</p>
+                        <p className="mt-1 text-xs text-gray-500">Estimated commercial value</p>
+                    </div>
                 </div>
-            </div>
+            </section>
 
             {error && (
-                <div className="rounded-lg bg-red-50 border border-red-200 p-4">
-                    <p className="text-sm text-red-800">{error}</p>
-                </div>
+                <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+                    <p className="inline-flex items-center gap-2 text-sm font-medium text-rose-700">
+                        <CircleAlert className="h-4 w-4" />
+                        {error}
+                    </p>
+                </section>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left Column: Main Form */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* General Info */}
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <h3 className="flex items-center gap-2 font-semibold text-gray-900 mb-6">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">1</span>
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                <div className="space-y-6 xl:col-span-2">
+                    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <h3 className="mb-6 flex items-center gap-2 text-lg font-semibold text-gray-900">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-700 text-xs font-bold text-white">1</span>
                             General Information
                         </h3>
 
-                        <div className="grid grid-cols-1 gap-6">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                                    Center / Base <span className="text-red-500">*</span>
-                                </label>
-                                <Select
-                                    value={branch}
-                                    onChange={(val) => {
-                                        setBranch(val as Branch);
-                                        setSelectedCategoryId('');
-                                        setSelectedSubCategoryId('');
-                                    }}
-                                    options={[
-                                        { value: Branch.CHESSINGTON, label: 'Chessington' }
-                                    ]}
-                                    placeholder="Select Center..."
-                                    className="w-full"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                                    Department <span className="text-red-500">*</span>
-                                </label>
-                                <Select
-                                    value={selectedDepartmentId}
-                                    onChange={(val) => {
-                                        setSelectedDepartmentId(val);
-                                        setSelectedCategoryId('');
-                                        setSelectedSubCategoryId('');
-                                    }}
-                                    options={[
-                                        ...(user?.role === UserRole.SYSTEM_ADMIN ? [{ value: '', label: 'Select Department...' }] : []),
-                                        ...departments
-                                            .filter(dept => {
-                                                if (user?.role === UserRole.SYSTEM_ADMIN) return true;
-                                                return dept.id === user?.departmentId;
-                                            })
-                                            .map(dept => ({ value: dept.id, label: dept.name }))
-                                    ]}
-                                    placeholder={user?.role === UserRole.SYSTEM_ADMIN ? "Select Department..." : undefined}
-                                    disabled={user?.role !== UserRole.SYSTEM_ADMIN}
-                                    error={departments.length === 0 ? 'Loading departments...' : undefined}
-                                />
-                            </div>
-
-                            <div className="space-y-4">
-                                <Select
-                                    label="Spending Category"
-                                    value={selectedCategoryId}
-                                    onChange={(val) => {
-                                        setSelectedCategoryId(val);
-                                        setSelectedSubCategoryId('');
-                                    }}
-                                    options={[
-                                        { value: '', label: 'Select category...' },
-                                        ...parentCategories.map(c => ({ value: c.id, label: c.name }))
-                                    ]}
-                                    disabled={!selectedDepartmentId}
-                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a category..."}
-                                    className="w-full"
-                                />
-
-                                {subCategories.length > 0 && (
-                                    <div>
-                                        <Select
-                                            label="Spending Subcategory"
-                                            value={selectedSubCategoryId}
-                                            onChange={setSelectedSubCategoryId}
-                                            options={[
-                                                { value: '', label: 'Select subcategory...' },
-                                                ...subCategories.map(c => ({ value: c.id, label: c.name }))
-                                            ]}
-                                            placeholder="Select a subcategory..."
-                                            className="w-full"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <div className="flex justify-between items-center mb-1.5">
-                                    <label className="block text-xs font-bold text-gray-700">
-                                        Supplier / Vendor <span className="text-red-500">*</span>
+                        <div className="grid grid-cols-1 gap-5">
+                            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        Center / Base <span className="text-rose-500">*</span>
                                     </label>
+                                    <Select
+                                        value={branch}
+                                        onChange={(value) => {
+                                            setBranch(value as Branch);
+                                            setSelectedCategoryId('');
+                                            setSelectedSubCategoryId('');
+                                        }}
+                                        options={[{ value: Branch.CHESSINGTON, label: 'Chessington' }]}
+                                        triggerClassName="h-11"
+                                    />
+                                </div>
 
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        Department <span className="text-rose-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={selectedDepartmentId}
+                                        onChange={(value) => {
+                                            setSelectedDepartmentId(value);
+                                            setSelectedCategoryId('');
+                                            setSelectedSubCategoryId('');
+                                        }}
+                                        options={[
+                                            ...(user?.role === UserRole.SYSTEM_ADMIN ? [{ value: '', label: 'Select department...' }] : []),
+                                            ...availableDepartments.map((department) => ({ value: department.id, label: department.name })),
+                                        ]}
+                                        placeholder={user?.role === UserRole.SYSTEM_ADMIN ? 'Select department...' : undefined}
+                                        disabled={user?.role !== UserRole.SYSTEM_ADMIN}
+                                        error={departments.length === 0 ? 'Loading departments...' : undefined}
+                                        triggerClassName="h-11"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        Spending Category <span className="text-rose-500">*</span>
+                                    </label>
+                                    <Select
+                                        value={selectedCategoryId}
+                                        onChange={(value) => {
+                                            setSelectedCategoryId(value);
+                                            setSelectedSubCategoryId('');
+                                        }}
+                                        options={[
+                                            { value: '', label: 'Select category...' },
+                                            ...parentCategories.map((category) => ({ value: category.id, label: category.name })),
+                                        ]}
+                                        disabled={!selectedDepartmentId}
+                                        placeholder={!selectedDepartmentId ? 'Select a department first' : 'Select category...'}
+                                        triggerClassName="h-11"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                                        Spending Subcategory {subCategories.length > 0 ? <span className="text-rose-500">*</span> : null}
+                                    </label>
+                                    <Select
+                                        value={selectedSubCategoryId}
+                                        onChange={setSelectedSubCategoryId}
+                                        options={[
+                                            { value: '', label: subCategories.length > 0 ? 'Select subcategory...' : 'No subcategory required' },
+                                            ...subCategories.map((category) => ({ value: category.id, label: category.name })),
+                                        ]}
+                                        disabled={subCategories.length === 0}
+                                        placeholder={subCategories.length === 0 ? 'No subcategory required' : 'Select subcategory...'}
+                                        triggerClassName="h-11"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <div className="mb-1.5 flex items-center justify-between">
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        Supplier / Vendor <span className="text-rose-500">*</span>
+                                    </label>
                                     <button
+                                        type="button"
                                         onClick={() => setShowAddSupplierModal(true)}
-                                        className="text-[10px] text-primary-600 font-medium hover:text-primary-700 flex items-center gap-1"
+                                        className="inline-flex items-center gap-1 text-xs font-semibold text-primary-700 transition hover:text-primary-800"
                                     >
-                                        <Plus className="h-3 w-3" /> New Vendor
+                                        <Plus className="h-3.5 w-3.5" />
+                                        New Vendor
                                     </button>
                                 </div>
                                 <Select
                                     value={selectedSupplierId}
                                     onChange={setSelectedSupplierId}
                                     options={[
-                                        { value: '', label: 'Select a supplier...' },
-                                        ...suppliers
-                                            .filter(s => {
-                                                // Filter logic:
-                                                // 1. If no department selected, show none (or all? Plan says "Filter Vendors list based on selected Department")
-                                                // 2. If department selected, show suppliers linked to that department OR global suppliers (no dept linked)
-                                                // Note: Frontend Supplier type might need 'departments' property.
-                                                // Let's assume suppliers loaded has 'departments' as per controller.
-                                                if (!selectedDepartmentId) return true;
-                                                const sAny = s as any;
-                                                const supplierDepts = sAny.departments as { id: string }[];
-                                                if (!supplierDepts || supplierDepts.length === 0) return true; // Global/Shared
-                                                return supplierDepts.some(d => d.id === selectedDepartmentId);
-                                            })
-                                            .map(s => ({ value: s.id, label: `${s.name} (${s.category})` }))
+                                        { value: '', label: 'Select supplier...' },
+                                        ...filteredSuppliers.map((supplier) => ({
+                                            value: supplier.id,
+                                            label: `${supplier.name} (${supplier.category})`,
+                                        })),
                                     ]}
-                                    placeholder={!selectedDepartmentId ? "Select a department first" : "Select a supplier..."}
-                                    className="w-full"
+                                    placeholder={!selectedDepartmentId ? 'Select a department first' : 'Select supplier...'}
                                     disabled={!selectedDepartmentId}
+                                    triggerClassName="h-11"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5">Reason for Purchase</label>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Reason for Purchase</label>
                                 <textarea
                                     value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Briefly explain the business need..."
-                                    className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 min-h-[80px]"
+                                    onChange={(event) => setReason(event.target.value)}
+                                    placeholder="Briefly explain the business need and expected impact..."
+                                    className="min-h-[110px] w-full resize-none rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
                                 />
                             </div>
                         </div>
-                    </div>
+                    </section>
 
-                    {/* Request Items */}
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-                                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary-600 text-[10px] text-white font-bold">2</span>
+                    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <div className="mb-6 flex items-center justify-between gap-3">
+                            <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-700 text-xs font-bold text-white">2</span>
                                 Request Items
                             </h3>
-                            <Button size="sm" variant="ghost" className="text-primary-600" onClick={addItem}>
-                                <Plus className="mr-1 h-3 w-3" /> Add Row
+                            <Button size="sm" variant="outline" onClick={addItem}>
+                                <Plus className="mr-1 h-3.5 w-3.5" />
+                                Add Line
                             </Button>
                         </div>
 
                         <div className="space-y-3">
-                            {items.map((item, index) => (
-                                <div key={index} className="flex gap-3 items-start group">
-                                    <div className="flex-1">
-                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Description</label>}
-                                        <input
-                                            type="text"
-                                            value={item.description}
-                                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                                            placeholder="Item name or description"
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500"
-                                        />
-                                    </div>
-                                    <div className="w-20">
-                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Qty</label>}
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            value={item.quantity}
-                                            onChange={(e) => updateItem(index, 'quantity', e.target.value === '' ? '' : parseInt(e.target.value))}
-                                            placeholder="Qty"
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                    </div>
-                                    <div className="w-32">
-                                        {index === 0 && <label className="block text-xs font-medium text-gray-500 mb-1">Unit Price (£)</label>}
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={item.unitPrice}
-                                            onChange={(e) => updateItem(index, 'unitPrice', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                            placeholder="0.00"
-                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm outline-none focus:border-primary-500 text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                        />
-                                    </div>
-                                    <div className="w-8 flex items-end justify-center pt-8">
+                            {itemsWithTotals.map((item, index) => (
+                                <article
+                                    key={index}
+                                    className="group rounded-xl border border-gray-200 bg-gray-50/70 p-3 transition hover:border-primary-200 hover:bg-primary-50/20"
+                                >
+                                    <div className="mb-2 flex items-center justify-between">
+                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Line {index + 1}</p>
                                         <button
+                                            type="button"
                                             onClick={() => removeItem(index)}
-                                            className="p-2 text-gray-400 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Remove item"
+                                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-gray-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-40"
+                                            disabled={items.length === 1}
+                                            title="Remove line"
                                         >
                                             <Trash2 className="h-4 w-4" />
                                         </button>
                                     </div>
-                                </div>
+
+                                    <div className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_100px_140px_auto]">
+                                        <input
+                                            type="text"
+                                            value={item.description}
+                                            onChange={(event) => updateItem(index, 'description', event.target.value)}
+                                            placeholder="Item description"
+                                            className="h-10 rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                        />
+                                        <div className="relative">
+                                            <Hash className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={item.quantity}
+                                                onChange={(event) => updateItem(index, 'quantity', event.target.value === '' ? '' : parseInt(event.target.value, 10))}
+                                                placeholder="Qty"
+                                                className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                        <div className="relative">
+                                            <PoundSterling className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={item.unitPrice}
+                                                onChange={(event) => updateItem(index, 'unitPrice', event.target.value === '' ? '' : parseFloat(event.target.value))}
+                                                placeholder="Unit price"
+                                                className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-8 pr-3 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                            />
+                                        </div>
+                                        <div className="inline-flex h-10 min-w-[110px] items-center justify-end rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-900">
+                                            {formatCurrency(item.total)}
+                                        </div>
+                                    </div>
+                                </article>
                             ))}
                         </div>
+                    </section>
 
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-                            <p className="text-sm font-medium text-gray-600">Total: <span className="text-gray-900 text-lg ml-2">£{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></p>
-                        </div>
-                    </div>
-
-                    <div className="rounded-xl bg-blue-50 p-4 border border-blue-100">
-                        <h4 className="text-xs font-bold text-blue-800 uppercase mb-2">Helpful Tip</h4>
-                        <p className="text-xs text-blue-700 leading-relaxed">
-                            For capital equipment over £5,000, please ensure you have attached the necessary 3 competitive quotes in the "Files" section (coming soon).
+                    <section className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+                        <p className="inline-flex items-start gap-2 text-sm text-blue-800">
+                            <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                            For capital equipment over £5,000, include supporting quotes or sourcing notes in the justification.
                         </p>
-                    </div>
+                    </section>
                 </div>
 
-                {/* Right Column: Order Summary */}
-                <div className="space-y-6">
-                    <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm sticky top-6">
-                        <h3 className="font-semibold text-gray-900 mb-4">Request Summary</h3>
+                <aside className="space-y-6">
+                    <section className="sticky top-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <h3 className="text-lg font-semibold text-gray-900">Request Summary</h3>
 
-                        <div className="space-y-3 text-sm border-b border-gray-100 pb-4 mb-4">
-                            <div className="flex justify-between">
-                                <span className="text-gray-500">Subtotal</span>
-                                <span className="font-medium text-gray-900">£{calculateTotal().toLocaleString()}</span>
+                        <div className="mt-4 space-y-3 border-b border-gray-100 pb-4 text-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Line items</span>
+                                <span className="font-medium text-gray-900">{items.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Valid rows</span>
+                                <span className="font-medium text-gray-900">{validLineItems.length}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Department</span>
+                                <span className="max-w-[10rem] truncate text-right font-medium text-gray-900">
+                                    {selectedDepartment?.name || 'Not selected'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Supplier</span>
+                                <span className="max-w-[10rem] truncate text-right font-medium text-gray-900">
+                                    {selectedSupplier?.name || 'Not selected'}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Category</span>
+                                <span className="max-w-[10rem] truncate text-right font-medium text-gray-900">
+                                    {selectedCategoryLabel}
+                                </span>
                             </div>
                         </div>
 
-                        <div className="flex justify-between items-center mb-6">
-                            <span className="text-base font-bold text-gray-900">Total</span>
-                            <span className="text-xl font-bold text-primary-600">£{calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        <div className="mt-4 flex items-center justify-between">
+                            <span className="text-base font-semibold text-gray-900">Total</span>
+                            <span className="text-2xl font-bold text-primary-700">{formatCurrency(totalAmount)}</span>
                         </div>
 
-                        <Button className="w-full bg-primary-700 hover:bg-primary-600" onClick={handleSubmit} disabled={loading}>
+                        <div className="mt-5 space-y-2 text-sm">
+                            <p className={`inline-flex items-center gap-2 ${selectedDepartmentId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                <ClipboardList className="h-4 w-4" />
+                                Department selected
+                            </p>
+                            <p className={`inline-flex items-center gap-2 ${selectedSupplierId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                <Truck className="h-4 w-4" />
+                                Supplier selected
+                            </p>
+                            <p className={`inline-flex items-center gap-2 ${finalCategoryId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                <Layers3 className="h-4 w-4" />
+                                Spending category selected
+                            </p>
+                            <p className={`inline-flex items-center gap-2 ${validLineItems.length > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                <ReceiptText className="h-4 w-4" />
+                                At least one valid item
+                            </p>
+                        </div>
+
+                        <Button
+                            className="mt-5 w-full bg-primary-700 hover:bg-primary-800"
+                            onClick={handleSubmit}
+                            disabled={loading || !canSubmit}
+                        >
                             {loading ? 'Submitting...' : 'Submit Request'}
                         </Button>
-                        <p className="text-xs text-gray-500 text-center mt-3">
+                        <p className="mt-3 text-center text-xs text-gray-500">
                             Requires approval from {selectedDepartmentId ? 'Department Head' : 'Manager'}
                         </p>
-                    </div>
-                </div>
+                    </section>
+                </aside>
             </div>
         </div>
     );
