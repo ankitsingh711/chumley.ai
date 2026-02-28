@@ -11,6 +11,12 @@ import {
     ReceiptText,
     Wallet,
     Clock3,
+    X,
+    CalendarDays,
+    Link2,
+    UserRound,
+    Mail,
+    ArrowUpRight,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { Pagination } from '../components/Pagination';
@@ -47,6 +53,50 @@ const getStatusClasses = (status: OrderStatus) => {
             return 'border border-violet-200 bg-violet-50 text-violet-700';
         default:
             return 'border border-gray-200 bg-gray-100 text-gray-700';
+    }
+};
+
+const getInitials = (name?: string) => {
+    if (!name) return '??';
+    return name
+        .split(' ')
+        .map((part) => part[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+};
+
+const getStatusStage = (status: OrderStatus) => {
+    switch (status) {
+        case OrderStatus.IN_PROGRESS:
+            return 'Drafting';
+        case OrderStatus.SENT:
+            return 'Sent to supplier';
+        case OrderStatus.PARTIAL:
+            return 'Partially fulfilled';
+        case OrderStatus.COMPLETED:
+            return 'Completed';
+        case OrderStatus.CANCELLED:
+            return 'Cancelled';
+        default:
+            return 'Unknown';
+    }
+};
+
+const getNextAction = (status: OrderStatus) => {
+    switch (status) {
+        case OrderStatus.IN_PROGRESS:
+            return 'Send this order to supplier.';
+        case OrderStatus.SENT:
+            return 'Confirm delivery and mark as completed.';
+        case OrderStatus.PARTIAL:
+            return 'Review outstanding items with supplier.';
+        case OrderStatus.COMPLETED:
+            return 'No further action needed.';
+        case OrderStatus.CANCELLED:
+            return 'This order is closed.';
+        default:
+            return 'Review order details.';
     }
 };
 
@@ -206,6 +256,11 @@ export default function PurchaseOrders() {
 
     const closeModal = () => {
         setSelectedOrder(null);
+    };
+
+    const handleOpenLinkedRequest = (requestId: string) => {
+        closeModal();
+        navigate(`/requests/${requestId}`);
     };
 
     const handleDownload = (order: PurchaseOrder) => {
@@ -680,114 +735,215 @@ export default function PurchaseOrders() {
 
             {selectedOrder && createPortal(
                 <div
-                    className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/55 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
                     onClick={closeModal}
                 >
                     <div
-                        className="relative max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl"
+                        className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
-                            <div className="flex items-start justify-between gap-4">
+                        <header className="relative border-b border-gray-100 bg-gradient-to-r from-white via-primary-50/55 to-accent-50/45 px-5 py-4 sm:px-6">
+                            <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary-200/30 blur-2xl" />
+                            <div className="relative flex items-start justify-between gap-4">
                                 <div>
-                                    <p className="text-xs font-semibold uppercase tracking-[0.13em] text-primary-700">Order Detail</p>
-                                    <h2 className="mt-1 text-xl font-bold text-gray-900">#{selectedOrder.id.slice(0, 8)}</h2>
-                                    <p className="mt-1 text-sm text-gray-500">Created {new Date(selectedOrder.createdAt).toLocaleString('en-GB')}</p>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">Purchase Order</p>
+                                    <h2 className="mt-1 text-3xl font-bold text-gray-900">#{selectedOrder.id.slice(0, 8)}</h2>
+
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(selectedOrder.status)}`}>
+                                            {formatStatusLabel(selectedOrder.status)}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600">
+                                            <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
+                                            Issued {selectedOrder.issuedAt ? formatDateTime(selectedOrder.issuedAt) : 'Pending'}
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600">
+                                            Created {formatDateTime(selectedOrder.createdAt)}
+                                        </span>
+                                    </div>
                                 </div>
+
                                 <button
                                     onClick={closeModal}
-                                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 transition hover:bg-gray-50"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:bg-gray-50"
                                 >
                                     <span className="sr-only">Close</span>
-                                    <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                    </svg>
+                                    <X className="h-4 w-4" />
                                 </button>
                             </div>
-                        </div>
+                        </header>
 
-                        <div className="space-y-6 p-5 sm:p-6">
-                            <div className="grid gap-3 sm:grid-cols-3">
-                                <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
-                                    <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-sm font-semibold ${getStatusClasses(selectedOrder.status)}`}>
-                                        {formatStatusLabel(selectedOrder.status)}
-                                    </span>
-                                </div>
-                                <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                        <main className="space-y-6 overflow-y-auto p-5 sm:p-6">
+                            <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                                <article className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Total Amount</p>
                                     <p className="mt-2 text-2xl font-bold text-gray-900">{formatCurrency(selectedOrder.totalAmount)}</p>
-                                </div>
-                                <div className="rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                                    <p className="mt-1 inline-flex items-center gap-1 text-xs text-gray-500">
+                                        <Wallet className="h-3.5 w-3.5" />
+                                        Order value
+                                    </p>
+                                </article>
+
+                                <article className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Current Stage</p>
+                                    <p className="mt-2 text-lg font-semibold text-gray-900">{getStatusStage(selectedOrder.status)}</p>
+                                    <p className="mt-1 text-xs text-gray-500">{getNextAction(selectedOrder.status)}</p>
+                                </article>
+
+                                <article className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
                                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Linked Request</p>
                                     <p className="mt-2 text-base font-semibold text-gray-900">#{selectedOrder.requestId.slice(0, 8)}</p>
-                                </div>
-                            </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleOpenLinkedRequest(selectedOrder.requestId)}
+                                        className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary-700 transition hover:text-primary-800"
+                                    >
+                                        Open request
+                                        <ArrowUpRight className="h-3.5 w-3.5" />
+                                    </button>
+                                </article>
 
-                            <section className="rounded-xl border border-gray-200 bg-white p-4">
-                                <h3 className="text-sm font-semibold text-gray-900">Supplier</h3>
-                                <div className="mt-3 flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100 text-sm font-semibold text-primary-700">
-                                        {selectedOrder.supplier?.name?.charAt(0) || 'S'}
-                                    </div>
-                                    <div>
-                                        <p className="font-medium text-gray-900">{selectedOrder.supplier?.name || 'Unknown Supplier'}</p>
-                                        <p className="text-sm text-gray-500">{selectedOrder.supplier?.contactEmail || 'No email provided'}</p>
-                                    </div>
-                                </div>
+                                <article className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Supplier</p>
+                                    <p className="mt-2 text-base font-semibold text-gray-900">{selectedOrder.supplier?.name || 'Unknown Supplier'}</p>
+                                    <p className="mt-1 truncate text-xs text-gray-500">{selectedOrder.supplier?.contactEmail || 'No email provided'}</p>
+                                </article>
                             </section>
 
-                            <section className="rounded-xl border border-gray-200 bg-white p-4">
-                                <h3 className="text-sm font-semibold text-gray-900">Order Timeline</h3>
-                                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Issued Date</p>
-                                        <p className="mt-1 text-sm text-gray-700">
-                                            {selectedOrder.issuedAt ? formatDateTime(selectedOrder.issuedAt) : formatDateTime(selectedOrder.createdAt)}
-                                        </p>
-                                    </div>
-                                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Created Date</p>
-                                        <p className="mt-1 text-sm text-gray-700">{formatDateTime(selectedOrder.createdAt)}</p>
-                                    </div>
-                                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Last Updated</p>
-                                        <p className="mt-1 text-sm text-gray-700">{formatDateTime(selectedOrder.updatedAt)}</p>
-                                    </div>
+                            <section className="grid gap-6 xl:grid-cols-3">
+                                <div className="space-y-6 xl:col-span-2">
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="text-base font-semibold text-gray-900">Order Timeline</h3>
+                                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Issued Date</p>
+                                                <p className="mt-1 text-sm text-gray-700">
+                                                    {selectedOrder.issuedAt ? formatDateTime(selectedOrder.issuedAt) : 'Pending issuance'}
+                                                </p>
+                                            </article>
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Created Date</p>
+                                                <p className="mt-1 text-sm text-gray-700">{formatDateTime(selectedOrder.createdAt)}</p>
+                                            </article>
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Last Updated</p>
+                                                <p className="mt-1 text-sm text-gray-700">{formatDateTime(selectedOrder.updatedAt)}</p>
+                                            </article>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="text-base font-semibold text-gray-900">Workflow</h3>
+                                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</p>
+                                                <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${getStatusClasses(selectedOrder.status)}`}>
+                                                    {formatStatusLabel(selectedOrder.status)}
+                                                </span>
+                                            </article>
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Next Action</p>
+                                                <p className="mt-2 text-sm text-gray-700">{getNextAction(selectedOrder.status)}</p>
+                                            </article>
+                                            <article className="rounded-lg border border-gray-100 bg-gray-50 p-3 sm:col-span-2">
+                                                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Request Reference</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleOpenLinkedRequest(selectedOrder.requestId)}
+                                                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-primary-700 transition hover:text-primary-800"
+                                                >
+                                                    <Link2 className="h-4 w-4" />
+                                                    #{selectedOrder.requestId.slice(0, 8)}
+                                                    <ArrowUpRight className="h-3.5 w-3.5" />
+                                                </button>
+                                            </article>
+                                        </div>
+                                    </section>
                                 </div>
+
+                                <aside className="space-y-6">
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="text-base font-semibold text-gray-900">Supplier</h3>
+                                        <div className="mt-3 flex items-start gap-3">
+                                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary-700 text-sm font-semibold text-white">
+                                                {getInitials(selectedOrder.supplier?.name)}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="truncate text-lg font-semibold text-gray-900">{selectedOrder.supplier?.name || 'Unknown Supplier'}</p>
+                                                <p className="mt-0.5 text-sm text-gray-500">{selectedOrder.supplier?.category || 'General Supplier'}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-4 space-y-2 rounded-lg border border-gray-100 bg-gray-50 p-3 text-sm text-gray-600">
+                                            <p className="inline-flex items-center gap-2">
+                                                <UserRound className="h-4 w-4 text-gray-400" />
+                                                Supplier ID: {selectedOrder.supplier?.id?.slice(0, 8) || 'Unknown'}
+                                            </p>
+                                            <p className="inline-flex items-center gap-2 break-all">
+                                                <Mail className="h-4 w-4 text-gray-400" />
+                                                {selectedOrder.supplier?.contactEmail || 'No email provided'}
+                                            </p>
+                                        </div>
+                                    </section>
+
+                                    <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                        <h3 className="text-base font-semibold text-gray-900">Quick Actions</h3>
+                                        <div className="mt-3 space-y-2">
+                                            <Button variant="outline" onClick={() => handleDownload(selectedOrder)} className="w-full justify-start">
+                                                <Download className="mr-2 h-4 w-4" />
+                                                Download CSV
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => handleDownloadPDF(selectedOrder)}
+                                                className="w-full justify-start"
+                                                disabled={updating === selectedOrder.id}
+                                            >
+                                                <FileText className="mr-2 h-4 w-4" />
+                                                Download PDF
+                                            </Button>
+                                        </div>
+                                    </section>
+                                </aside>
                             </section>
-                        </div>
-
-                        <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
-                            <div className="flex flex-wrap justify-end gap-2">
-                                <Button onClick={() => handleDownload(selectedOrder)} variant="outline">
-                                    <Download className="mr-2 h-4 w-4" /> Download CSV
-                                </Button>
-                                <Button onClick={() => handleDownloadPDF(selectedOrder)} variant="outline" disabled={updating === selectedOrder.id}>
-                                    <FileText className="mr-2 h-4 w-4" /> Download PDF
-                                </Button>
-
-                                {!isMember && selectedOrder.status === OrderStatus.IN_PROGRESS && (
-                                    <Button
-                                        onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.SENT)}
-                                        className="bg-blue-600 hover:bg-blue-700"
-                                        disabled={updating === selectedOrder.id}
-                                    >
-                                        <Send className="mr-2 h-4 w-4" /> Send to Supplier
+                        </main>
+                        <footer className="sticky bottom-0 border-t border-gray-100 bg-white/95 px-5 py-4 backdrop-blur sm:px-6">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="text-xs text-gray-500">Last updated {formatDateTime(selectedOrder.updatedAt)}</p>
+                                <div className="flex flex-wrap justify-end gap-2">
+                                    <Button variant="outline" onClick={() => handleOpenLinkedRequest(selectedOrder.requestId)}>
+                                        <Link2 className="mr-2 h-4 w-4" />
+                                        Linked Request
                                     </Button>
-                                )}
 
-                                {!isMember && selectedOrder.status === OrderStatus.SENT && (
-                                    <Button
-                                        onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.COMPLETED)}
-                                        className="bg-emerald-600 hover:bg-emerald-700"
-                                        disabled={updating === selectedOrder.id}
-                                    >
-                                        <CheckCircle className="mr-2 h-4 w-4" /> Mark as Completed
+                                    {!isMember && selectedOrder.status === OrderStatus.IN_PROGRESS && (
+                                        <Button
+                                            onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.SENT)}
+                                            className="bg-blue-600 hover:bg-blue-700"
+                                            disabled={updating === selectedOrder.id}
+                                        >
+                                            <Send className="mr-2 h-4 w-4" />
+                                            Send to Supplier
+                                        </Button>
+                                    )}
+
+                                    {!isMember && selectedOrder.status === OrderStatus.SENT && (
+                                        <Button
+                                            onClick={() => handleUpdateStatus(selectedOrder.id, OrderStatus.COMPLETED)}
+                                            className="bg-emerald-600 hover:bg-emerald-700"
+                                            disabled={updating === selectedOrder.id}
+                                        >
+                                            <CheckCircle className="mr-2 h-4 w-4" />
+                                            Mark as Completed
+                                        </Button>
+                                    )}
+
+                                    <Button variant="ghost" onClick={closeModal}>
+                                        Close
                                     </Button>
-                                )}
+                                </div>
                             </div>
-                        </div>
+                        </footer>
                     </div>
                 </div>,
                 document.body,

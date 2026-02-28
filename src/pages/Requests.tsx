@@ -121,24 +121,20 @@ export default function Requests() {
 
         const openRequestFromUrl = async () => {
             if (!requestIdFromUrl) {
-                setSelectedRequest(null);
-                return;
-            }
-
-            if (selectedRequest?.id === requestIdFromUrl) {
+                setSelectedRequest((current) => (current ? null : current));
                 return;
             }
 
             const inCurrentPage = requests.find((request) => request.id === requestIdFromUrl);
             if (inCurrentPage) {
-                setSelectedRequest(inCurrentPage);
+                setSelectedRequest((current) => (current?.id === inCurrentPage.id ? current : inCurrentPage));
                 return;
             }
 
             try {
                 const request = await requestsApi.getById(requestIdFromUrl);
                 if (isActive) {
-                    setSelectedRequest(request);
+                    setSelectedRequest((current) => (current?.id === request.id ? current : request));
                 }
             } catch (error) {
                 console.error('Failed to open request from URL:', error);
@@ -156,7 +152,7 @@ export default function Requests() {
         return () => {
             isActive = false;
         };
-    }, [requestIdFromUrl, requests, selectedRequest?.id, loading, navigate]);
+    }, [requestIdFromUrl, requests, loading, navigate]);
 
     const loadRequests = async () => {
         setLoading(true);
@@ -279,10 +275,11 @@ export default function Requests() {
     };
 
     const closeModal = () => {
-        setSelectedRequest(null);
         if (requestIdFromUrl) {
             navigate('/requests', { replace: true });
+            return;
         }
+        setSelectedRequest(null);
     };
 
     const normalizeSupplierStatus = (status?: string | null) => status?.trim().toUpperCase() || '';

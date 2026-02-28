@@ -50,8 +50,7 @@ function App() {
                 <Dashboard />
               </RoleProtectedRoute>
             } />
-            <Route path="/requests" element={<Requests />} />
-            <Route path="/requests/:id" element={<Requests />} />
+            <Route path="/requests/:id?" element={<Requests />} />
             <Route path="/requests/new" element={
               <RoleProtectedRoute allowedRoles={[UserRole.MEMBER, UserRole.MANAGER, UserRole.SENIOR_MANAGER]} fallbackPath="/requests">
                 <CreateRequest />

@@ -7,6 +7,7 @@ import {
     PoundSterling,
     Building2,
     X,
+    Info,
     Search,
     LayoutGrid,
     List,
@@ -136,6 +137,16 @@ export default function Contracts() {
         setCurrentPage(1);
     }, [filter, searchQuery, sortBy, viewMode]);
 
+    useEffect(() => {
+        if (!showAddModal) return undefined;
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+        };
+    }, [showAddModal]);
+
     const handleCloseModal = () => {
         if (saving) return;
         setShowAddModal(false);
@@ -252,6 +263,26 @@ export default function Contracts() {
     const paginatedContracts = visibleContracts.slice(
         (boundedPage - 1) * ITEMS_PER_PAGE,
         boundedPage * ITEMS_PER_PAGE,
+    );
+
+    const selectedSupplier = suppliers.find((supplier) => supplier.id === formData.supplierId);
+    const contractValue = Number(formData.totalValue || 0);
+    const hasDateRange = Boolean(formData.startDate && formData.endDate);
+    const hasInvalidDateRange = hasDateRange && formData.endDate < formData.startDate;
+    const durationInDays = hasDateRange && !hasInvalidDateRange
+        ? Math.floor((new Date(formData.endDate).getTime() - new Date(formData.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+        : 0;
+    const approxTermMonths = durationInDays > 0 ? Math.max(1, Math.round(durationInDays / 30)) : 0;
+    const monthlyRunRate = contractValue > 0 && approxTermMonths > 0 ? contractValue / approxTermMonths : 0;
+
+    const canSubmit = Boolean(
+        !saving
+        && formData.title.trim()
+        && formData.supplierId
+        && formData.startDate
+        && formData.endDate
+        && contractValue > 0
+        && !hasInvalidDateRange,
     );
 
     if (loading) {
@@ -580,160 +611,268 @@ export default function Contracts() {
 
             {showAddModal && createPortal(
                 <div
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
                     onClick={handleCloseModal}
                 >
                     <div
-                        className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl"
+                        className="relative flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl"
                         onClick={(event) => event.stopPropagation()}
                     >
-                        <div className="sticky top-0 z-10 border-b border-gray-100 bg-gradient-to-r from-white via-primary-50/35 to-white px-6 py-5">
+                        <header className="relative border-b border-gray-100 bg-gradient-to-r from-white via-primary-50/55 to-accent-50/45 px-5 py-4 sm:px-6">
+                            <div className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-primary-200/30 blur-2xl" />
                             <div className="flex items-start justify-between gap-4">
                                 <div>
                                     <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary-700">New Agreement</p>
-                                    <h2 className="mt-1 text-xl font-bold text-gray-900">Create Contract</h2>
-                                    <p className="mt-1 text-sm text-gray-500">Capture supplier terms, dates, and commercial value.</p>
+                                    <h2 className="mt-1 text-3xl font-bold text-gray-900">Create Contract</h2>
+                                    <p className="mt-1 text-sm text-gray-600">Capture supplier terms, duration, and commercial value in one guided flow.</p>
+                                    <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600">
+                                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                        Draft status will be assigned automatically
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
                                     onClick={handleCloseModal}
-                                    className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:bg-gray-50"
+                                    aria-label="Close create contract modal"
                                 >
-                                    <X className="h-5 w-5" />
+                                    <X className="h-4 w-4" />
                                 </button>
                             </div>
-                        </div>
+                        </header>
 
-                        <form onSubmit={handleSubmit} className="space-y-4 p-6">
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Contract Title <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.title}
-                                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-                                    className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    placeholder="e.g. Office Supplies Annual Agreement"
-                                />
-                            </div>
+                        <form onSubmit={handleSubmit} className="grid gap-6 overflow-y-auto p-5 sm:p-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+                            <div className="space-y-5">
+                                <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                    <div className="mb-4 flex items-center justify-between gap-2">
+                                        <h3 className="text-base font-semibold text-gray-900">Contract Basics</h3>
+                                        <span className="rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-600">
+                                            Required fields marked *
+                                        </span>
+                                    </div>
 
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">
-                                    Supplier <span className="text-red-500">*</span>
-                                </label>
-                                <Select
-                                    value={formData.supplierId}
-                                    onChange={(value) => setFormData({ ...formData, supplierId: value })}
-                                    options={[
-                                        { value: '', label: 'Select supplier' },
-                                        ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
-                                    ]}
-                                    triggerClassName="h-11"
-                                />
-                            </div>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                Contract Title <span className="text-red-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <FileText className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    required
+                                                    value={formData.title}
+                                                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                                                    className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-4 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                                    placeholder="e.g. Office Supplies Annual Agreement"
+                                                />
+                                            </div>
+                                        </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                                        Start Date <span className="text-red-500">*</span>
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                Supplier <span className="text-red-500">*</span>
+                                            </label>
+                                            <Select
+                                                value={formData.supplierId}
+                                                onChange={(value) => setFormData({ ...formData, supplierId: value })}
+                                                options={[
+                                                    { value: '', label: 'Select supplier' },
+                                                    ...suppliers.map((supplier) => ({ value: supplier.id, label: supplier.name })),
+                                                ]}
+                                                triggerClassName="h-11"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                    Start Date <span className="text-red-500">*</span>
+                                                </label>
+                                                <DatePicker
+                                                    value={formData.startDate}
+                                                    onChange={(value) => setFormData({ ...formData, startDate: value })}
+                                                    className="w-full"
+                                                    placeholder="Start date"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                    End Date <span className="text-red-500">*</span>
+                                                </label>
+                                                <DatePicker
+                                                    value={formData.endDate}
+                                                    onChange={(value) => setFormData({ ...formData, endDate: value })}
+                                                    className="w-full"
+                                                    placeholder="End date"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                    <h3 className="mb-4 text-base font-semibold text-gray-900">Commercial Terms</h3>
+
+                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                                Total Value <span className="text-red-500">*</span>
+                                            </label>
+                                            <div className="relative">
+                                                <PoundSterling className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                                                <input
+                                                    type="number"
+                                                    required
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={formData.totalValue}
+                                                    onChange={(event) => setFormData({ ...formData, totalValue: event.target.value })}
+                                                    className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-4 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                                    placeholder="50000"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">Payment Terms</label>
+                                            <input
+                                                type="text"
+                                                value={formData.paymentTerms}
+                                                onChange={(event) => setFormData({ ...formData, paymentTerms: event.target.value })}
+                                                className="h-11 w-full rounded-lg border border-gray-200 bg-white px-4 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                                placeholder="e.g. Net 30"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-4">
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
+                                        <textarea
+                                            rows={4}
+                                            value={formData.description}
+                                            onChange={(event) => setFormData({ ...formData, description: event.target.value })}
+                                            className="w-full resize-none rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
+                                            placeholder="Add key commercial, legal, or operational notes"
+                                        />
+                                    </div>
+
+                                    <label className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-800">Auto-renew contract</p>
+                                            <p className="text-xs text-gray-500">Enable if this agreement should renew automatically.</p>
+                                        </div>
+                                        <div className={`relative h-6 w-11 rounded-full transition ${formData.autoRenew ? 'bg-primary-600' : 'bg-gray-300'}`}>
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.autoRenew}
+                                                onChange={(event) => setFormData({ ...formData, autoRenew: event.target.checked })}
+                                                className="absolute inset-0 cursor-pointer opacity-0"
+                                                aria-label="Auto renew contract"
+                                            />
+                                            <span
+                                                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${formData.autoRenew ? 'left-[1.3rem]' : 'left-0.5'}`}
+                                            />
+                                        </div>
                                     </label>
-                                    <DatePicker
-                                        value={formData.startDate}
-                                        onChange={(value) => setFormData({ ...formData, startDate: value })}
-                                        className="w-full"
-                                        placeholder="Start date"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                                        End Date <span className="text-red-500">*</span>
-                                    </label>
-                                    <DatePicker
-                                        value={formData.endDate}
-                                        onChange={(value) => setFormData({ ...formData, endDate: value })}
-                                        className="w-full"
-                                        placeholder="End date"
-                                    />
-                                </div>
+
+                                    {hasInvalidDateRange && (
+                                        <p className="mt-3 text-sm font-medium text-red-600">End date must be after start date.</p>
+                                    )}
+                                </section>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">
-                                        Total Value <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="number"
-                                        required
-                                        min="0"
-                                        step="0.01"
-                                        value={formData.totalValue}
-                                        onChange={(event) => setFormData({ ...formData, totalValue: event.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                        placeholder="50000"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">Payment Terms</label>
-                                    <input
-                                        type="text"
-                                        value={formData.paymentTerms}
-                                        onChange={(event) => setFormData({ ...formData, paymentTerms: event.target.value })}
-                                        className="w-full rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                        placeholder="e.g. Net 30"
-                                    />
-                                </div>
-                            </div>
+                            <aside className="space-y-4 xl:sticky xl:top-0 xl:self-start">
+                                <section className="rounded-xl border border-gray-200 bg-gray-50/70 p-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Live Summary</h3>
+                                    <div className="mt-3 space-y-3 text-sm">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1 text-gray-500">
+                                                <Building2 className="h-3.5 w-3.5" />
+                                                Supplier
+                                            </span>
+                                            <span className="max-w-[10rem] truncate font-medium text-gray-900">
+                                                {selectedSupplier?.name || 'Not selected'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1 text-gray-500">
+                                                <Calendar className="h-3.5 w-3.5" />
+                                                Term
+                                            </span>
+                                            <span className="font-medium text-gray-900">
+                                                {durationInDays > 0 ? `${durationInDays} days` : 'Not set'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1 text-gray-500">
+                                                <PoundSterling className="h-3.5 w-3.5" />
+                                                Total value
+                                            </span>
+                                            <span className="font-semibold text-gray-900">{formatCurrency(contractValue)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1 text-gray-500">
+                                                <Clock3 className="h-3.5 w-3.5" />
+                                                Monthly run rate
+                                            </span>
+                                            <span className="font-medium text-gray-900">
+                                                {monthlyRunRate > 0 ? formatCurrency(monthlyRunRate) : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="inline-flex items-center gap-1 text-gray-500">
+                                                <RefreshCcw className="h-3.5 w-3.5" />
+                                                Renewal
+                                            </span>
+                                            <span className={`font-medium ${formData.autoRenew ? 'text-emerald-700' : 'text-gray-700'}`}>
+                                                {formData.autoRenew ? 'Auto-renew' : 'Manual'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </section>
 
-                            <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">Description</label>
-                                <textarea
-                                    rows={3}
-                                    value={formData.description}
-                                    onChange={(event) => setFormData({ ...formData, description: event.target.value })}
-                                    className="w-full resize-none rounded-lg border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-primary-500 focus:ring-1 focus:ring-primary-500"
-                                    placeholder="Add key commercial or legal notes"
-                                />
-                            </div>
+                                <section className="rounded-xl border border-gray-200 bg-white p-4">
+                                    <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-600">Readiness</h3>
+                                    <div className="mt-3 space-y-2 text-sm">
+                                        <p className={`inline-flex items-center gap-2 ${formData.title.trim() ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Contract title
+                                        </p>
+                                        <p className={`inline-flex items-center gap-2 ${formData.supplierId ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Supplier selected
+                                        </p>
+                                        <p className={`inline-flex items-center gap-2 ${formData.startDate && formData.endDate && !hasInvalidDateRange ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Valid date range
+                                        </p>
+                                        <p className={`inline-flex items-center gap-2 ${contractValue > 0 ? 'text-emerald-700' : 'text-gray-500'}`}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                            Commercial value
+                                        </p>
+                                    </div>
+                                </section>
 
-                            <label className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                                <input
-                                    type="checkbox"
-                                    checked={formData.autoRenew}
-                                    onChange={(event) => setFormData({ ...formData, autoRenew: event.target.checked })}
-                                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                                />
-                                Auto-renew this contract
-                            </label>
+                                <p className="inline-flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                                    <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                    Contracts are created as Draft and can be activated once terms are confirmed.
+                                </p>
+                            </aside>
 
-                            {formData.startDate && formData.endDate && formData.endDate < formData.startDate && (
-                                <p className="text-sm font-medium text-red-600">End date must be after start date.</p>
-                            )}
-
-                            <div className="flex gap-3 border-t border-gray-100 pt-4">
+                            <div className="xl:col-span-2 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:justify-end">
                                 <Button
                                     type="button"
                                     variant="outline"
                                     onClick={handleCloseModal}
-                                    className="flex-1"
+                                    className="sm:min-w-[9rem]"
                                     disabled={saving}
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="submit"
-                                    className="flex-1 bg-primary-700 hover:bg-primary-800"
-                                    disabled={
-                                        saving
-                                        || !formData.title.trim()
-                                        || !formData.supplierId
-                                        || !formData.startDate
-                                        || !formData.endDate
-                                        || Number(formData.totalValue) <= 0
-                                        || formData.endDate < formData.startDate
-                                    }
+                                    className="bg-primary-700 hover:bg-primary-800 sm:min-w-[12rem]"
+                                    disabled={!canSubmit}
                                 >
                                     {saving ? 'Creating...' : 'Create Contract'}
                                 </Button>
