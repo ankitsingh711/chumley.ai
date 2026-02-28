@@ -27,8 +27,6 @@ export function Header() {
     const [isSearching, setIsSearching] = useState(false);
     const searchRef = useRef<HTMLDivElement>(null);
 
-    const departmentName = (typeof user?.department === 'object' && user.department) ? user.department.name : user?.department;
-
     const getInitials = (name: string) => {
         return name
             .split(' ')
@@ -269,9 +267,8 @@ export function Header() {
 
                     <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 shadow-sm">
                         <div className="text-right">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">{roleLabel}</p>
                             <p className="text-sm font-semibold text-gray-900">{user?.name || 'User'}</p>
-                            <p className="text-xs text-gray-500">{departmentName || 'User'}</p>
+                            <p className="text-xs font-semibold text-primary-600">{roleLabel}</p>
                         </div>
                         <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-primary-700 text-sm font-semibold text-white shadow-sm">
                             {user?.name ? getInitials(user.name) : 'U'}
