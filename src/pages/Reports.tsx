@@ -4,7 +4,6 @@ import {
     Download,
     Calendar,
     Filter,
-    X,
     Check,
     FileText,
     BarChart3,
@@ -13,7 +12,7 @@ import {
     ShieldCheck,
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { DatePicker } from '../components/ui/DatePicker';
+import { DateRangeFilterPopover } from '../components/filters/DateRangeFilterPopover';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
@@ -85,26 +84,13 @@ export default function Reports() {
     const [transactionFilter, setTransactionFilter] = useState<TransactionFilter>('ALL');
     const [showTransactionFilter, setShowTransactionFilter] = useState(false);
 
-    const datePickerRef = useRef<HTMLDivElement>(null);
+    const dateFilterAnchorRef = useRef<HTMLDivElement>(null);
     const transactionFilterRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         void loadData(defaultStartStr, defaultEndStr);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
-
-    useEffect(() => {
-        if (!showDatePicker) return;
-
-        const handleClickOutside = (event: MouseEvent) => {
-            if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-                setShowDatePicker(false);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showDatePicker]);
 
     useEffect(() => {
         if (!showTransactionFilter) return;
@@ -142,26 +128,32 @@ export default function Reports() {
         }
     };
 
-    const applyDateRange = (days: number) => {
+    const getRollingRange = (days: number) => {
         const end = new Date();
         const start = new Date();
         start.setDate(start.getDate() - days);
 
-        const startStr = start.toISOString().split('T')[0];
-        const endStr = end.toISOString().split('T')[0];
-
-        setDateRange({ start: startStr, end: endStr });
-        setActiveDateRange({ start: startStr, end: endStr });
-        setShowDatePicker(false);
-        void loadData(startStr, endStr);
+        return {
+            start: start.toISOString().split('T')[0],
+            end: end.toISOString().split('T')[0],
+        };
     };
 
-    const applyCustomDateRange = () => {
-        if (!dateRange.start || !dateRange.end) return;
+    const getYearToDateRange = () => {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 1);
 
-        setActiveDateRange({ start: dateRange.start, end: dateRange.end });
+        return {
+            start: start.toISOString().split('T')[0],
+            end: now.toISOString().split('T')[0],
+        };
+    };
+
+    const applyDateRange = (range: { start: string; end: string }) => {
+        setDateRange(range);
+        setActiveDateRange(range);
         setShowDatePicker(false);
-        void loadData(dateRange.start, dateRange.end);
+        void loadData(range.start, range.end);
     };
 
     const clearDateRange = () => {
@@ -170,6 +162,14 @@ export default function Reports() {
         setShowDatePicker(false);
         void loadData(defaultStartStr, defaultEndStr);
     };
+
+    const dateRangePresets = [
+        { id: 'last_7', label: 'Last 7 days', helperText: 'Rolling week', range: getRollingRange(7) },
+        { id: 'last_30', label: 'Last 30 days', helperText: 'Rolling month', range: getRollingRange(30) },
+        { id: 'last_90', label: 'Last 90 days', helperText: 'Rolling quarter', range: getRollingRange(90) },
+        { id: 'last_6_months', label: 'Last 6 months', helperText: 'Rolling 180 days', range: getRollingRange(180) },
+        { id: 'ytd', label: 'Year to date', helperText: 'Since Jan 1', range: getYearToDateRange() },
+    ];
 
     const departments = useMemo(() => {
         const deptSet = new Set<string>();
@@ -300,59 +300,34 @@ export default function Reports() {
                         </div>
                     </div>
 
-                    <div ref={datePickerRef} className="relative flex flex-wrap gap-2">
-                        <Button variant="outline" onClick={() => setShowDatePicker((prev) => !prev)} className="border-white/70 bg-white/90 backdrop-blur">
-                            <Calendar className="mr-2 h-4 w-4" /> Date Range
-                        </Button>
+                    <div className="relative flex flex-wrap gap-2">
+                        <div ref={dateFilterAnchorRef}>
+                            <Button variant="outline" onClick={() => setShowDatePicker((prev) => !prev)} className="border-white/70 bg-white/90 backdrop-blur">
+                                <Calendar className="mr-2 h-4 w-4" /> Date Range
+                            </Button>
+                        </div>
                         <Button variant="outline" onClick={handleExportData} className="border-white/70 bg-white/90 backdrop-blur">
                             <Download className="mr-2 h-4 w-4" /> Export CSV
                         </Button>
                         <Button variant="outline" onClick={handleExportPDF} className="border-white/70 bg-white/90 backdrop-blur">
                             <FileText className="mr-2 h-4 w-4" /> Export PDF
                         </Button>
-
-                        {showDatePicker && (
-                            <div className="absolute right-0 top-full z-[120] mt-2 w-[22rem] rounded-xl border border-gray-200 bg-white p-4 shadow-xl">
-                                <div className="mb-3 flex items-center justify-between">
-                                    <h3 className="text-sm font-semibold text-gray-900">Filter by Date</h3>
-                                    <button onClick={() => setShowDatePicker(false)} className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600">
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button onClick={() => applyDateRange(7)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 7 days</button>
-                                    <button onClick={() => applyDateRange(30)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 30 days</button>
-                                    <button onClick={() => applyDateRange(90)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 90 days</button>
-                                    <button onClick={() => applyDateRange(150)} className="rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Last 6 months</button>
-                                    <button onClick={() => applyDateRange(365)} className="col-span-2 rounded-lg border border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-700 hover:border-primary-200 hover:bg-primary-50">Year to date</button>
-                                </div>
-
-                                <div className="mt-4 border-t border-gray-100 pt-4">
-                                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Custom Range</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <DatePicker
-                                            value={dateRange.start}
-                                            onChange={(value) => setDateRange((prev) => ({ ...prev, start: value }))}
-                                            placeholder="Start"
-                                            className="w-full text-sm"
-                                        />
-                                        <DatePicker
-                                            value={dateRange.end}
-                                            onChange={(value) => setDateRange((prev) => ({ ...prev, end: value }))}
-                                            placeholder="End"
-                                            className="w-full text-sm"
-                                        />
-                                    </div>
-                                    <div className="mt-2 grid grid-cols-2 gap-2">
-                                        <Button size="sm" variant="outline" onClick={clearDateRange}>Reset</Button>
-                                        <Button size="sm" onClick={applyCustomDateRange} disabled={!dateRange.start || !dateRange.end}>Apply</Button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
+
+                <DateRangeFilterPopover
+                    isOpen={showDatePicker}
+                    anchorRef={dateFilterAnchorRef}
+                    activeRange={activeDateRange}
+                    draftRange={dateRange}
+                    onDraftRangeChange={setDateRange}
+                    onApply={applyDateRange}
+                    onClear={clearDateRange}
+                    onClose={() => setShowDatePicker(false)}
+                    presets={dateRangePresets}
+                    clearLabel="Reset"
+                    applyLabel="Apply"
+                />
 
                 <div className="relative mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
