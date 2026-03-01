@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, CheckCircle, XCircle, User as UserIcon, Shield, Mail, Building, Calendar, ChevronRight, Trash2, UserPlus, AlertTriangle, Check, Copy, X } from 'lucide-react';
 import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { UserPermissionsSkeleton } from '../components/skeletons/UserPermissionsSkeleton';
 import { EditProfileModal } from '../components/users/EditProfileModal';
 import { usersApi } from '../services/users.service';
-import { departmentsApi } from '../services/departments.service';
+import { departmentsApi, type Department } from '../services/departments.service';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole, UserStatus, type User } from '../types/api';
 
@@ -48,7 +49,15 @@ export default function UserPermissions() {
     const [linkCopied, setLinkCopied] = useState(false);
 
     const { user: currentUser, isLoading: authLoading } = useAuth();
-    const [departments, setDepartments] = useState<any[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
+
+    const extractInviteErrorMessage = (error: unknown): string => {
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const response = (error as { response?: { data?: { error?: string } } }).response;
+            if (response?.data?.error) return response.data.error;
+        }
+        return 'Failed to invite user.';
+    };
 
     const dismissFeedbackModal = () => {
         setShowModal(false);
@@ -97,6 +106,24 @@ export default function UserPermissions() {
         window.addEventListener('keydown', onKeyDown);
         return () => window.removeEventListener('keydown', onKeyDown);
     }, [showModal]);
+
+    useEffect(() => {
+        if (!showInviteModal) return;
+
+        const previousOverflow = document.body.style.overflow;
+        const previousPaddingRight = document.body.style.paddingRight;
+        const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+        document.body.style.overflow = 'hidden';
+        if (scrollbarWidth > 0) {
+            document.body.style.paddingRight = `${scrollbarWidth}px`;
+        }
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            document.body.style.paddingRight = previousPaddingRight;
+        };
+    }, [showInviteModal]);
 
     useEffect(() => {
         if (!linkCopied) return;
@@ -209,10 +236,10 @@ export default function UserPermissions() {
             setInviteData({ name: '', email: '', role: UserRole.MEMBER, departmentId: '' });
             fetchUsers();
             setShowModal(true);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Failed to invite user:', error);
             setModalType('error');
-            setModalMessage(error.response?.data?.error || 'Failed to invite user.');
+            setModalMessage(extractInviteErrorMessage(error));
             setInviteSuccess(null);
             setShowModal(true);
         } finally {
@@ -281,10 +308,14 @@ export default function UserPermissions() {
             .slice(0, 2);
     };
 
-    const getDepartmentName = (dept: any) => {
+    const getDepartmentName = (dept: unknown) => {
         if (!dept) return null;
         if (typeof dept === 'string') return dept;
-        return dept.name;
+        if (typeof dept === 'object' && 'name' in dept) {
+            const name = (dept as { name?: string }).name;
+            return name || null;
+        }
+        return null;
     };
 
     const filteredUsers = users.filter(user =>
@@ -682,7 +713,7 @@ export default function UserPermissions() {
                                                 <div className="mt-3 flex flex-wrap items-center gap-2">
                                                     <RoleBadge role={currentUser.role} />
                                                     <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                                                        {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'No Department')}
+                                                        {getDepartmentName(currentUser.department) || 'No Department'}
                                                     </span>
                                                 </div>
                                             </div>
@@ -708,7 +739,7 @@ export default function UserPermissions() {
                                             <div>
                                                 <p className="text-[11px] uppercase tracking-[0.14em] text-slate-400">Department</p>
                                                 <p className="mt-1 text-sm font-medium text-slate-900">
-                                                    {typeof currentUser.department === 'object' ? (currentUser.department as any)?.name : (currentUser.department || 'None')}
+                                                    {getDepartmentName(currentUser.department) || 'None'}
                                                 </p>
                                             </div>
                                         </div>
@@ -753,87 +784,132 @@ export default function UserPermissions() {
                 />
             )}
             {/* Invite User Modal */}
-            {showInviteModal && (
+            {showInviteModal && createPortal(
                 <div
-                    className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in"
+                    className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
                     onClick={() => setShowInviteModal(false)}
                 >
                     <div
-                        className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+                        className="w-full max-w-xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_40px_95px_-45px_rgba(15,23,42,0.95)]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <h3 className="text-lg font-bold text-gray-900 mb-1">Invite Team Member</h3>
-                        <p className="text-sm text-gray-500 mb-6">Send an invitation email to add a new user.</p>
-
-                        <form onSubmit={handleInviteUser} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Full Name</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={inviteData.name}
-                                    onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                                    placeholder="e.g. Jane Doe"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Email Address</label>
-                                <input
-                                    type="email"
-                                    required
-                                    value={inviteData.email}
-                                    onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                                    placeholder="jane@company.com"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
+                        <div className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-r from-slate-50 via-white to-blue-50 px-6 py-5 sm:px-7">
+                            <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-primary-200/30 blur-3xl" />
+                            <button
+                                type="button"
+                                onClick={() => setShowInviteModal(false)}
+                                className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                                aria-label="Close invite modal"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                            <div className="relative flex items-start gap-4">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-100 text-primary-700 ring-1 ring-primary-200">
+                                    <UserPlus className="h-5 w-5" />
+                                </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Department</label>
+                                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary-700">Access Invite</p>
+                                    <h3 className="mt-1 text-2xl font-semibold tracking-tight text-slate-900">Invite Team Member</h3>
+                                    <p className="mt-1 text-sm text-slate-600">Send a secure invitation and assign the right role from the start.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleInviteUser} className="space-y-5 p-6 sm:p-7">
+                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                <div className="sm:col-span-2">
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                                        Full Name <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <UserIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            required
+                                            value={inviteData.name}
+                                            onChange={(e) => setInviteData({ ...inviteData, name: e.target.value })}
+                                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-primary-300 focus:ring-4 focus:ring-primary-100/70"
+                                            placeholder="e.g. Jane Doe"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="sm:col-span-2">
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                                        Email Address <span className="text-rose-500">*</span>
+                                    </label>
+                                    <div className="relative">
+                                        <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="email"
+                                            required
+                                            value={inviteData.email}
+                                            onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
+                                            className="h-12 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none transition-all focus:border-primary-300 focus:ring-4 focus:ring-primary-100/70"
+                                            placeholder="jane@company.com"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                                        Department
+                                    </label>
                                     <Select
                                         value={inviteData.departmentId}
                                         onChange={(val) => setInviteData({ ...inviteData, departmentId: val })}
                                         options={[
-                                            { value: '', label: 'Select...' },
-                                            ...departments.map(d => ({ value: d.id, label: d.name }))
+                                            { value: '', label: 'Select department...' },
+                                            ...departments.map((department) => ({ value: department.id, label: department.name }))
                                         ]}
                                         className="w-full"
                                     />
                                 </div>
+
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1.5 uppercase">Role</label>
+                                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-600">
+                                        Role
+                                    </label>
                                     <Select
                                         value={inviteData.role}
                                         onChange={(val) => setInviteData({ ...inviteData, role: val as UserRole })}
                                         options={[
                                             { value: UserRole.MEMBER, label: 'Member' },
                                             { value: UserRole.MANAGER, label: 'Manager' },
-                                            { value: UserRole.SENIOR_MANAGER, label: 'Sr. Manager' },
+                                            { value: UserRole.SENIOR_MANAGER, label: 'Senior Manager' },
                                         ]}
                                         className="w-full"
                                     />
                                 </div>
                             </div>
-                            <div className="flex justify-end gap-3 mt-8">
+
+                            <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3">
+                                <p className="text-xs text-slate-600">
+                                    The invitee will receive an email with secure onboarding access and role-based permissions.
+                                </p>
+                            </div>
+
+                            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
                                 <Button
                                     type="button"
-                                    variant="ghost"
+                                    variant="outline"
                                     onClick={() => setShowInviteModal(false)}
+                                    className="w-full sm:w-auto"
                                 >
                                     Cancel
                                 </Button>
                                 <Button
                                     type="submit"
                                     disabled={inviting}
-                                    className="bg-primary-600 hover:bg-primary-700 text-white"
+                                    className="w-full bg-primary-600 text-white hover:bg-primary-700 sm:w-auto"
                                 >
-                                    {inviting ? 'Sending...' : 'Send Invite'}
+                                    {inviting ? 'Sending Invite...' : 'Send Invite'}
                                 </Button>
                             </div>
                         </form>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* Delete/Feedback Modals */}

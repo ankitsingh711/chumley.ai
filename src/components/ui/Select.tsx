@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -34,53 +34,148 @@ export function Select({
     triggerClassName
 }: SelectProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const containerRef = useRef<HTMLDivElement>(null);
+    const optionRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
     // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
+                setActiveIndex(-1);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(opt => opt.value === value);
+    useEffect(() => {
+        if (!isOpen || activeIndex < 0) return;
+        optionRefs.current[activeIndex]?.scrollIntoView({ block: 'nearest' });
+    }, [activeIndex, isOpen]);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        document.addEventListener('keydown', handleEscape);
+        return () => document.removeEventListener('keydown', handleEscape);
+    }, [isOpen]);
+
+    const selectedOption = useMemo(() => options.find((opt) => opt.value === value), [options, value]);
+
+    const getPreferredActiveIndex = () => {
+        const selectedIndex = options.findIndex((option) => option.value === value);
+        return selectedIndex >= 0 ? selectedIndex : (options.length > 0 ? 0 : -1);
+    };
+
+    const openDropdown = () => {
+        setActiveIndex(getPreferredActiveIndex());
+        setIsOpen(true);
+    };
+
+    const closeDropdown = () => {
+        setIsOpen(false);
+        setActiveIndex(-1);
+    };
+
+    const handleSelect = (selectedValue: string) => {
+        onChange(selectedValue);
+        closeDropdown();
+    };
+
+    const handleTriggerKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>) => {
+        if (disabled) return;
+
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (!isOpen) {
+                openDropdown();
+                return;
+            }
+
+            if (options.length === 0) return;
+
+            setActiveIndex((current) => {
+                if (current < 0) return 0;
+                if (event.key === 'ArrowDown') return (current + 1) % options.length;
+                return (current - 1 + options.length) % options.length;
+            });
+            return;
+        }
+
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            if (!isOpen) {
+                openDropdown();
+                return;
+            }
+
+            if (activeIndex >= 0 && options[activeIndex]) {
+                handleSelect(options[activeIndex].value);
+            }
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeDropdown();
+        }
+    };
 
     return (
         <div className={cn("relative w-full", className)} ref={containerRef}>
             {label && (
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.12em] text-slate-600">
                     {label}
                 </label>
             )}
 
             <button
                 type="button"
-                onClick={() => !disabled && setIsOpen(!isOpen)}
+                onClick={() => {
+                    if (disabled) return;
+                    if (isOpen) {
+                        closeDropdown();
+                        return;
+                    }
+                    openDropdown();
+                }}
+                onKeyDown={handleTriggerKeyDown}
                 className={cn(
-                    "flex h-10 w-full items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 transition-all hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-100 focus:border-primary-500",
+                    "group flex min-h-[46px] w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-left text-sm text-slate-900 shadow-[0_1px_0_rgba(15,23,42,0.04)] transition-all duration-200 hover:border-slate-300 hover:shadow-[0_10px_25px_-20px_rgba(15,23,42,0.5)] focus:outline-none focus:ring-4 focus:ring-primary-100/60",
                     triggerClassName,
-                    disabled && "cursor-not-allowed opacity-50 bg-gray-50",
-                    error && "border-red-500 hover:border-red-500 focus:border-red-500 focus:ring-red-100",
-                    !selectedOption && "text-gray-500"
+                    disabled && "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400 opacity-70",
+                    error && "border-rose-300 hover:border-rose-300 focus:ring-rose-100",
+                    isOpen && "border-primary-300 shadow-[0_16px_35px_-24px_rgba(37,99,235,0.5)]",
+                    !selectedOption && "text-slate-400"
                 )}
                 disabled={disabled}
+                aria-expanded={isOpen}
+                aria-haspopup="listbox"
             >
                 <span className="truncate">
                     {selectedOption ? selectedOption.label : placeholder}
                 </span>
-                <ChevronDown className={cn("h-4 w-4 shrink-0 opacity-50 transition-transform duration-200", isOpen && "rotate-180")} />
+                <span className={cn(
+                    "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 transition-colors",
+                    isOpen && "border-primary-200 bg-primary-50 text-primary-600"
+                )}>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", isOpen && "rotate-180")} />
+                </span>
             </button>
 
             {description && !error && (
-                <p className="mt-1 text-xs text-gray-500">{description}</p>
+                <p className="mt-1.5 text-xs text-slate-500">{description}</p>
             )}
 
             {error && (
-                <p className="mt-1 text-xs text-red-500">{error}</p>
+                <p className="mt-1.5 text-xs text-rose-600">{error}</p>
             )}
 
             <AnimatePresence>
@@ -90,31 +185,46 @@ export function Select({
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -4, scale: 0.98 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-50 mt-2 w-full min-w-[200px] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-2xl ring-1 ring-black/5 py-1"
+                        className="absolute z-[70] mt-2 w-full min-w-[200px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_30px_65px_-35px_rgba(15,23,42,0.65)] ring-1 ring-slate-900/5"
+                        role="listbox"
                     >
-                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
-                            {options.map((option) => (
-                                <div
-                                    key={option.value}
-                                    onClick={() => {
-                                        onChange(option.value);
-                                        setIsOpen(false);
-                                    }}
-                                    className={cn(
-                                        "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none transition-colors",
-                                        option.value === value
-                                            ? "bg-primary-50 text-primary-900 font-medium"
-                                            : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
-                                    )}
-                                >
-                                    <span className="flex-1 truncate">{option.label}</span>
-                                    {option.value === value && (
-                                        <Check className="h-4 w-4 text-primary-600 ml-2" />
-                                    )}
-                                </div>
-                            ))}
+                        <div className="border-b border-slate-100 px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">Options</p>
+                        </div>
+                        <div className="custom-scrollbar max-h-64 overflow-y-auto p-2">
+                            {options.map((option, index) => {
+                                const isSelected = option.value === value;
+                                const isActive = index === activeIndex;
+
+                                return (
+                                    <button
+                                        key={option.value}
+                                        ref={(node) => {
+                                            optionRefs.current[index] = node;
+                                        }}
+                                        type="button"
+                                        onClick={() => handleSelect(option.value)}
+                                        onMouseEnter={() => setActiveIndex(index)}
+                                        className={cn(
+                                            "mb-1 flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-sm transition-all last:mb-0",
+                                            isSelected && "border-primary-200 bg-primary-50/80 text-primary-800",
+                                            !isSelected && "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50",
+                                            isActive && !isSelected && "border-slate-200 bg-slate-50"
+                                        )}
+                                        role="option"
+                                        aria-selected={isSelected}
+                                    >
+                                        <span className="min-w-0 flex-1 truncate font-medium">{option.label}</span>
+                                        {isSelected && (
+                                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-700">
+                                                <Check className="h-3.5 w-3.5" />
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
                             {options.length === 0 && (
-                                <div className="px-3 py-3 text-sm text-gray-400 text-center">
+                                <div className="px-3 py-4 text-center text-sm text-slate-400">
                                     No options found
                                 </div>
                             )}
