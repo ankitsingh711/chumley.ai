@@ -238,7 +238,7 @@ export default function CreateRequest() {
                 isOpen={showAddSupplierModal}
                 onClose={() => setShowAddSupplierModal(false)}
                 onSuccess={handleSupplierAdded}
-                isRestricted={user?.role !== UserRole.SYSTEM_ADMIN}
+                isRestricted={user?.role === UserRole.MEMBER}
             />
 
             <section className="relative overflow-hidden rounded-2xl border border-primary-100 bg-gradient-to-br from-white via-primary-50/60 to-accent-50/70 p-6 shadow-sm">

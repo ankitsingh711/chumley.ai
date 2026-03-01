@@ -70,9 +70,7 @@ export default function Suppliers() {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    const isRestricted = user?.role !== UserRole.SYSTEM_ADMIN
-        && user?.role !== UserRole.SENIOR_MANAGER
-        && user?.role !== UserRole.MANAGER;
+    const isRestricted = user?.role === UserRole.MEMBER;
 
     const [suppliers, setSuppliers] = useState<CardSupplier[]>([]);
     const [loading, setLoading] = useState(true);

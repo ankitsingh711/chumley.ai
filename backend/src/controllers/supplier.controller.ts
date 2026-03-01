@@ -559,9 +559,10 @@ export const createSupplier = async (req: Request, res: Response) => {
         const validatedData = createSupplierSchema.parse(req.body);
         const user = req.user!;
 
-        // Determine status based on role - only SYSTEM_ADMIN can create directly active suppliers
-        const isRestricted = user.role !== UserRole.SYSTEM_ADMIN;
-        const status = isRestricted ? 'Review Pending' : 'Active';
+        // Members can only submit supplier requests.
+        // Managers, Senior Managers, and System Admin can add suppliers directly.
+        const isMemberRequest = user.role === UserRole.MEMBER;
+        const status = isMemberRequest ? 'Review Pending' : 'Active';
 
         // Fetch full user to get department
         const fullUser = await prisma.user.findUnique({
@@ -575,7 +576,7 @@ export const createSupplier = async (req: Request, res: Response) => {
             data: {
                 ...supplierData,
                 status,
-                requesterId: isRestricted ? user.id : undefined,
+                requesterId: isMemberRequest ? user.id : undefined,
                 departments: fullUser?.departmentId ? {
                     connect: { id: fullUser.departmentId }
                 } : undefined,
@@ -588,22 +589,40 @@ export const createSupplier = async (req: Request, res: Response) => {
             },
         });
 
-        // If restricted user, notify admins and relevant managers
-        if (isRestricted) {
-            // Find all admins and relevant managers
+        // For member requests, notify approvers (manager/senior manager/system admin).
+        if (isMemberRequest) {
+            // Find all active admins and relevant approvers for the requester's department.
+            // This includes:
+            // 1) Primary role as MANAGER/SENIOR_MANAGER in the same department
+            // 2) Additional department roles as MANAGER/SENIOR_MANAGER
+            // 3) All SYSTEM_ADMIN users
             Logger.info(`createSupplier: Fetching recipients. User Dept: ${fullUser?.departmentId}`);
 
-            const recipientQuery = {
+            const recipientQuery: Prisma.UserFindManyArgs = {
                 where: {
+                    id: { not: user.id },
+                    status: UserStatus.ACTIVE,
                     OR: [
                         { role: UserRole.SYSTEM_ADMIN },
-                        ...(fullUser?.departmentId ? [{
-                            role: { in: [UserRole.SENIOR_MANAGER, UserRole.MANAGER] },
-                            departmentId: fullUser.departmentId
-                        }] : [])
+                        ...(fullUser?.departmentId
+                            ? [
+                                {
+                                    role: { in: [UserRole.SENIOR_MANAGER, UserRole.MANAGER] },
+                                    departmentId: fullUser.departmentId,
+                                },
+                                {
+                                    additionalRoles: {
+                                        some: {
+                                            departmentId: fullUser.departmentId,
+                                            role: { in: [UserRole.SENIOR_MANAGER, UserRole.MANAGER] },
+                                        },
+                                    },
+                                },
+                            ]
+                            : []),
                     ],
-                    status: UserStatus.ACTIVE
-                }
+                },
+                select: { id: true, email: true, role: true },
             };
 
             Logger.info(`createSupplier: Recipient query: ${JSON.stringify(recipientQuery)}`);
