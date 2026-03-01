@@ -16,11 +16,11 @@ import { DateRangeFilterPopover } from '../components/filters/DateRangeFilterPop
 import { Button } from '../components/ui/Button';
 import { DepartmentBudgetsSkeleton } from '../components/skeletons/DepartmentBudgetsSkeleton';
 import { departmentsApi, type Department } from '../services/departments.service';
+import { reportsApi } from '../services/reports.service';
 import { cn } from '../lib/utils';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
-import { getCategoryBreakdown, getCategorySpendTotals, getLatestMonthRange } from '../data/financialDataHelpers';
 
 interface DepartmentBudget extends Department {
     budget: number;
@@ -34,6 +34,17 @@ const BAR_COLORS = ['#3b82f6', '#10b981', '#f97316', '#8b5cf6', '#14b8a6', '#ec4
 
 const formatCurrency = (value: number) =>
     `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const getCurrentMonthRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+    };
+};
 
 const formatRangeLabel = (range: { start?: string; end?: string }) => {
     if (!range.start && !range.end) return 'All Time';
@@ -68,13 +79,15 @@ const getUtilizationStyles = (utilization: number) => {
 
 export default function DepartmentBudgets() {
     const { user: currentUser } = useAuth();
+    const initialRange = getCurrentMonthRange();
 
     const [baseDepartments, setBaseDepartments] = useState<Department[]>([]);
+    const [departmentSpendById, setDepartmentSpendById] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
 
     const [showDatePicker, setShowDatePicker] = useState(false);
-    const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getLatestMonthRange);
+    const [dateRange, setDateRange] = useState(initialRange);
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(initialRange);
 
     const [expandedDept, setExpandedDept] = useState<{ id: string; rangeKey: string } | null>(null);
     const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
@@ -104,6 +117,45 @@ export default function DepartmentBudgets() {
     }, []);
 
     useEffect(() => {
+        if (baseDepartments.length === 0) {
+            setDepartmentSpendById({});
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadDepartmentSpend = async () => {
+            const start = activeDateRange.start;
+            const end = activeDateRange.end;
+
+            const totals = await Promise.all(
+                baseDepartments.map(async (department) => {
+                    try {
+                        const spend = await departmentsApi.getSpending(department.id, start, end);
+                        const totalSpent = typeof spend?.totalSpent === 'number'
+                            ? spend.totalSpent
+                            : Number(spend?.totalSpent || 0);
+                        return [department.id, totalSpent] as const;
+                    } catch (error) {
+                        console.error(`Failed to load spend for department ${department.id}:`, error);
+                        return [department.id, 0] as const;
+                    }
+                })
+            );
+
+            if (!cancelled) {
+                setDepartmentSpendById(Object.fromEntries(totals));
+            }
+        };
+
+        void loadDepartmentSpend();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [baseDepartments, activeDateRange.end, activeDateRange.start]);
+
+    useEffect(() => {
         if (!editingDept) return;
 
         const handleEscape = (event: KeyboardEvent) => {
@@ -125,12 +177,11 @@ export default function DepartmentBudgets() {
     const dateRangeKey = `${activeDateRange.start || 'all'}|${activeDateRange.end || 'all'}`;
 
     const departments = useMemo<DepartmentBudget[]>(() => {
-        const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
-        const spendMap = getCategorySpendTotals(selectedRange);
-
         const withBudget = baseDepartments.map((department) => {
             const budget = Number(department.budget) > 0 ? Number(department.budget) : 0;
-            const spent = spendMap[department.name] || 0;
+            const spent = typeof departmentSpendById[department.id] === 'number'
+                ? departmentSpendById[department.id]
+                : (department.metrics?.totalSpent || 0);
 
             const usersFallback = (department as Department & { users?: unknown[] }).users;
             const memberCount = typeof department.metrics?.userCount === 'number'
@@ -151,7 +202,7 @@ export default function DepartmentBudgets() {
         });
 
         return withBudget.sort((a, b) => b.spent - a.spent);
-    }, [baseDepartments, activeDateRange]);
+    }, [baseDepartments, departmentSpendById]);
 
     const stats = useMemo(() => {
         const totalBudget = departments.reduce((sum, department) => sum + department.budget, 0);
@@ -308,7 +359,7 @@ export default function DepartmentBudgets() {
         }
     };
 
-    const handleExpand = (department: DepartmentBudget) => {
+    const handleExpand = async (department: DepartmentBudget) => {
         if (expandedDept?.id === department.id && expandedDept.rangeKey === dateRangeKey) {
             setExpandedDept(null);
             return;
@@ -320,8 +371,18 @@ export default function DepartmentBudgets() {
 
         if (!breakdownData[cacheKey]) {
             const selectedRange = activeDateRange.start || activeDateRange.end ? activeDateRange : undefined;
-            const data = getCategoryBreakdown(department.name, selectedRange);
-            setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
+
+            try {
+                const data = await reportsApi.getDepartmentSpendBreakdown(
+                    department.id,
+                    selectedRange?.start,
+                    selectedRange?.end
+                );
+                setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
+            } catch (error) {
+                console.error(`Failed to load category breakdown for department ${department.id}:`, error);
+                setBreakdownData((prev) => ({ ...prev, [cacheKey]: [] }));
+            }
         }
     };
 
@@ -437,7 +498,7 @@ export default function DepartmentBudgets() {
                                 <article key={department.id} className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
                                     <button
                                         type="button"
-                                        onClick={() => handleExpand(department)}
+                                        onClick={() => void handleExpand(department)}
                                         className="flex w-full items-start justify-between gap-3 text-left"
                                     >
                                         <div className="flex items-center gap-2">

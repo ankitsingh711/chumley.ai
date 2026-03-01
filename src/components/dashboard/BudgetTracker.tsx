@@ -4,14 +4,19 @@ import { ChevronDown, AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
 import type { Department } from '../../services/departments.service';
+import { reportsApi } from '../../services/reports.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
-import { getCategoryBreakdown } from '../../data/financialDataHelpers';
 
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
     departments?: Department[];
     dateRange?: { start?: string; end?: string };
+}
+
+interface DepartmentSpendBreakdownItem {
+    category: string;
+    amount: number;
 }
 
 interface TrackedDepartment {
@@ -20,17 +25,6 @@ interface TrackedDepartment {
     limit: number;
     spent: number;
 }
-
-const BUDGET_LIMITS: Record<string, number> = {
-    Marketing: 350000,
-    Tech: 135000,
-    Finance: 40000,
-    'HR & Recruitment': 10000,
-    Fleet: 200000,
-    Support: 300000,
-};
-
-const DEFAULT_LIMIT = 50000;
 
 const getProgressStyles = (percentage: number) => {
     if (percentage >= 100) {
@@ -66,18 +60,22 @@ export const BudgetTracker = memo(function BudgetTracker({
 
     const dateRangeKey = `${dateRange?.start || 'all'}|${dateRange?.end || 'all'}`;
     const [expandedDept, setExpandedDept] = useState<{ id: string; rangeKey: string } | null>(null);
-    const [breakdownData, setBreakdownData] = useState<Record<string, { category: string; amount: number }[]>>({});
+    const [breakdownData, setBreakdownData] = useState<Record<string, DepartmentSpendBreakdownItem[]>>({});
 
     const sortedDepartments = useMemo<TrackedDepartment[]>(() => {
         const base = departments.map((department) => {
             const spendFromMetrics = department.metrics?.totalSpent;
-            const spendFromMap = departmentSpend[department.name] || 0;
+            const hasSpendFromMap = Object.prototype.hasOwnProperty.call(departmentSpend, department.name);
+            const spendFromMap = hasSpendFromMap ? departmentSpend[department.name] || 0 : undefined;
+            const budgetLimit = Number(department.budget);
 
             return {
                 id: department.id,
                 name: department.name,
-                limit: BUDGET_LIMITS[department.name] || DEFAULT_LIMIT,
-                spent: typeof spendFromMetrics === 'number' ? spendFromMetrics : spendFromMap,
+                limit: Number.isFinite(budgetLimit) && budgetLimit > 0 ? budgetLimit : 0,
+                spent: typeof spendFromMap === 'number'
+                    ? spendFromMap
+                    : (typeof spendFromMetrics === 'number' ? spendFromMetrics : 0),
             };
         });
 
@@ -86,7 +84,7 @@ export const BudgetTracker = memo(function BudgetTracker({
                 base.push({
                     id: `unassigned-${name}`,
                     name,
-                    limit: BUDGET_LIMITS[name] || DEFAULT_LIMIT,
+                    limit: 0,
                     spent: amount,
                 });
             }
@@ -95,7 +93,7 @@ export const BudgetTracker = memo(function BudgetTracker({
         return base.sort((a, b) => b.spent - a.spent);
     }, [departments, departmentSpend]);
 
-    const handleExpand = (departmentId: string) => {
+    const handleExpand = async (departmentId: string) => {
         if (expandedDept?.id === departmentId && expandedDept.rangeKey === dateRangeKey) {
             setExpandedDept(null);
             return;
@@ -106,10 +104,24 @@ export const BudgetTracker = memo(function BudgetTracker({
         const cacheKey = `${dateRangeKey}|${departmentId}`;
 
         if (!breakdownData[cacheKey]) {
-            const department = sortedDepartments.find((item) => item.id === departmentId);
-            const departmentName = department?.name || departmentId.replace('unassigned-', '');
-            const data = getCategoryBreakdown(departmentName, dateRange);
-            setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
+            if (departmentId.startsWith('unassigned-')) {
+                setBreakdownData((prev) => ({ ...prev, [cacheKey]: [] }));
+                return;
+            }
+
+            const selectedRange = dateRange?.start || dateRange?.end ? dateRange : undefined;
+
+            try {
+                const data = await reportsApi.getDepartmentSpendBreakdown(
+                    departmentId,
+                    selectedRange?.start,
+                    selectedRange?.end
+                );
+                setBreakdownData((prev) => ({ ...prev, [cacheKey]: data }));
+            } catch (error) {
+                console.error(`Failed to load spend breakdown for department ${departmentId}:`, error);
+                setBreakdownData((prev) => ({ ...prev, [cacheKey]: [] }));
+            }
         }
     };
 
@@ -160,7 +172,7 @@ export const BudgetTracker = memo(function BudgetTracker({
                             <article key={department.id} className="rounded-xl border border-gray-200 bg-gray-50/40 p-4">
                                 <button
                                     type="button"
-                                    onClick={() => handleExpand(department.id)}
+                                    onClick={() => void handleExpand(department.id)}
                                     className="flex w-full items-start justify-between gap-3 text-left"
                                 >
                                     <div className="flex items-center gap-2">

@@ -21,12 +21,22 @@ import { departmentsApi, type Department } from '../services/departments.service
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
-import { getCategorySpendTotals, getLatestMonthRange } from '../data/financialDataHelpers';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
 
 const formatCurrency = (value: number) =>
     `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const getCurrentMonthRange = () => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0],
+    };
+};
 
 const formatRangeLabel = (range: { start?: string; end?: string }) => {
     if (!range.start && !range.end) return 'All Time';
@@ -63,7 +73,7 @@ export default function Dashboard() {
 
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [dateRange, setDateRange] = useState({ start: '', end: '' });
-    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getLatestMonthRange);
+    const [activeDateRange, setActiveDateRange] = useState<{ start?: string; end?: string }>(getCurrentMonthRange);
     const dateFilterAnchorRef = useRef<HTMLDivElement>(null);
 
     const userRole = user?.role;
@@ -91,13 +101,7 @@ export default function Dashboard() {
                 departmentsApi.getAll(),
             ]);
 
-            const dateRangeOpt = (startDate || endDate) ? { start: startDate, end: endDate } : undefined;
-            const hardcodedDepartmentSpend = getCategorySpendTotals(dateRangeOpt, departmentFilter);
-
-            setMetrics({
-                ...kpiData,
-                departmentSpend: hardcodedDepartmentSpend,
-            });
+            setMetrics(kpiData);
             setDepartments(departmentsData);
 
             const response = await requestsApi.getAll();
@@ -108,10 +112,10 @@ export default function Dashboard() {
         } finally {
             setLoading(false);
         }
-    }, [departmentFilter]);
+    }, []);
 
     useEffect(() => {
-        const { start, end } = getLatestMonthRange();
+        const { start, end } = getCurrentMonthRange();
         setActiveDateRange({ start, end });
         void loadDashboard(start, end);
     }, [loadDashboard]);

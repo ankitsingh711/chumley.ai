@@ -24,8 +24,13 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
         return res.status(401).json({ error: 'Authentication failed: No token provided' });
     }
 
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+        return res.status(500).json({ error: 'Server misconfiguration: JWT secret missing' });
+    }
+
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any;
+        const decoded = jwt.verify(token, jwtSecret) as any;
         req.user = decoded;
         next();
     } catch (error) {

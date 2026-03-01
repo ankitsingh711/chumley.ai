@@ -238,11 +238,15 @@ export class DepartmentService {
         });
 
         const spendingMap = new Map<string, number>();
+        const requestCountMap = new Map<string, number>();
 
         approvedRequests.forEach(req => {
             if (req.requester?.departmentId) {
                 const current = spendingMap.get(req.requester.departmentId) || 0;
                 spendingMap.set(req.requester.departmentId, current + Number(req.totalAmount));
+
+                const currentCount = requestCountMap.get(req.requester.departmentId) || 0;
+                requestCountMap.set(req.requester.departmentId, currentCount + 1);
             }
         });
 
@@ -250,7 +254,7 @@ export class DepartmentService {
             ...dept,
             metrics: {
                 totalSpent: spendingMap.get(dept.id) || 0,
-                requestCount: 0, // Placeholder or calculate if needed
+                requestCount: requestCountMap.get(dept.id) || 0,
                 userCount: dept._count.users
             }
         }));

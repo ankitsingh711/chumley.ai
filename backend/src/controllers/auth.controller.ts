@@ -18,6 +18,14 @@ const loginSchema = z.object({
     password: z.string(),
 });
 
+const getJwtSecret = () => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+        throw new Error('JWT_SECRET is not configured');
+    }
+    return secret;
+};
+
 const setAuthCookie = (res: Response, token: string) => {
     const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('authToken', token, {
@@ -61,7 +69,7 @@ export const register = async (req: Request, res: Response) => {
                 role: user.role,
                 departmentId: user.departmentId
             },
-            process.env.JWT_SECRET || 'fallback_secret',
+            getJwtSecret(),
             { expiresIn: '24h' }
         );
 
@@ -107,7 +115,7 @@ export const login = async (req: Request, res: Response) => {
                 role: user.role,
                 departmentId: user.departmentId
             },
-            process.env.JWT_SECRET || 'fallback_secret',
+            getJwtSecret(),
             { expiresIn: '24h' }
         );
 
@@ -173,7 +181,7 @@ export const acceptInvite = async (req: Request, res: Response) => {
                 role: updatedUser.role,
                 departmentId: updatedUser.departmentId
             },
-            process.env.JWT_SECRET || 'fallback_secret',
+            getJwtSecret(),
             { expiresIn: '24h' }
         );
 
@@ -245,7 +253,7 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
                 role: user.role,
                 departmentId: user.departmentId
             },
-            process.env.JWT_SECRET || 'fallback_secret',
+            getJwtSecret(),
             { expiresIn: '24h' }
         );
 
