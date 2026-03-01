@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { LogoWithText } from '../components/ui/Logo';
 import { useAuth } from '../hooks/useAuth';
+import { API_BASE_URL } from '../lib/apiClient';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -171,7 +172,7 @@ export default function Login() {
                     </div>
 
                     <button
-                        onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:3003/api'}/auth/google`}
+                        onClick={() => window.location.href = `${API_BASE_URL}/auth/google`}
                         className="w-full flex items-center justify-center gap-3 bg-white border border-gray-200 text-gray-700 font-semibold py-3 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
                     >
                         <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
