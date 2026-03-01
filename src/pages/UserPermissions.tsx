@@ -392,6 +392,23 @@ export default function UserPermissions() {
     const pendingMembers = users.filter((member) => member.status === UserStatus.PENDING).length;
     const suspendedMembers = users.filter((member) => member.status === UserStatus.SUSPENDED).length;
     const canInviteUsers = currentUser?.role === UserRole.SYSTEM_ADMIN || currentUser?.role === UserRole.SENIOR_MANAGER;
+    const feedbackMeta = modalType === 'success'
+        ? {
+            title: 'Success',
+            subtitle: 'Your action was completed successfully.',
+            accentClassName: 'from-emerald-500 via-teal-500 to-cyan-500',
+            iconClassName: 'bg-emerald-100 text-emerald-700 ring-emerald-200',
+            buttonClassName: 'bg-emerald-600 text-white hover:bg-emerald-700',
+            actionLabel: 'Done',
+        }
+        : {
+            title: 'Something Went Wrong',
+            subtitle: 'The action could not be completed. Please review and try again.',
+            accentClassName: 'from-rose-500 via-red-500 to-orange-500',
+            iconClassName: 'bg-rose-100 text-rose-700 ring-rose-200',
+            buttonClassName: 'bg-slate-900 text-white hover:bg-slate-800',
+            actionLabel: 'Close',
+        };
 
     if (loading) {
         return <UserPermissionsSkeleton />;
@@ -940,16 +957,16 @@ export default function UserPermissions() {
                 </div>
             )}
 
-            {showModal && (
-                <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={dismissFeedbackModal}>
+            {showModal && createPortal(
+                <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/45 p-4 backdrop-blur-sm" onClick={dismissFeedbackModal}>
                     <div
-                        className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full border border-slate-100 overflow-hidden"
+                        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_40px_95px_-45px_rgba(15,23,42,0.95)]"
                         onClick={e => e.stopPropagation()}
                     >
                         <button
                             type="button"
                             onClick={dismissFeedbackModal}
-                            className="absolute top-3 right-3 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+                            className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                             aria-label="Close message"
                         >
                             <X className="h-4 w-4" />
@@ -960,34 +977,34 @@ export default function UserPermissions() {
                                 <div className="h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500" />
                                 <div className="p-6">
                                     <div className="flex items-start gap-4">
-                                        <div className="h-12 w-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                                        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200">
                                             <CheckCircle className="h-6 w-6" />
                                         </div>
                                         <div className="min-w-0">
                                             <h3 className="text-lg font-semibold text-slate-900">Invitation sent</h3>
-                                            <p className="text-sm text-slate-600 mt-1 leading-6">
+                                            <p className="mt-1 text-sm leading-6 text-slate-600">
                                                 {inviteSuccess.statusMessage || 'Your invite email has been delivered to the recipient.'}
                                             </p>
                                         </div>
                                     </div>
 
-                                    <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 space-y-2.5">
+                                    <div className="mt-5 space-y-2.5 rounded-xl border border-emerald-100 bg-emerald-50/70 p-4">
                                         <div className="flex items-start justify-between gap-3">
                                             <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Recipient</span>
-                                            <span className="text-sm font-medium text-slate-900 text-right">{inviteSuccess.name}</span>
+                                            <span className="text-right text-sm font-medium text-slate-900">{inviteSuccess.name}</span>
                                         </div>
                                         <div className="flex items-start justify-between gap-3">
                                             <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Email</span>
-                                            <span className="text-sm text-slate-700 text-right break-all">{inviteSuccess.email}</span>
+                                            <span className="break-all text-right text-sm text-slate-700">{inviteSuccess.email}</span>
                                         </div>
                                         <div className="flex items-start justify-between gap-3">
                                             <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Role</span>
-                                            <span className="text-sm text-slate-700 text-right">{inviteSuccess.role.replace('_', ' ')}</span>
+                                            <span className="text-right text-sm text-slate-700">{inviteSuccess.role.replace('_', ' ')}</span>
                                         </div>
                                         {inviteSuccess.departmentName && (
                                             <div className="flex items-start justify-between gap-3">
                                                 <span className="text-xs font-semibold uppercase tracking-wide text-emerald-800">Department</span>
-                                                <span className="text-sm text-slate-700 text-right">{inviteSuccess.departmentName}</span>
+                                                <span className="text-right text-sm text-slate-700">{inviteSuccess.departmentName}</span>
                                             </div>
                                         )}
                                     </div>
@@ -996,7 +1013,7 @@ export default function UserPermissions() {
                                         <button
                                             type="button"
                                             onClick={handleCopyInviteLink}
-                                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 hover:text-emerald-800 transition-colors"
+                                            className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-emerald-700 transition-colors hover:text-emerald-800"
                                         >
                                             <Copy className="h-4 w-4" />
                                             {linkCopied ? 'Link copied to clipboard' : 'Copy invite link'}
@@ -1009,7 +1026,7 @@ export default function UserPermissions() {
                                         </Button>
                                         <Button
                                             onClick={openInviteModalFromSuccess}
-                                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                            className="bg-emerald-600 text-white hover:bg-emerald-700"
                                         >
                                             Invite Another
                                         </Button>
@@ -1017,23 +1034,42 @@ export default function UserPermissions() {
                                 </div>
                             </>
                         ) : (
-                            <div className="p-6 flex items-start gap-4">
-                                <div className={`p-2.5 rounded-xl ${modalType === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                    {modalType === 'success' ? <CheckCircle className="h-5 w-5" /> : <XCircle className="h-5 w-5" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h3 className="font-semibold text-slate-900">{modalType === 'success' ? 'Success' : 'Error'}</h3>
-                                    <p className="text-sm text-slate-600 mt-1 break-words">{modalMessage}</p>
-                                    <div className="mt-5 flex justify-end">
-                                        <Button variant="outline" size="sm" onClick={dismissFeedbackModal}>
-                                            Okay
+                            <>
+                                <div className={`h-1.5 bg-gradient-to-r ${feedbackMeta.accentClassName}`} />
+                                <div className="p-6">
+                                    <div className="flex items-start gap-4">
+                                        <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ring-1 ${feedbackMeta.iconClassName}`}>
+                                            {modalType === 'success' ? <CheckCircle className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">System Message</p>
+                                            <h3 className="mt-1 text-xl font-semibold tracking-tight text-slate-900">{feedbackMeta.title}</h3>
+                                            <p className="mt-1 text-sm text-slate-500">{feedbackMeta.subtitle}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className={`mt-5 rounded-xl border p-3.5 ${modalType === 'success'
+                                        ? 'border-emerald-100 bg-emerald-50/70'
+                                        : 'border-rose-100 bg-rose-50/70'
+                                        }`}>
+                                        <p className="text-sm leading-6 text-slate-700 break-words">{modalMessage}</p>
+                                    </div>
+
+                                    <div className="mt-6 flex justify-end">
+                                        <Button
+                                            size="sm"
+                                            onClick={dismissFeedbackModal}
+                                            className={feedbackMeta.buttonClassName}
+                                        >
+                                            {feedbackMeta.actionLabel}
                                         </Button>
                                     </div>
                                 </div>
-                            </div>
+                            </>
                         )}
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );

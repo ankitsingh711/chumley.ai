@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { pdfService } from '../services/pdf.service';
 import {
     Download,
     Calendar,
     Filter,
     Check,
+    ChevronDown,
     FileText,
     BarChart3,
     Wallet,
@@ -86,6 +88,45 @@ export default function Reports() {
 
     const dateFilterAnchorRef = useRef<HTMLDivElement>(null);
     const transactionFilterRef = useRef<HTMLDivElement>(null);
+    const transactionFilterButtonRef = useRef<HTMLButtonElement>(null);
+    const transactionFilterMenuRef = useRef<HTMLDivElement>(null);
+    const [transactionFilterPosition, setTransactionFilterPosition] = useState({
+        top: 0,
+        left: 0,
+        width: 0,
+    });
+
+    const updateTransactionFilterPosition = () => {
+        const trigger = transactionFilterButtonRef.current;
+        if (!trigger) return;
+
+        const MENU_WIDTH = 320;
+        const VIEWPORT_PADDING = 12;
+        const ESTIMATED_MENU_HEIGHT = 336;
+        const GAP = 10;
+
+        const rect = trigger.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const resolvedWidth = Math.max(rect.width, MENU_WIDTH);
+
+        const left = Math.max(
+            VIEWPORT_PADDING,
+            Math.min(rect.right - resolvedWidth, viewportWidth - VIEWPORT_PADDING - resolvedWidth),
+        );
+
+        const openUpward = rect.bottom + GAP + ESTIMATED_MENU_HEIGHT > viewportHeight - VIEWPORT_PADDING
+            && rect.top - GAP - ESTIMATED_MENU_HEIGHT > VIEWPORT_PADDING;
+        const top = openUpward
+            ? rect.top - GAP - ESTIMATED_MENU_HEIGHT
+            : rect.bottom + GAP;
+
+        setTransactionFilterPosition({
+            top: Math.max(VIEWPORT_PADDING, top),
+            left,
+            width: resolvedWidth,
+        });
+    };
 
     useEffect(() => {
         void loadData(defaultStartStr, defaultEndStr);
@@ -96,13 +137,40 @@ export default function Reports() {
         if (!showTransactionFilter) return;
 
         const handleClickOutside = (event: MouseEvent) => {
-            if (transactionFilterRef.current && !transactionFilterRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const clickedInsideTrigger = transactionFilterRef.current?.contains(target);
+            const clickedInsideMenu = transactionFilterMenuRef.current?.contains(target);
+            if (!clickedInsideTrigger && !clickedInsideMenu) {
                 setShowTransactionFilter(false);
             }
         };
 
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showTransactionFilter]);
+
+    useEffect(() => {
+        if (!showTransactionFilter) return;
+
+        updateTransactionFilterPosition();
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setShowTransactionFilter(false);
+            }
+        };
+
+        const handlePositionSync = () => updateTransactionFilterPosition();
+
+        document.addEventListener('keydown', handleEscape);
+        window.addEventListener('resize', handlePositionSync);
+        window.addEventListener('scroll', handlePositionSync, true);
+
+        return () => {
+            document.removeEventListener('keydown', handleEscape);
+            window.removeEventListener('resize', handlePositionSync);
+            window.removeEventListener('scroll', handlePositionSync, true);
+        };
     }, [showTransactionFilter]);
 
     const loadData = async (startDate?: string, endDate?: string) => {
@@ -190,6 +258,68 @@ export default function Reports() {
             .filter((request) => transactionFilter === 'ALL' || request.status === transactionFilter)
             .slice(0, 10);
     }, [allRequests, transactionFilter]);
+
+    const transactionFilterOptions = useMemo(
+        () => (['ALL', ...Object.values(RequestStatus)] as TransactionFilter[]),
+        []
+    );
+
+    const transactionFilterCounts = useMemo(() => {
+        const counts: Record<string, number> = { ALL: allRequests.length };
+        Object.values(RequestStatus).forEach((status) => {
+            counts[status] = 0;
+        });
+        allRequests.forEach((request) => {
+            counts[request.status] = (counts[request.status] ?? 0) + 1;
+        });
+        return counts;
+    }, [allRequests]);
+
+    const getTransactionFilterLabel = (status: TransactionFilter) =>
+        status === 'ALL' ? 'All Transactions' : status.replace(/_/g, ' ');
+
+    const getTransactionFilterMeta = (status: TransactionFilter) => {
+        if (status === 'ALL') {
+            return {
+                dotClassName: 'bg-slate-500',
+                badgeClassName: 'border-slate-200 bg-slate-100 text-slate-700',
+                description: 'Include every request status in results',
+            };
+        }
+
+        switch (status) {
+            case RequestStatus.APPROVED:
+                return {
+                    dotClassName: 'bg-emerald-500',
+                    badgeClassName: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+                    description: 'Requests approved for purchasing',
+                };
+            case RequestStatus.PENDING:
+                return {
+                    dotClassName: 'bg-amber-500',
+                    badgeClassName: 'border-amber-200 bg-amber-50 text-amber-700',
+                    description: 'Awaiting manager or admin review',
+                };
+            case RequestStatus.IN_PROGRESS:
+                return {
+                    dotClassName: 'bg-sky-500',
+                    badgeClassName: 'border-sky-200 bg-sky-50 text-sky-700',
+                    description: 'Currently in processing pipeline',
+                };
+            case RequestStatus.REJECTED:
+                return {
+                    dotClassName: 'bg-rose-500',
+                    badgeClassName: 'border-rose-200 bg-rose-50 text-rose-700',
+                    description: 'Declined requests and exceptions',
+                };
+            default:
+                return {
+                    dotClassName: 'bg-slate-500',
+                    badgeClassName: 'border-slate-200 bg-slate-100 text-slate-700',
+                    description: 'Filtered status',
+                };
+        }
+    };
 
     const kpi = useMemo(() => {
         const totalRequests = metrics?.totalRequests ?? 0;
@@ -493,38 +623,103 @@ export default function Reports() {
                         <p className="text-sm text-gray-500">Latest requests in the selected date range.</p>
                     </div>
 
-                    <div ref={transactionFilterRef} className="relative">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowTransactionFilter((prev) => !prev)}
-                            className={transactionFilter !== 'ALL' ? 'border-primary-200 bg-primary-50 text-primary-700' : ''}
+                    <div ref={transactionFilterRef}>
+                        <button
+                            ref={transactionFilterButtonRef}
+                            type="button"
+                            onClick={() => {
+                                setShowTransactionFilter((prev) => {
+                                    const next = !prev;
+                                    if (next) {
+                                        updateTransactionFilterPosition();
+                                    }
+                                    return next;
+                                });
+                            }}
+                            className={`group flex min-h-[42px] items-center gap-2.5 rounded-2xl border px-3.5 py-2 text-left text-sm transition-all ${transactionFilter !== 'ALL'
+                                ? 'border-primary-200 bg-primary-50/80 text-primary-800 shadow-[0_12px_24px_-20px_rgba(37,99,235,0.6)]'
+                                : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
+                            aria-expanded={showTransactionFilter}
+                            aria-haspopup="listbox"
                         >
-                            <Filter className="mr-2 h-3.5 w-3.5" />
-                            {transactionFilter === 'ALL' ? 'All Statuses' : transactionFilter.replace(/_/g, ' ')}
-                        </Button>
+                            <span className={`inline-flex h-7 w-7 items-center justify-center rounded-xl border ${transactionFilter !== 'ALL'
+                                ? 'border-primary-200 bg-white text-primary-700'
+                                : 'border-gray-200 bg-gray-50 text-gray-500 group-hover:text-gray-700'
+                                }`}>
+                                <Filter className="h-3.5 w-3.5" />
+                            </span>
+                            <span className="min-w-0">
+                                <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">Status</span>
+                                <span className="block truncate font-semibold">
+                                    {transactionFilter === 'ALL' ? 'All Statuses' : getTransactionFilterLabel(transactionFilter)}
+                                </span>
+                            </span>
+                            <span className={`ml-1 inline-flex min-w-[1.75rem] items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${transactionFilter !== 'ALL'
+                                ? 'border-primary-200 bg-white text-primary-700'
+                                : 'border-gray-200 bg-gray-100 text-gray-600'
+                                }`}>
+                                {transactionFilterCounts[transactionFilter] ?? 0}
+                            </span>
+                            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${showTransactionFilter ? 'rotate-180' : ''}`} />
+                        </button>
+                    </div>
+                </div>
 
-                        {showTransactionFilter && (
-                            <div className="absolute right-0 top-full z-[110] mt-2 w-52 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                                {(['ALL', ...Object.values(RequestStatus)] as TransactionFilter[]).map((status) => (
+                {showTransactionFilter && typeof document !== 'undefined' && createPortal(
+                    <div
+                        ref={transactionFilterMenuRef}
+                        className="fixed z-[130] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_30px_65px_-35px_rgba(15,23,42,0.8)] ring-1 ring-slate-900/5"
+                        style={{
+                            top: transactionFilterPosition.top,
+                            left: transactionFilterPosition.left,
+                            width: transactionFilterPosition.width,
+                        }}
+                        role="listbox"
+                    >
+                        <div className="border-b border-slate-100 bg-slate-50/90 px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">Filter Transactions</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                                Show results by request status
+                            </p>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto p-2 custom-scrollbar">
+                            {transactionFilterOptions.map((status) => {
+                                const isActive = status === transactionFilter;
+                                const meta = getTransactionFilterMeta(status);
+                                return (
                                     <button
                                         key={status}
+                                        type="button"
                                         onClick={() => {
                                             setTransactionFilter(status);
                                             setShowTransactionFilter(false);
                                         }}
-                                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-gray-50"
+                                        className={`mb-1 flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-all last:mb-0 ${isActive
+                                            ? 'border-primary-200 bg-primary-50/70'
+                                            : 'border-transparent hover:border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        role="option"
+                                        aria-selected={isActive}
                                     >
-                                        <span className={status === transactionFilter ? 'font-medium text-primary-700' : 'text-gray-700'}>
-                                            {status === 'ALL' ? 'All Transactions' : status.replace(/_/g, ' ')}
+                                        <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.dotClassName}`} />
+                                        <span className="min-w-0 flex-1">
+                                            <span className={`block truncate text-sm font-semibold ${isActive ? 'text-primary-800' : 'text-slate-800'}`}>
+                                                {getTransactionFilterLabel(status)}
+                                            </span>
+                                            <span className="block truncate text-xs text-slate-500">{meta.description}</span>
                                         </span>
-                                        {status === transactionFilter && <Check className="h-3.5 w-3.5 text-primary-700" />}
+                                        <span className={`inline-flex min-w-[2rem] items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${meta.badgeClassName}`}>
+                                            {transactionFilterCounts[status] ?? 0}
+                                        </span>
+                                        {isActive && <Check className="h-3.5 w-3.5 text-primary-700" />}
                                     </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
+                                );
+                            })}
+                        </div>
+                    </div>,
+                    document.body
+                )}
 
                 {filteredTransactions.length === 0 ? (
                     <div className="px-6 py-14 text-center text-sm text-gray-500">
