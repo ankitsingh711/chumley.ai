@@ -3,7 +3,15 @@ import { apiClient } from '../lib/apiClient';
 export interface Notification {
     id: string;
     userId: string;
-    type: 'BUDGET_WARNING' | 'BUDGET_CRITICAL' | 'BUDGET_EXCEEDED' | 'REQUEST_APPROVED' | 'REQUEST_REJECTED' | 'CONTRACT_EXPIRING' | 'SYSTEM_ALERT';
+    type:
+    | 'BUDGET_WARNING'
+    | 'BUDGET_CRITICAL'
+    | 'BUDGET_EXCEEDED'
+    | 'REQUEST_APPROVED'
+    | 'REQUEST_REJECTED'
+    | 'CONTRACT_EXPIRING'
+    | 'SYSTEM_ALERT'
+    | 'SUPPLIER_REQUEST';
     title: string;
     message: string;
     metadata?: Record<string, any>;

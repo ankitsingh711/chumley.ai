@@ -104,6 +104,13 @@ const getNotificationVisual = (type: string): NotificationVisual => {
                 iconClass: 'bg-slate-100 text-slate-700',
                 labelClass: 'border-slate-200 bg-slate-50 text-slate-700',
             };
+        case 'SUPPLIER_REQUEST':
+            return {
+                icon: ClipboardList,
+                label: 'Supplier',
+                iconClass: 'bg-amber-100 text-amber-700',
+                labelClass: 'border-amber-200 bg-amber-50 text-amber-700',
+            };
         default:
             return {
                 icon: BellRing,
@@ -172,6 +179,10 @@ export default function NotificationBell() {
     const handleNavigateFromModal = (notification: Notification) => {
         if (notification.metadata?.requestId) {
             navigate(`/requests/${notification.metadata.requestId}`);
+            return;
+        }
+        if (notification.metadata?.supplierId) {
+            navigate(`/suppliers/${notification.metadata.supplierId}`);
         }
     };
 
@@ -229,7 +240,7 @@ export default function NotificationBell() {
                                     )}
                                 </div>
                                 <p className="mt-0.5 text-xs text-slate-500">
-                                    {notifications.length > 0 ? 'Updates from requests, budgets, and orders.' : 'You are all caught up.'}
+                                    {notifications.length > 0 ? 'Updates from requests, suppliers, budgets, and orders.' : 'You are all caught up.'}
                                 </p>
                             </div>
                             <button

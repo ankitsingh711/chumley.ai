@@ -230,44 +230,199 @@ const getWebhookSecretFromRequest = (req: Request) => {
     return null;
 };
 
-const pickString = (payload: Record<string, unknown>, keys: string[]): string | undefined => {
-    for (const key of keys) {
-        const value = payload[key];
-        if (typeof value === 'string' && value.trim()) {
-            return value.trim();
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const parseJsonRecord = (value: string): Record<string, unknown> | null => {
+    const trimmed = value.trim();
+    if (!(trimmed.startsWith('{') && trimmed.endsWith('}'))) {
+        return null;
+    }
+
+    try {
+        const parsed = JSON.parse(trimmed);
+        return isRecord(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+};
+
+const extractFirstString = (value: unknown, depth = 0): string | undefined => {
+    if (depth > 5 || value === null || typeof value === 'undefined') {
+        return undefined;
+    }
+
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        return trimmed ? trimmed : undefined;
+    }
+
+    if (Array.isArray(value)) {
+        for (const entry of value) {
+            const extracted = extractFirstString(entry, depth + 1);
+            if (extracted) return extracted;
         }
-        if (Array.isArray(value)) {
-            const firstString = value.find((entry) => typeof entry === 'string' && entry.trim()) as string | undefined;
-            if (firstString) {
-                return firstString.trim();
+        return undefined;
+    }
+
+    if (isRecord(value)) {
+        const preferredKeys = [
+            'email',
+            'Email',
+            'address',
+            'Address',
+            'value',
+            'Value',
+            'raw',
+            'Raw',
+            'text',
+            'Text',
+            'content',
+            'Content',
+            'name',
+            'Name',
+            'full',
+            'Full',
+        ];
+
+        for (const key of preferredKeys) {
+            if (Object.prototype.hasOwnProperty.call(value, key)) {
+                const extracted = extractFirstString(value[key], depth + 1);
+                if (extracted) return extracted;
+            }
+        }
+
+        for (const entry of Object.values(value)) {
+            const extracted = extractFirstString(entry, depth + 1);
+            if (extracted) return extracted;
+        }
+    }
+
+    return undefined;
+};
+
+const pickString = (payload: Record<string, unknown>, keys: string[]): string | undefined => {
+    const normalizedKeys = new Set(keys.map((key) => key.toLowerCase()));
+    const queue: unknown[] = [payload];
+    const visited = new Set<unknown>();
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        if (!current || typeof current !== 'object') {
+            continue;
+        }
+
+        if (visited.has(current)) {
+            continue;
+        }
+        visited.add(current);
+
+        if (Array.isArray(current)) {
+            for (const entry of current) {
+                if (typeof entry === 'string') {
+                    const parsed = parseJsonRecord(entry);
+                    if (parsed) {
+                        queue.push(parsed);
+                    }
+                } else if (typeof entry === 'object' && entry !== null) {
+                    queue.push(entry);
+                }
+            }
+            continue;
+        }
+
+        for (const [key, rawValue] of Object.entries(current as Record<string, unknown>)) {
+            if (normalizedKeys.has(key.toLowerCase())) {
+                const extracted = extractFirstString(rawValue);
+                if (extracted) {
+                    return extracted;
+                }
+            }
+
+            if (typeof rawValue === 'string') {
+                const parsed = parseJsonRecord(rawValue);
+                if (parsed) {
+                    queue.push(parsed);
+                }
+            } else if (typeof rawValue === 'object' && rawValue !== null) {
+                queue.push(rawValue);
             }
         }
     }
+
+    return undefined;
+};
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const extractHeaderValue = (headersRaw: string | undefined, headerNames: string[]): string | undefined => {
+    if (!headersRaw) return undefined;
+
+    const unfoldedHeaders = headersRaw.replace(/\r?\n[ \t]+/g, ' ');
+    for (const headerName of headerNames) {
+        const regex = new RegExp(`^${escapeRegex(headerName)}:\\s*(.+)$`, 'im');
+        const match = unfoldedHeaders.match(regex);
+        if (match?.[1]?.trim()) {
+            return match[1].trim();
+        }
+    }
+
     return undefined;
 };
 
 const normalizeInboundEmailPayload = (payload: Record<string, unknown>) => {
-    const fromRaw = pickString(payload, ['from', 'sender', 'From', 'from_email']);
-    const envelope =
-        typeof payload.envelope === 'object' && payload.envelope !== null
-            ? (payload.envelope as Record<string, unknown>)
-            : null;
-    const envelopeTo = envelope ? pickString(envelope, ['to', 'recipient']) : undefined;
-    const toRaw = pickString(payload, ['to', 'recipient', 'To', 'envelope_to', 'original-recipient', 'Delivered-To']) || envelopeTo;
+    const fromRaw = pickString(payload, [
+        'from',
+        'sender',
+        'From',
+        'from_email',
+        'fromEmail',
+        'return-path',
+    ]);
+    const toRaw = pickString(payload, [
+        'to',
+        'recipient',
+        'To',
+        'envelope_to',
+        'original-recipient',
+        'Delivered-To',
+        'delivered-to',
+        'x-original-to',
+        'mail_to',
+    ]);
     const subject = pickString(payload, ['subject', 'Subject']) || undefined;
-    const textContent = pickString(payload, ['text', 'body-plain', 'stripped-text', 'TextBody', 'content']);
-    const htmlContent = pickString(payload, ['html', 'body-html', 'HtmlBody']);
-    const source = pickString(payload, ['source', 'provider']) || 'EMAIL_WEBHOOK';
+    const textContent = pickString(payload, [
+        'text',
+        'body-plain',
+        'stripped-text',
+        'TextBody',
+        'content',
+        'textbody',
+        'body_text',
+    ]);
+    const htmlContent = pickString(payload, ['html', 'body-html', 'HtmlBody', 'body_html']);
+    const source = pickString(payload, ['source', 'provider', 'event', 'eventType']) || 'EMAIL_WEBHOOK';
     const channelMessageId =
-        pickString(payload, ['messageId', 'message-id', 'Message-Id', 'MessageID']) || undefined;
+        pickString(payload, ['messageId', 'message-id', 'Message-Id', 'MessageID', 'message_id']) || undefined;
+    const headersRaw = pickString(payload, ['headers', 'Headers', 'message-headers', 'MessageHeaders']);
+
+    const headerFrom = extractHeaderValue(headersRaw, ['From']);
+    const headerTo = extractHeaderValue(headersRaw, ['To', 'Delivered-To', 'X-Original-To', 'Original-Recipient']);
+    const headerSubject = extractHeaderValue(headersRaw, ['Subject']);
+    const headerMessageId = extractHeaderValue(headersRaw, ['Message-Id']);
+
+    const resolvedFromRaw = fromRaw || headerFrom;
+    const resolvedToRaw = toRaw || headerTo;
+    const resolvedSubject = subject || headerSubject || undefined;
+    const resolvedChannelMessageId = channelMessageId || headerMessageId || undefined;
 
     return {
-        fromAddress: extractEmailAddress(fromRaw) || fromRaw || undefined,
-        toAddress: toRaw,
-        subject,
+        fromAddress: extractEmailAddress(resolvedFromRaw) || resolvedFromRaw || undefined,
+        toAddress: resolvedToRaw,
+        subject: resolvedSubject,
         content: textContent || htmlContent || '',
         source,
-        channelMessageId,
+        channelMessageId: resolvedChannelMessageId,
         rawPayload: payload,
     };
 };
@@ -1328,6 +1483,23 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
                 title: 'Supplier Email Reply Received',
                 description: `From: ${normalized.fromAddress || 'Unknown'}${normalized.subject ? ` • Subject: ${normalized.subject}` : ''}`,
                 eventDate: receivedAt,
+            },
+        });
+
+        await prisma.notification.create({
+            data: {
+                userId: routedUser.id,
+                type: NotificationType.SYSTEM_ALERT,
+                title: 'Supplier Reply Received',
+                message: normalized.subject
+                    ? `${supplier.name} replied: ${normalized.subject}`
+                    : `${supplier.name} replied to your email conversation.`,
+                metadata: {
+                    supplierId: supplier.id,
+                    messageId: message.id,
+                    medium: 'EMAIL',
+                    fromAddress: normalized.fromAddress || supplier.contactEmail || null,
+                } as Prisma.InputJsonValue,
             },
         });
 

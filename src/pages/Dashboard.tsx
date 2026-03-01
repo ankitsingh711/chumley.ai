@@ -21,7 +21,7 @@ import { departmentsApi, type Department } from '../services/departments.service
 import type { KPIMetrics, PurchaseRequest } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
-import { getCategorySpendTotals, getLatestMonthRange, getTotalSpend } from '../data/financialDataHelpers';
+import { getCategorySpendTotals, getLatestMonthRange } from '../data/financialDataHelpers';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
 
@@ -93,12 +93,10 @@ export default function Dashboard() {
 
             const dateRangeOpt = (startDate || endDate) ? { start: startDate, end: endDate } : undefined;
             const hardcodedDepartmentSpend = getCategorySpendTotals(dateRangeOpt, departmentFilter);
-            const hardcodedTotalSpend = getTotalSpend(dateRangeOpt, departmentFilter);
 
             setMetrics({
                 ...kpiData,
                 departmentSpend: hardcodedDepartmentSpend,
-                totalSpend: hardcodedTotalSpend,
             });
             setDepartments(departmentsData);
 

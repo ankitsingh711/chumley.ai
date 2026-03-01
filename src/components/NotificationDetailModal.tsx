@@ -120,6 +120,14 @@ const getNotificationVisual = (type: string): NotificationVisual => {
                 labelClass: 'border-slate-200 bg-slate-50 text-slate-700',
                 headerClass: 'from-slate-100 via-white to-slate-50',
             };
+        case 'SUPPLIER_REQUEST':
+            return {
+                icon: ClipboardList,
+                label: 'Supplier',
+                iconClass: 'bg-amber-100 text-amber-700',
+                labelClass: 'border-amber-200 bg-amber-50 text-amber-700',
+                headerClass: 'from-amber-50 via-white to-slate-50',
+            };
         default:
             return {
                 icon: BellRing,
@@ -215,6 +223,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     };
 
     const hasRequestLink = Boolean(notification.metadata?.requestId);
+    const hasSupplierLink = Boolean(notification.metadata?.supplierId);
+    const hasNavigationTarget = hasRequestLink || hasSupplierLink;
     const hasMetadata = metadataEntries.length > 0;
 
     const handleNavigate = () => {
@@ -332,12 +342,12 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                         >
                             Close
                         </button>
-                        {hasRequestLink && (
+                        {hasNavigationTarget && (
                             <button
                                 onClick={handleNavigate}
                                 className="flex items-center justify-center gap-2 rounded-xl bg-primary-600 px-4 py-3 font-medium text-white transition-colors hover:bg-primary-700"
                             >
-                                <span>View Request</span>
+                                <span>{hasRequestLink ? 'View Request' : 'View Supplier'}</span>
                                 <ExternalLink className="h-4 w-4" />
                             </button>
                         )}

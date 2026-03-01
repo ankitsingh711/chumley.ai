@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import multer from 'multer';
 import {
     getSuppliers,
     getSupplierById,
@@ -22,9 +23,10 @@ import {
 import { authenticate } from '../middleware/auth.middleware';
 
 const router = Router();
+const inboundEmailParser = multer().none();
 
 // Public webhook: supplier reply emails from provider callbacks
-router.post('/messages/inbound/email-reply', receiveSupplierEmailReplyWebhook);
+router.post('/messages/inbound/email-reply', inboundEmailParser, receiveSupplierEmailReplyWebhook);
 
 router.use(authenticate);
 

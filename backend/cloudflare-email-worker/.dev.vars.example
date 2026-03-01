@@ -1,0 +1,2 @@
+SUPPLIER_INBOUND_WEBHOOK_URL=http://localhost:3003/api/suppliers/messages/inbound/email-reply
+SUPPLIER_INBOUND_WEBHOOK_SECRET=replace-with-your-backend-secret
