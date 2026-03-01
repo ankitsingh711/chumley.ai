@@ -4,6 +4,7 @@ import emailService from './email.service';
 import prisma from '../config/db';
 import notificationService from './notification.service';
 import { sendNotification } from '../utils/websocket';
+import { getFrontendUrl } from '../config/runtime';
 
 const APPROVED_SUPPLIER_STATUSES = new Set(['STANDARD', 'PREFERRED', 'ACTIVE']);
 
@@ -255,7 +256,7 @@ export class ApprovalService {
                 requesterName: request.requester.name,
                 requestId: request.id,
                 totalAmount: Number(request.totalAmount),
-                manageUrl: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}`
+                manageUrl: `${getFrontendUrl()}/requests/${request.id}`
             }).catch((err) => {
                 Logger.error(`Failed to send approval email for request ${requestId}:`, err);
             });
@@ -337,7 +338,7 @@ export class ApprovalService {
             const totalFormatted = `£${Number(request.totalAmount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
             const title = 'New Purchase Request';
             const message = `${requester.name} submitted a purchase request #${requestShortId} for ${totalFormatted}`;
-            const manageUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests/${request.id}`;
+            const manageUrl = `${getFrontendUrl()}/requests/${request.id}`;
             const skipEmailUserIds = new Set(options?.skipEmailUserIds || []);
 
             // Find all users who should be notified:

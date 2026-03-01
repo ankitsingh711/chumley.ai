@@ -1,13 +1,14 @@
 import { Server as SocketIOServer } from 'socket.io';
 import { Server as HTTPServer } from 'http';
 import Logger from './logger';
+import { getAllowedOrigins } from '../config/runtime';
 
 let io: SocketIOServer | null = null;
 
 export const initializeWebSocket = (server: HTTPServer) => {
     io = new SocketIOServer(server, {
         cors: {
-            origin: process.env.CLIENT_URL || 'http://localhost:5173',
+            origin: getAllowedOrigins(),
             methods: ['GET', 'POST'],
             credentials: true,
         },

@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import Logger from './logger';
+import { getFrontendUrl } from '../config/runtime';
 
 // Create a transporter using environment variables
 const createTransporter = () => {
@@ -42,6 +43,7 @@ export const sendInvitationEmail = async ({
         }
 
         const transporter = createTransporter();
+        const frontendUrl = getFrontendUrl();
 
         // Role descriptions
         const getRoleDescription = (role: string) => {
@@ -304,14 +306,14 @@ export const sendInvitationEmail = async ({
                                 Secure Invitation
                             </div>
                             <p class="security-text">This is a verified invitation from your organization's administrator.</p>
-                            <a href="${process.env.FRONTEND_URL}/security" class="security-link">Security Center →</a>
+                            <a href="${frontendUrl}/security" class="security-link">Security Center →</a>
                         </div>
                         
                         <div class="footer">
                             <div class="footer-links">
-                                <a href="${process.env.FRONTEND_URL}/privacy">Privacy Policy</a>
-                                <a href="${process.env.FRONTEND_URL}/terms">Terms of Service</a>
-                                <a href="${process.env.FRONTEND_URL}/support">Contact Support</a>
+                                <a href="${frontendUrl}/privacy">Privacy Policy</a>
+                                <a href="${frontendUrl}/terms">Terms of Service</a>
+                                <a href="${frontendUrl}/support">Contact Support</a>
                             </div>
                             <p class="footer-text">
                                 © ${new Date().getFullYear()} Aspect Inc. ${process.env.COMPANY_ADDRESS || '123 Enterprise Way, Suite 600, San Francisco, CA'}.<br>

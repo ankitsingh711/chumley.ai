@@ -9,6 +9,7 @@ import Logger from './utils/logger';
 import { configurePassport } from './config/passport';
 import passport from 'passport';
 import { rateLimiterMiddleware } from './middleware/rateLimiter.middleware';
+import { getAllowedOrigins } from './config/runtime';
 
 const app = express();
 
@@ -20,7 +21,7 @@ app.use(helmet());
 app.use(compression()); // Compress all responses
 app.use(cookieParser()); // Use cookie-parser before CORS if needed, or generally just before routes
 app.use(cors({
-    origin: [process.env.FRONTEND_URL || 'https://chumley-ai.vercel.app', 'http://localhost:5173'], // Allow both production and local dev
+    origin: getAllowedOrigins(),
     credentials: true
 }));
 app.use(express.json());

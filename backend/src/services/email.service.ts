@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import Logger from '../utils/logger';
+import { getFrontendUrl } from '../config/runtime';
 
 // Email configuration
 const transporter = nodemailer.createTransport({
@@ -20,6 +21,8 @@ transporter.verify((error) => {
         Logger.info('Email service is ready to send messages');
     }
 });
+
+const FRONTEND_URL = getFrontendUrl();
 
 interface PurchaseRequestEmailData {
     supplierEmail: string;
@@ -199,7 +202,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                     <!-- CTA Button -->
                     <tr>
                         <td style="padding: 0 40px 24px 40px;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests?search=${requestId.slice(0, 8)}" style="display: block; background-color: #27549D; color: #ffffff; text-decoration: none; padding: 14px 24px; border-radius: 8px; text-align: center; font-size: 15px; font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
+                            <a href="${FRONTEND_URL}/requests?search=${requestId.slice(0, 8)}" style="display: block; background-color: #27549D; color: #ffffff; text-decoration: none; padding: 14px 24px; border-radius: 8px; text-align: center; font-size: 15px; font-weight: 600; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);">
                                 👁 View Full Order Details
                             </a>
                         </td>
@@ -208,7 +211,7 @@ export const sendPurchaseRequestNotification = async (data: PurchaseRequestEmail
                     <!-- Action Links -->
                     <tr>
                         <td style="padding: 0 40px 32px 40px; text-align: center;">
-                            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/requests?search=${requestId.slice(0, 8)}" style="color: #27549D; text-decoration: none; font-size: 13px; font-weight: 600; margin: 0 12px;">📄 Download PDF</a>
+                            <a href="${FRONTEND_URL}/requests?search=${requestId.slice(0, 8)}" style="color: #27549D; text-decoration: none; font-size: 13px; font-weight: 600; margin: 0 12px;">📄 Download PDF</a>
                             <span style="color: #d1d5db;">|</span>
                             <a href="mailto:${requesterEmail}" style="color: #6b7280; text-decoration: none; font-size: 13px; font-weight: 600; margin: 0 12px;">💬 Contact Buyer</a>
                         </td>
@@ -445,8 +448,6 @@ export const sendSupplierConversationEmail = async (
         } = data;
 
         const resolvedSubject = subject?.trim() || `Message from ${senderName}`;
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-
         const mailOptions = {
             from: process.env.EMAIL_FROM || `"Aspect by Chumley.ai" <${process.env.EMAIL_USER}>`,
             to: supplierEmail,
@@ -467,7 +468,7 @@ export const sendSupplierConversationEmail = async (
                         Sent via Aspect by Chumley.ai.
                     </p>
                     <p style="margin: 8px 0 0;">
-                        <a href="${frontendUrl}/suppliers" style="color: #1d4ed8; text-decoration: none;">Open Supplier Inbox</a>
+                        <a href="${FRONTEND_URL}/suppliers" style="color: #1d4ed8; text-decoration: none;">Open Supplier Inbox</a>
                     </p>
                 </div>
             `,
@@ -481,7 +482,7 @@ ${content}
 Medium: ${medium}
 Reply-to: ${replyToAddress || senderEmail}
 
-Open Supplier Inbox: ${frontendUrl}/suppliers
+Open Supplier Inbox: ${FRONTEND_URL}/suppliers
             `.trim(),
         };
 
