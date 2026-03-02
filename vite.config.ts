@@ -1,6 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 // https://vite.dev/config/
 export default defineConfig({
   build: {
@@ -35,7 +37,7 @@ export default defineConfig({
     sourcemap: false,
     chunkSizeWarningLimit: 500,
   },
-  plugins: [react()],
+  plugins: [react(), cloudflare()],
   esbuild: {
     drop: ['console', 'debugger'],
   },
