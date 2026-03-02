@@ -1,10 +1,16 @@
 import { Request, Response } from 'express';
 import PDFDocument from 'pdfkit';
+import { UserRole } from '@prisma/client';
 import prisma from '../config/db';
 import Logger from '../utils/logger';
 
 export const exportPdf = async (req: Request, res: Response) => {
     try {
+        const currentUser = req.user;
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
         const { requestId, orderId } = req.query;
 
         if (!requestId && !orderId) {
@@ -17,17 +23,56 @@ export const exportPdf = async (req: Request, res: Response) => {
         if (orderId) {
             order = await prisma.purchaseOrder.findUnique({
                 where: { id: String(orderId) },
-                include: { supplier: true, request: { include: { requester: true, items: true } } }
+                include: {
+                    supplier: true,
+                    request: {
+                        include: {
+                            requester: {
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    departmentId: true,
+                                },
+                            },
+                            items: true,
+                        },
+                    },
+                }
             });
             if (!order) return res.status(404).json({ error: 'Order not found' });
             requestInfo = order.request;
         } else if (requestId) {
             requestInfo = await prisma.purchaseRequest.findUnique({
                 where: { id: String(requestId) },
-                include: { items: true, requester: true, order: { include: { supplier: true } } }
+                include: {
+                    items: true,
+                    requester: {
+                        select: {
+                            id: true,
+                            name: true,
+                            departmentId: true,
+                        },
+                    },
+                    order: { include: { supplier: true } },
+                }
             });
             if (!requestInfo) return res.status(404).json({ error: 'Request not found' });
             order = requestInfo.order; // Get the associated order if it exists
+        }
+
+        if (!requestInfo) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        if (currentUser.role === UserRole.MEMBER && requestInfo.requesterId !== currentUser.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if (
+            (currentUser.role === UserRole.MANAGER || currentUser.role === UserRole.SENIOR_MANAGER) &&
+            (!currentUser.departmentId || requestInfo.requester?.departmentId !== currentUser.departmentId)
+        ) {
+            return res.status(403).json({ error: 'Access denied' });
         }
 
         const supplierName = order?.supplier?.name || "Global Supplier";

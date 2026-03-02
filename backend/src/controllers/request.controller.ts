@@ -253,7 +253,7 @@ export const getRequestById = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
             if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
@@ -454,7 +454,7 @@ export const deleteRequest = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
             if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
@@ -498,7 +498,7 @@ export const addAttachment = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Access denied' });
         }
 
-        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+        if (user.role === UserRole.MANAGER || user.role === UserRole.SENIOR_MANAGER) {
             if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
                 return res.status(403).json({ error: 'Access denied' });
             }

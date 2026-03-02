@@ -5,6 +5,7 @@ declare global {
             email: string;
             name: string;
             role: string;
+            departmentId?: string | null;
         }
 
         interface Request {

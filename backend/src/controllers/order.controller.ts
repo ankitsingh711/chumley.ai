@@ -42,7 +42,7 @@ export const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Purchase Request must be APPROVED before creating an Order' });
         }
 
-        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(currentUser.role as UserRole)) {
+        if (currentUser.role === UserRole.MANAGER || currentUser.role === UserRole.SENIOR_MANAGER) {
             if (!currentUser.departmentId || request.requester.departmentId !== currentUser.departmentId) {
                 return res.status(403).json({ error: 'Access denied' });
             }
@@ -277,7 +277,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(currentUser.role as UserRole)) {
+        if (currentUser.role === UserRole.MANAGER || currentUser.role === UserRole.SENIOR_MANAGER) {
             const requesterDepartmentId = currentOrder.request.requester?.departmentId || null;
             if (!currentUser.departmentId || requesterDepartmentId !== currentUser.departmentId) {
                 return res.status(403).json({ error: 'Access denied' });

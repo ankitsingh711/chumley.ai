@@ -309,6 +309,30 @@ const getInvitationExpiry = (): Date =>
 export const inviteUser = async (req: Request, res: Response) => {
     try {
         const validatedData = inviteUserSchema.parse(req.body);
+        const currentUser = req.user;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        let inviteRole = validatedData.role;
+        let inviteDepartmentId = validatedData.departmentId;
+
+        if (currentUser.role === 'SENIOR_MANAGER') {
+            if (inviteRole === 'SYSTEM_ADMIN' || inviteRole === 'SENIOR_MANAGER') {
+                return res.status(403).json({ error: 'Senior Managers cannot invite this role' });
+            }
+
+            if (!currentUser.departmentId) {
+                return res.status(403).json({ error: 'Senior Manager must belong to a department to invite users' });
+            }
+
+            if (inviteDepartmentId && inviteDepartmentId !== currentUser.departmentId) {
+                return res.status(403).json({ error: 'Senior Managers can only invite users to their own department' });
+            }
+
+            inviteDepartmentId = currentUser.departmentId;
+        }
 
         const existingUser = await prisma.user.findUnique({
             where: { email: validatedData.email },
@@ -319,6 +343,11 @@ export const inviteUser = async (req: Request, res: Response) => {
                 return res.status(400).json({ error: 'User with this email already exists' });
             }
 
+            const effectiveRole = inviteRole ?? existingUser.role;
+            if (currentUser.role === 'SENIOR_MANAGER' && (effectiveRole === 'SYSTEM_ADMIN' || effectiveRole === 'SENIOR_MANAGER')) {
+                return res.status(403).json({ error: 'Senior Managers cannot invite this role' });
+            }
+
             const invitationToken = generateInvitationToken();
             const invitationExpires = getInvitationExpiry();
 
@@ -326,8 +355,8 @@ export const inviteUser = async (req: Request, res: Response) => {
                 where: { id: existingUser.id },
                 data: {
                     name: validatedData.name,
-                    role: validatedData.role || existingUser.role,
-                    departmentId: validatedData.departmentId,
+                    role: effectiveRole,
+                    departmentId: inviteDepartmentId,
                     status: 'PENDING',
                     invitationToken,
                     invitationExpires,
@@ -375,8 +404,8 @@ export const inviteUser = async (req: Request, res: Response) => {
                 email: validatedData.email,
                 name: validatedData.name,
                 password: await bcrypt.hash(generateUnusablePassword(), 10), // Unusable password
-                role: validatedData.role || 'MEMBER',
-                departmentId: validatedData.departmentId,
+                role: inviteRole || 'MEMBER',
+                departmentId: inviteDepartmentId,
                 status: 'PENDING',
                 invitationToken,
                 invitationExpires,
