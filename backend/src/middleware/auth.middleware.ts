@@ -30,7 +30,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction) =>
     }
 
     try {
-        const decoded = jwt.verify(token, jwtSecret) as any;
+        const decoded = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] }) as any;
         req.user = decoded;
         next();
     } catch (error) {

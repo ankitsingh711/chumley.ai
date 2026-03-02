@@ -35,6 +35,16 @@ export const getAllDepartments = async (req: Request, res: Response) => {
 export const getDepartmentById = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
+        const currentUser = req.user as any;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (currentUser.role !== 'SYSTEM_ADMIN' && currentUser.departmentId !== id) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
         const department = await departmentService.getDepartmentTree(id);
 
         if (!department) {
@@ -54,6 +64,16 @@ export const getDepartmentById = async (req: Request, res: Response) => {
 export const getDepartmentSpending = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
+        const currentUser = req.user as any;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (currentUser.role !== 'SYSTEM_ADMIN' && currentUser.departmentId !== id) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
         const startDate = req.query.startDate as string | undefined;
         const endDate = req.query.endDate as string | undefined;
 
@@ -76,6 +96,16 @@ export const getDepartmentSpending = async (req: Request, res: Response) => {
 export const getSpendingByCategory = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
+        const currentUser = req.user as any;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
+        if (currentUser.role !== 'SYSTEM_ADMIN' && currentUser.departmentId !== id) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
         const spending = await departmentService.getSpendingByCategory(id);
         res.json(spending);
     } catch (error) {

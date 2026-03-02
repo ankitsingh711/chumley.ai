@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
+import { getFrontendUrl } from '../config/runtime';
 
 
 const registerSchema = z.object({
@@ -39,6 +40,10 @@ const setAuthCookie = (res: Response, token: string) => {
 
 export const register = async (req: Request, res: Response) => {
     try {
+        if (process.env.ALLOW_PUBLIC_REGISTRATION !== 'true') {
+            return res.status(403).json({ error: 'Public registration is disabled' });
+        }
+
         const validatedData = registerSchema.parse(req.body);
 
         const existingUser = await prisma.user.findUnique({
@@ -70,7 +75,7 @@ export const register = async (req: Request, res: Response) => {
                 departmentId: user.departmentId
             },
             getJwtSecret(),
-            { expiresIn: '24h' }
+            { expiresIn: '24h', algorithm: 'HS256' }
         );
 
         Logger.info(`User registered: ${user.email}`);
@@ -101,6 +106,10 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
+        if (user.status !== 'ACTIVE') {
+            return res.status(403).json({ error: 'Account is not active' });
+        }
+
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
@@ -116,7 +125,7 @@ export const login = async (req: Request, res: Response) => {
                 departmentId: user.departmentId
             },
             getJwtSecret(),
-            { expiresIn: '24h' }
+            { expiresIn: '24h', algorithm: 'HS256' }
         );
 
         Logger.info(`User logged in: ${user.email}`);
@@ -182,7 +191,7 @@ export const acceptInvite = async (req: Request, res: Response) => {
                 departmentId: updatedUser.departmentId
             },
             getJwtSecret(),
-            { expiresIn: '24h' }
+            { expiresIn: '24h', algorithm: 'HS256' }
         );
 
         Logger.info(`User accepted invite: ${updatedUser.email}`);
@@ -239,10 +248,11 @@ export const getMe = async (req: Request, res: Response) => {
 
 export const googleAuthCallback = async (req: Request, res: Response) => {
     try {
+        const frontendUrl = getFrontendUrl();
         const user = req.user as any;
 
         if (!user) {
-            return res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+            return res.redirect(`${frontendUrl}/login?error=auth_failed`);
         }
 
         const token = jwt.sign(
@@ -254,16 +264,16 @@ export const googleAuthCallback = async (req: Request, res: Response) => {
                 departmentId: user.departmentId
             },
             getJwtSecret(),
-            { expiresIn: '24h' }
+            { expiresIn: '24h', algorithm: 'HS256' }
         );
 
         Logger.info(`User logged in via Google: ${user.email}`);
 
         setAuthCookie(res, token);
         // Redirect to frontend with token in query params for Safari compatibility
-        res.redirect(`${process.env.FRONTEND_URL}/auth/google/callback?token=${token}`);
+        res.redirect(`${frontendUrl}/auth/google/callback?token=${encodeURIComponent(token)}`);
     } catch (error) {
         Logger.error(error);
-        res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+        res.redirect(`${getFrontendUrl()}/login?error=auth_failed`);
     }
 };

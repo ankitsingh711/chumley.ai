@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 import {
     getAllContracts,
     getContractById,
@@ -12,6 +12,7 @@ const router = Router();
 
 // All routes require authentication
 router.use(authenticate);
+router.use(authorize(['SYSTEM_ADMIN']));
 
 // Contract routes
 router.get('/', getAllContracts);

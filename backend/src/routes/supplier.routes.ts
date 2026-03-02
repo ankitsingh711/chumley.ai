@@ -21,12 +21,23 @@ import {
     rejectSupplier
 } from '../controllers/supplier.controller';
 import { authenticate } from '../middleware/auth.middleware';
+import { rateLimiterMiddleware } from '../middleware/rateLimiter.middleware';
 
 const router = Router();
-const inboundEmailParser = multer().none();
+const inboundEmailParser = multer({
+    limits: {
+        fields: 100,
+        fieldSize: 1024 * 1024, // 1MB per field
+    },
+}).none();
 
 // Public webhook: supplier reply emails from provider callbacks
-router.post('/messages/inbound/email-reply', inboundEmailParser, receiveSupplierEmailReplyWebhook);
+router.post(
+    '/messages/inbound/email-reply',
+    rateLimiterMiddleware('webhook'),
+    inboundEmailParser,
+    receiveSupplierEmailReplyWebhook
+);
 
 router.use(authenticate);
 

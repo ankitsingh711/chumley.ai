@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { createOrder, getOrders, getOrderById, updateOrderStatus } from '../controllers/order.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -9,8 +9,8 @@ router.use(authenticate);
 router.get('/', getOrders);
 router.get('/:id', getOrderById);
 
-// All authenticated users can handle orders
-router.post('/', createOrder);
-router.patch('/:id/status', updateOrderStatus);
+// Only approval-capable roles can create/update orders
+router.post('/', authorize(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER']), createOrder);
+router.patch('/:id/status', authorize(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER']), updateOrderStatus);
 
 export default router;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Prisma, RequestStatus, UserRole, NotificationType, UserStatus } from '@prisma/client';
-import { randomUUID } from 'crypto';
+import { randomUUID, timingSafeEqual } from 'crypto';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import prisma from '../config/db';
@@ -228,6 +228,17 @@ const getWebhookSecretFromRequest = (req: Request) => {
     if (typeof querySecret === 'string') return querySecret;
 
     return null;
+};
+
+const isValidWebhookSecret = (providedSecret: string, configuredSecret: string): boolean => {
+    const provided = Buffer.from(providedSecret);
+    const configured = Buffer.from(configuredSecret);
+
+    if (provided.length !== configured.length) {
+        return false;
+    }
+
+    return timingSafeEqual(provided, configured);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -1185,20 +1196,20 @@ export const getSupplierMessages = async (req: Request, res: Response) => {
 
 // Send supplier message
 const sendMessageSchema = z.object({
-    subject: z.string().trim().optional(),
-    content: z.string().trim().min(1),
+    subject: z.string().trim().max(255).optional(),
+    content: z.string().trim().min(1).max(10000),
     isFromUser: z.boolean().default(true), // kept for backward compatibility with existing clients
     medium: z.enum(SUPPLIER_MESSAGE_MEDIA).optional(),
 });
 
 const receiveMessageSchema = z.object({
-    subject: z.string().trim().optional(),
-    content: z.string().trim().min(1),
+    subject: z.string().trim().max(255).optional(),
+    content: z.string().trim().min(1).max(10000),
     medium: z.enum(SUPPLIER_MESSAGE_MEDIA).default('EMAIL'),
-    fromAddress: z.string().trim().optional(),
-    toAddress: z.string().trim().optional(),
-    source: z.string().trim().optional(),
-    channelMessageId: z.string().trim().optional(),
+    fromAddress: z.string().trim().max(320).optional(),
+    toAddress: z.string().trim().max(320).optional(),
+    source: z.string().trim().max(64).optional(),
+    channelMessageId: z.string().trim().max(255).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
     receivedAt: z.string().datetime().optional(),
 });
@@ -1419,15 +1430,17 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
         const configuredSecret = process.env.SUPPLIER_INBOUND_WEBHOOK_SECRET;
         if (configuredSecret) {
             const providedSecret = getWebhookSecretFromRequest(req);
-            if (!providedSecret || providedSecret !== configuredSecret) {
+            if (!providedSecret || !isValidWebhookSecret(providedSecret, configuredSecret)) {
                 return res.status(401).json({ error: 'Invalid webhook secret' });
             }
         }
 
         const payload = (typeof req.body === 'object' && req.body ? req.body : {}) as Record<string, unknown>;
         const normalized = normalizeInboundEmailPayload(payload);
+        const normalizedSubject = normalized.subject?.trim().slice(0, 255);
+        const normalizedContent = normalized.content.trim().slice(0, 10000);
 
-        if (!normalized.content.trim()) {
+        if (!normalizedContent) {
             return res.status(400).json({ error: 'Inbound email payload is missing content' });
         }
 
@@ -1459,8 +1472,8 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
             {
                 supplierId: supplier.id,
                 userId: routedUser.id,
-                subject: normalized.subject,
-                content: normalized.content,
+                subject: normalizedSubject,
+                content: normalizedContent,
                 medium: 'EMAIL',
                 fromAddress: normalized.fromAddress || supplier.contactEmail || null,
                 toAddress: routing.toAddress,
@@ -1481,7 +1494,7 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
                 userId: routedUser.id,
                 eventType: 'email_reply_received',
                 title: 'Supplier Email Reply Received',
-                description: `From: ${normalized.fromAddress || 'Unknown'}${normalized.subject ? ` • Subject: ${normalized.subject}` : ''}`,
+                description: `From: ${normalized.fromAddress || 'Unknown'}${normalizedSubject ? ` • Subject: ${normalizedSubject}` : ''}`,
                 eventDate: receivedAt,
             },
         });

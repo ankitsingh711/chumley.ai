@@ -1,4 +1,5 @@
 import { UserRole, RequestStatus, User, NotificationType } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import Logger from '../utils/logger';
 import emailService from './email.service';
 import prisma from '../config/db';
@@ -406,7 +407,7 @@ export class ApprovalService {
 
                 // Send real-time websocket notification
                 sendNotification(recipient.id, {
-                    id: `notif-${Date.now()}-${Math.random()}`,
+                    id: `notif-${randomUUID()}`,
                     type: 'request_created',
                     title,
                     message,

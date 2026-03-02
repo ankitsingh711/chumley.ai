@@ -1,12 +1,42 @@
 import { Request, Response } from 'express';
 import { ContractStatus } from '@prisma/client';
+import { z } from 'zod';
 import prisma from '../config/db';
 
+const contractQuerySchema = z.object({
+    status: z.nativeEnum(ContractStatus).optional(),
+    supplierId: z.string().uuid().optional(),
+    expiringSoon: z.enum(['true', 'false']).optional(),
+});
+
+const createContractSchema = z.object({
+    title: z.string().trim().min(1).max(255),
+    supplierId: z.string().uuid(),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+    totalValue: z.coerce.number().positive(),
+    currency: z.string().trim().min(3).max(10).optional().default('GBP'),
+    paymentTerms: z.string().trim().max(255).optional(),
+    autoRenew: z.boolean().optional().default(false),
+    noticePeriodDays: z.coerce.number().int().min(0).max(3650).optional().default(30),
+    description: z.string().trim().max(10000).optional(),
+    terms: z.string().trim().max(10000).optional(),
+    notes: z.string().trim().max(10000).optional(),
+    renewalDate: z.coerce.date().optional(),
+    documentUrl: z.string().trim().url().max(2048).optional(),
+    documentName: z.string().trim().max(255).optional(),
+});
+
+const updateContractSchema = createContractSchema.partial().extend({
+    status: z.nativeEnum(ContractStatus).optional(),
+}).refine((data) => Object.keys(data).length > 0, {
+    message: 'At least one field is required',
+});
 
 // Get all contracts with optional filters
 export const getAllContracts = async (req: Request, res: Response) => {
     try {
-        const { status, supplierId, expiringSoon } = req.query;
+        const { status, supplierId, expiringSoon } = contractQuerySchema.parse(req.query);
 
         let where: any = {};
 
@@ -78,7 +108,10 @@ export const getAllContracts = async (req: Request, res: Response) => {
         });
 
         res.status(200).json(contractsWithCalculatedStatus);
-    } catch (error) {
+    } catch (error: any) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.issues });
+        }
         console.error('Error fetching contracts:', error);
         res.status(500).json({ error: 'Failed to fetch contracts' });
     }
@@ -138,25 +171,7 @@ export const createContract = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        const {
-            title,
-            supplierId,
-            startDate,
-            endDate,
-            totalValue,
-            currency = 'GBP',
-            paymentTerms,
-            autoRenew = false,
-            noticePeriodDays = 30,
-            description,
-            terms,
-            notes,
-        } = req.body;
-
-        // Validation
-        if (!title || !supplierId || !startDate || !endDate || !totalValue) {
-            return res.status(400).json({ error: 'Missing required fields' });
-        }
+        const payload = createContractSchema.parse(req.body);
 
         // Validate user exists
         const userExists = await prisma.user.findUnique({
@@ -185,19 +200,22 @@ export const createContract = async (req: Request, res: Response) => {
         const contract = await prisma.contract.create({
             data: {
                 contractNumber,
-                title,
-                supplierId,
+                title: payload.title,
+                supplierId: payload.supplierId,
                 ownerId: userId,
-                startDate: new Date(startDate),
-                endDate: new Date(endDate),
-                totalValue,
-                currency,
-                paymentTerms,
-                autoRenew,
-                noticePeriodDays,
-                description,
-                terms,
-                notes,
+                startDate: payload.startDate,
+                endDate: payload.endDate,
+                totalValue: payload.totalValue,
+                currency: payload.currency,
+                paymentTerms: payload.paymentTerms,
+                autoRenew: payload.autoRenew,
+                noticePeriodDays: payload.noticePeriodDays,
+                description: payload.description,
+                terms: payload.terms,
+                notes: payload.notes,
+                renewalDate: payload.renewalDate,
+                documentUrl: payload.documentUrl,
+                documentName: payload.documentName,
                 status: ContractStatus.DRAFT,
             },
             include: {
@@ -220,7 +238,10 @@ export const createContract = async (req: Request, res: Response) => {
         });
 
         res.status(201).json(contract);
-    } catch (error) {
+    } catch (error: any) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.issues });
+        }
         console.error('Error creating contract:', error);
         res.status(500).json({ error: 'Failed to create contract' });
     }
@@ -231,6 +252,7 @@ export const updateContract = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
         const userId = (req as any).user?.id;
+        const payload = updateContractSchema.parse(req.body);
 
         if (!userId) {
             return res.status(401).json({ error: 'Unauthorized' });
@@ -246,7 +268,7 @@ export const updateContract = async (req: Request, res: Response) => {
 
         const updatedContract = await prisma.contract.update({
             where: { id },
-            data: req.body,
+            data: payload,
             include: {
                 supplier: {
                     select: {
@@ -267,7 +289,10 @@ export const updateContract = async (req: Request, res: Response) => {
         });
 
         res.status(200).json(updatedContract);
-    } catch (error) {
+    } catch (error: any) {
+        if (error instanceof z.ZodError) {
+            return res.status(400).json({ error: error.issues });
+        }
         console.error('Error updating contract:', error);
         res.status(500).json({ error: 'Failed to update contract' });
     }

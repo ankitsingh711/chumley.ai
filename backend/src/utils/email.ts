@@ -26,6 +26,26 @@ export interface SendInvitationEmailParams {
     companyName?: string;
 }
 
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const redactInviteToken = (url: string): string => {
+    try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.searchParams.has('token')) {
+            parsedUrl.searchParams.set('token', '[REDACTED]');
+        }
+        return parsedUrl.toString();
+    } catch {
+        return '[REDACTED_INVITE_LINK]';
+    }
+};
+
 export const sendInvitationEmail = async ({
     to,
     name,
@@ -38,12 +58,16 @@ export const sendInvitationEmail = async ({
         // Check if email is configured
         if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
             Logger.warn('Email not configured. Skipping invitation email.');
-            Logger.info(`Invitation link for ${to}: ${inviteLink}`);
+            Logger.info(`Invitation link for ${to}: ${redactInviteToken(inviteLink)}`);
             return false;
         }
 
         const transporter = createTransporter();
         const frontendUrl = getFrontendUrl();
+        const safeName = escapeHtml(name);
+        const safeInvitedBy = escapeHtml(invitedBy);
+        const safeCompanyName = escapeHtml(companyName);
+        const safeInviteLink = inviteLink;
 
         // Role descriptions
         const getRoleDescription = (role: string) => {
@@ -269,12 +293,12 @@ export const sendInvitationEmail = async ({
                         </div>
                         
                         <div class="content">
-                            <h1>Join ${companyName}</h1>
+                            <h1>Join ${safeCompanyName}</h1>
                             
-                            <p class="greeting">Hello ${name},</p>
+                            <p class="greeting">Hello ${safeName},</p>
                             
                             <p class="intro-text">
-                                ${invitedBy} has invited you to join the <strong>${companyName}</strong> procurement team. 
+                                ${safeInvitedBy} has invited you to join the <strong>${safeCompanyName}</strong> procurement team. 
                                 Access centralized purchasing, vendor management, and streamlined approvals.
                             </p>
                             
@@ -290,7 +314,7 @@ export const sendInvitationEmail = async ({
                             </div>
                             
                             <div class="button-container">
-                                <a href="${inviteLink}" class="button">
+                                <a href="${safeInviteLink}" class="button">
                                     Accept Invitation & Set Up Password →
                                 </a>
                             </div>
@@ -349,7 +373,7 @@ This is a verified invitation from your organization's administrator.
         return true;
     } catch (error) {
         Logger.error('Failed to send invitation email:', error);
-        Logger.info(`Invitation link for ${to}: ${inviteLink}`);
+        Logger.info(`Invitation link for ${to}: ${redactInviteToken(inviteLink)}`);
         return false;
     }
 };

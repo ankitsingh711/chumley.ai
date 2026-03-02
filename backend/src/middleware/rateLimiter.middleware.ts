@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { RateLimiterRedis } from 'rate-limiter-flexible';
 import redisClient from '../config/redis';
-import Logger from '../utils/logger';
 
 // General limiter: 100 requests per 15 minutes by IP
 const generalLimiter = new RateLimiterRedis({
@@ -19,16 +18,35 @@ const authLimiter = new RateLimiterRedis({
     duration: 15 * 60,
 });
 
-export const rateLimiterMiddleware = (type: 'general' | 'auth' = 'general') => {
-    const limiter = type === 'auth' ? authLimiter : generalLimiter;
+// Webhook limiter: reduce abuse risk on public callback endpoints
+const webhookLimiter = new RateLimiterRedis({
+    storeClient: redisClient,
+    keyPrefix: 'middleware_limiter_webhook',
+    points: 120,
+    duration: 60,
+});
+
+const getRequestIp = (req: Request): string => {
+    const forwardedFor = req.headers['x-forwarded-for'];
+    if (typeof forwardedFor === 'string' && forwardedFor.trim()) {
+        return forwardedFor.split(',')[0].trim();
+    }
+    return req.ip || 'unknown-ip';
+};
+
+export const rateLimiterMiddleware = (type: 'general' | 'auth' | 'webhook' = 'general') => {
+    const limiter = type === 'auth'
+        ? authLimiter
+        : type === 'webhook'
+            ? webhookLimiter
+            : generalLimiter;
 
     return (req: Request, res: Response, next: NextFunction) => {
         // Bypass for local development
-        if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
+        if (process.env.NODE_ENV === 'development') {
             return next();
         }
-        // Use IP as key. Handle proxy if needed (req.ip or x-forwarded-for)
-        const key = req.ip!;
+        const key = getRequestIp(req);
 
         limiter.consume(key)
             .then(() => {

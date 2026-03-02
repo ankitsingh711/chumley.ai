@@ -12,6 +12,8 @@ import { rateLimiterMiddleware } from './middleware/rateLimiter.middleware';
 import { getAllowedOrigins } from './config/runtime';
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 // Configure Passport
 configurePassport();

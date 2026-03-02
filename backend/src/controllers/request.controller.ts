@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { RequestStatus, UserRole } from '@prisma/client';
+import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import Logger from '../utils/logger';
 import { sendNotification } from '../utils/websocket';
@@ -237,7 +238,7 @@ export const getRequestById = async (req: Request, res: Response) => {
         const request = await prisma.purchaseRequest.findUnique({
             where: { id },
             include: {
-                requester: { select: { id: true, name: true } },
+                requester: { select: { id: true, name: true, departmentId: true } },
                 items: true,
                 approver: { select: { id: true, name: true } },
                 supplier: true,
@@ -246,6 +247,16 @@ export const getRequestById = async (req: Request, res: Response) => {
 
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
+        }
+
+        if (user.role === UserRole.MEMBER && request.requesterId !== user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+            if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
         }
 
         res.json(request);
@@ -393,7 +404,7 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
         const notificationMessage = `Your purchase request #${id.slice(0, 8)} has been ${status.toLowerCase()} by ${req.user!.name}`;
 
         sendNotification(request.requesterId, {
-            id: `notif-${Date.now()}-${Math.random()}`,
+            id: `notif-${randomUUID()}`,
             type: notificationType,
             title: notificationTitle,
             message: notificationMessage,
@@ -418,14 +429,35 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
 export const deleteRequest = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const user = req.user!;
 
-        const request = await prisma.purchaseRequest.findUnique({ where: { id } });
+        const request = await prisma.purchaseRequest.findUnique({
+            where: { id },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        departmentId: true,
+                    },
+                },
+            },
+        });
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
         }
 
         if (request.status !== RequestStatus.IN_PROGRESS) {
             return res.status(400).json({ error: 'Only in-progress requests can be deleted' });
+        }
+
+        if (user.role === UserRole.MEMBER && request.requesterId !== user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+            if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
         }
 
         await prisma.purchaseRequest.delete({ where: { id } });
@@ -445,10 +477,31 @@ export const addAttachment = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const { filename, fileUrl, fileSize, mimeType } = req.body;
+        const user = req.user!;
 
-        const request = await prisma.purchaseRequest.findUnique({ where: { id } });
+        const request = await prisma.purchaseRequest.findUnique({
+            where: { id },
+            include: {
+                requester: {
+                    select: {
+                        id: true,
+                        departmentId: true,
+                    },
+                },
+            },
+        });
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
+        }
+
+        if (user.role === UserRole.MEMBER && request.requesterId !== user.id) {
+            return res.status(403).json({ error: 'Access denied' });
+        }
+
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(user.role as UserRole)) {
+            if (!user.departmentId || request.requester.departmentId !== user.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
         }
 
         const attachment = await prisma.attachment.create({

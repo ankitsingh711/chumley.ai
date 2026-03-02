@@ -1,9 +1,11 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'crypto';
 import Logger from '../utils/logger';
 import { sendInvitationEmail } from '../utils/email';
 import prisma from '../config/db';
+import { getFrontendUrl } from '../config/runtime';
 
 
 const updateUserSchema = z.object({
@@ -81,6 +83,12 @@ export const getUsers = async (req: Request, res: Response) => {
 export const getUserById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const currentUser = req.user;
+
+        if (!currentUser) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
         const user = await prisma.user.findUnique({
             where: { id },
             select: {
@@ -96,6 +104,21 @@ export const getUserById = async (req: Request, res: Response) => {
 
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isSystemAdmin = currentUser.role === 'SYSTEM_ADMIN';
+        const isSelf = currentUser.id === user.id;
+        const isDepartmentLeader =
+            (currentUser.role === 'MANAGER' || currentUser.role === 'SENIOR_MANAGER') &&
+            !!currentUser.departmentId &&
+            currentUser.departmentId === user.department?.id;
+
+        if (!isSystemAdmin && user.role === 'SYSTEM_ADMIN') {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        if (!isSystemAdmin && !isSelf && !isDepartmentLeader) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
 
         res.json(user);
@@ -273,8 +296,12 @@ const inviteUserSchema = z.object({
     departmentId: z.string().optional(),
 });
 
-const generateInvitationToken = (): string =>
-    Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+const generateInvitationToken = (): string => randomBytes(32).toString('hex');
+
+const generateUnusablePassword = (): string => randomBytes(48).toString('hex');
+
+const buildInviteLink = (token: string): string =>
+    `${getFrontendUrl()}/onboarding?token=${encodeURIComponent(token)}`;
 
 const getInvitationExpiry = (): Date =>
     new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -318,7 +345,7 @@ export const inviteUser = async (req: Request, res: Response) => {
 
             Logger.info(`Pending user re-invited: ${user.email}`);
 
-            const inviteLink = `${process.env.FRONTEND_URL}/onboarding?token=${invitationToken}`;
+            const inviteLink = buildInviteLink(invitationToken);
 
             sendInvitationEmail({
                 to: user.email,
@@ -339,8 +366,6 @@ export const inviteUser = async (req: Request, res: Response) => {
         }
 
 
-        // Generate invitation token
-        // In a real app, use crypto.randomBytes
         const invitationToken = generateInvitationToken();
         const invitationExpires = getInvitationExpiry();
 
@@ -349,7 +374,7 @@ export const inviteUser = async (req: Request, res: Response) => {
             data: {
                 email: validatedData.email,
                 name: validatedData.name,
-                password: await bcrypt.hash(Math.random().toString(36), 10), // Unusable password
+                password: await bcrypt.hash(generateUnusablePassword(), 10), // Unusable password
                 role: validatedData.role || 'MEMBER',
                 departmentId: validatedData.departmentId,
                 status: 'PENDING',
@@ -370,7 +395,7 @@ export const inviteUser = async (req: Request, res: Response) => {
         Logger.info(`User invited: ${user.email} `);
 
         // Construct invitation link
-        const inviteLink = `${process.env.FRONTEND_URL}/onboarding?token=${invitationToken}`;
+        const inviteLink = buildInviteLink(invitationToken);
 
         // Send invitation email (non-blocking, fire-and-forget)
         sendInvitationEmail({

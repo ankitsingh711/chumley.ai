@@ -1,15 +1,25 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import prisma from './db';
+import Logger from '../utils/logger';
 
 
 export const configurePassport = () => {
+    const clientID = process.env.GOOGLE_CLIENT_ID?.trim();
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+    const callbackURL = process.env.GOOGLE_CALLBACK_URL?.trim();
+
+    if (!clientID || !clientSecret || !callbackURL) {
+        Logger.warn('Google OAuth is disabled because GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_CALLBACK_URL are not fully configured');
+        return;
+    }
+
     passport.use(
         new GoogleStrategy(
             {
-                clientID: process.env.GOOGLE_CLIENT_ID || '',
-                clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
-                callbackURL: process.env.GOOGLE_CALLBACK_URL || '',
+                clientID,
+                clientSecret,
+                callbackURL,
             },
             async (accessToken, refreshToken, profile, done) => {
                 try {
@@ -27,14 +37,11 @@ export const configurePassport = () => {
                     });
 
                     if (!user) {
-                        // Create new user if doesn't exist
-                        user = await prisma.user.create({
-                            data: {
-                                email,
-                                name: name || email.split('@')[0],
-                                password: '', // No password for OAuth users
-                            },
-                        });
+                        return done(new Error('No invited account found for this Google email'), undefined);
+                    }
+
+                    if (user.status !== 'ACTIVE') {
+                        return done(new Error('Your account is not active yet'), undefined);
                     }
 
                     return done(null, user);

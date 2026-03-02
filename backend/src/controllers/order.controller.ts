@@ -20,6 +20,7 @@ const updateOrderSchema = z.object({
 export const createOrder = async (req: Request, res: Response) => {
     try {
         const validatedData = createOrderSchema.parse(req.body);
+        const currentUser = req.user!;
 
         // Check if request exists and is approved
         const request = await prisma.purchaseRequest.findUnique({
@@ -41,6 +42,16 @@ export const createOrder = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Purchase Request must be APPROVED before creating an Order' });
         }
 
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(currentUser.role as UserRole)) {
+            if (!currentUser.departmentId || request.requester.departmentId !== currentUser.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+        }
+
+        if (request.supplierId && request.supplierId !== validatedData.supplierId) {
+            return res.status(400).json({ error: 'Supplier does not match the approved request' });
+        }
+
         // Check if order already exists for this request
         const existingOrder = await prisma.purchaseOrder.findUnique({
             where: { requestId: validatedData.requestId },
@@ -53,7 +64,7 @@ export const createOrder = async (req: Request, res: Response) => {
         const order = await prisma.purchaseOrder.create({
             data: {
                 requestId: validatedData.requestId,
-                supplierId: validatedData.supplierId,
+                supplierId: request.supplierId || validatedData.supplierId,
                 totalAmount: request.totalAmount, // Inherit amount
                 status: OrderStatus.IN_PROGRESS,
             },
@@ -245,10 +256,32 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const { status } = updateOrderSchema.parse(req.body);
+        const currentUser = req.user!;
 
-        const currentOrder = await prisma.purchaseOrder.findUnique({ where: { id } });
+        const currentOrder = await prisma.purchaseOrder.findUnique({
+            where: { id },
+            include: {
+                request: {
+                    select: {
+                        requesterId: true,
+                        requester: {
+                            select: {
+                                departmentId: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
         if (!currentOrder) {
             return res.status(404).json({ error: 'Order not found' });
+        }
+
+        if ([UserRole.MANAGER, UserRole.SENIOR_MANAGER].includes(currentUser.role as UserRole)) {
+            const requesterDepartmentId = currentOrder.request.requester?.departmentId || null;
+            if (!currentUser.departmentId || requesterDepartmentId !== currentUser.departmentId) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
         }
 
         const updateData: any = { status };

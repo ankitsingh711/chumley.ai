@@ -24,6 +24,17 @@ transporter.verify((error) => {
 
 const FRONTEND_URL = getFrontendUrl();
 
+const escapeHtml = (value: string): string =>
+    value
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+
+const sanitizeHeaderValue = (value: string, maxLength = 255): string =>
+    value.replace(/[\r\n]+/g, ' ').trim().slice(0, maxLength);
+
 interface PurchaseRequestEmailData {
     supplierEmail: string;
     supplierName: string;
@@ -447,22 +458,29 @@ export const sendSupplierConversationEmail = async (
             medium = 'EMAIL',
         } = data;
 
-        const resolvedSubject = subject?.trim() || `Message from ${senderName}`;
+        const resolvedSubject = sanitizeHeaderValue(subject?.trim() || `Message from ${senderName}`);
+        const resolvedReplyTo = sanitizeHeaderValue(replyToAddress || senderEmail, 320) || senderEmail;
+        const safeSupplierName = escapeHtml((supplierName || 'Supplier').trim());
+        const safeSenderName = escapeHtml(senderName.trim());
+        const safeContentHtml = escapeHtml(content);
+        const safeMedium = escapeHtml(medium);
+        const safeReplyTo = escapeHtml(resolvedReplyTo);
+
         const mailOptions = {
             from: process.env.EMAIL_FROM || `"Aspect by Chumley.ai" <${process.env.EMAIL_USER}>`,
             to: supplierEmail,
-            replyTo: replyToAddress || senderEmail,
+            replyTo: resolvedReplyTo,
             subject: resolvedSubject,
             html: `
                 <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #0f172a;">
-                    <p style="margin: 0 0 12px;">Hello ${supplierName || 'Supplier'},</p>
-                    <p style="margin: 0 0 16px;">You have received a new message from <strong>${senderName}</strong>.</p>
+                    <p style="margin: 0 0 12px;">Hello ${safeSupplierName},</p>
+                    <p style="margin: 0 0 16px;">You have received a new message from <strong>${safeSenderName}</strong>.</p>
                     <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-                        <p style="margin: 0; white-space: pre-wrap;">${content}</p>
+                        <p style="margin: 0; white-space: pre-wrap;">${safeContentHtml}</p>
                     </div>
                     <p style="margin: 0 0 8px; color: #475569; font-size: 13px;">
-                        <strong>Medium:</strong> ${medium}<br />
-                        <strong>Reply-to:</strong> ${replyToAddress || senderEmail}
+                        <strong>Medium:</strong> ${safeMedium}<br />
+                        <strong>Reply-to:</strong> ${safeReplyTo}
                     </p>
                     <p style="margin: 16px 0 0; font-size: 12px; color: #64748b;">
                         Sent via Aspect by Chumley.ai.
