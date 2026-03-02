@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { categoryController } from '../controllers/category.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { authenticate, authorize } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -26,12 +26,12 @@ router.get('/', categoryController.getAllCategories);
 router.get('/:id', categoryController.getCategoryById);
 
 // Create category
-router.post('/', categoryController.createCategory);
+router.post('/', authorize(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER']), categoryController.createCategory);
 
 // Update category
-router.put('/:id', categoryController.updateCategory);
+router.put('/:id', authorize(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER']), categoryController.updateCategory);
 
 // Delete category
-router.delete('/:id', categoryController.deleteCategory);
+router.delete('/:id', authorize(['SYSTEM_ADMIN', 'SENIOR_MANAGER', 'MANAGER']), categoryController.deleteCategory);
 
 export default router;

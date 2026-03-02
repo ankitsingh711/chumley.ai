@@ -294,24 +294,23 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
         const { departmentId, startDate, endDate } = req.query;
         const user = req.user as any;
 
+        if (!user) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+
         // Validation: Ensure departmentId is provided
         if (!departmentId) {
             return res.status(400).json({ error: 'Department ID is required' });
         }
+        const requestedDepartmentId = String(departmentId);
 
         // RBAC: Check if user has access to this department's data
-        if (
-            user.role !== UserRole.SYSTEM_ADMIN &&
-            user.departmentId !== departmentId &&
-            user.role !== UserRole.MANAGER &&
-            user.role !== UserRole.SENIOR_MANAGER // Managers can view any department if they have access? Actually usually restricted to own dept.
-        ) {
-            // Strict check: User must be Admin OR belong to the department
+        if (user.role !== UserRole.SYSTEM_ADMIN && user.departmentId !== requestedDepartmentId) {
             return res.status(403).json({ error: 'Access denied' });
         }
 
         // Build cache key
-        const cacheKey = `dept-spend-breakdown:${departmentId}:${startDate || 'none'}:${endDate || 'none'}`;
+        const cacheKey = `dept-spend-breakdown:${user.id}:${requestedDepartmentId}:${startDate || 'none'}:${endDate || 'none'}`;
 
         // Try cache first
         const cached = await CacheService.get(cacheKey);
@@ -334,7 +333,7 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
 
         // 1. Fetch all categories for this department to build hierarchy
         const categories = await prisma.spendingCategory.findMany({
-            where: { departmentId: String(departmentId) },
+            where: { departmentId: requestedDepartmentId },
             select: { id: true, name: true, parentId: true }
         });
 
@@ -365,7 +364,7 @@ export const getDepartmentSpendBreakdown = async (req: Request, res: Response) =
                 ...dateWhere,
                 request: {
                     requester: {
-                        departmentId: String(departmentId)
+                        departmentId: requestedDepartmentId
                     }
                 }
             },

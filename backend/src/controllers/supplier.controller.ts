@@ -258,6 +258,58 @@ const parseJsonRecord = (value: string): Record<string, unknown> | null => {
     }
 };
 
+type SupplierAccessUser = {
+    id: string;
+    role: UserRole | string;
+    departmentId?: string | null;
+};
+
+const isSupplierManagerRole = (role: UserRole | string): boolean =>
+    role === UserRole.SYSTEM_ADMIN ||
+    role === UserRole.SENIOR_MANAGER ||
+    role === UserRole.MANAGER;
+
+const getSupplierReadWhere = (supplierId: string, user: SupplierAccessUser): Prisma.SupplierWhereInput => {
+    if (user.role === UserRole.SYSTEM_ADMIN) {
+        return { id: supplierId };
+    }
+
+    const accessScopes: Prisma.SupplierWhereInput[] = [{ requesterId: user.id }];
+    if (user.departmentId) {
+        accessScopes.push({
+            departments: {
+                some: {
+                    id: user.departmentId,
+                },
+            },
+        });
+    }
+
+    return {
+        id: supplierId,
+        OR: accessScopes,
+    };
+};
+
+const getSupplierManageWhere = (supplierId: string, user: SupplierAccessUser): Prisma.SupplierWhereInput | null => {
+    if (user.role === UserRole.SYSTEM_ADMIN) {
+        return { id: supplierId };
+    }
+
+    if (!isSupplierManagerRole(user.role) || !user.departmentId) {
+        return null;
+    }
+
+    return {
+        id: supplierId,
+        departments: {
+            some: {
+                id: user.departmentId,
+            },
+        },
+    };
+};
+
 const extractFirstString = (value: unknown, depth = 0): string | undefined => {
     if (depth > 5 || value === null || typeof value === 'undefined') {
         return undefined;
@@ -681,8 +733,9 @@ export const getSuppliers = async (req: Request, res: Response) => {
 export const getSupplierById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
-        const supplier = await prisma.supplier.findUnique({
-            where: { id },
+        const user = req.user!;
+        const supplier = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, user),
             include: {
                 orders: true,
                 requests: {
@@ -996,9 +1049,24 @@ export const updateSupplier = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const validatedData = updateSupplierSchema.parse(req.body);
+        const user = req.user!;
+        const manageWhere = getSupplierManageWhere(id, user);
+
+        if (!manageWhere) {
+            return res.status(403).json({ error: 'Insufficient permissions to update suppliers' });
+        }
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: manageWhere,
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         const supplier = await prisma.supplier.update({
-            where: { id },
+            where: { id: supplierScope.id },
             data: validatedData,
         });
 
@@ -1022,8 +1090,24 @@ export const updateSupplier = async (req: Request, res: Response) => {
 export const deleteSupplier = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const user = req.user!;
+        const manageWhere = getSupplierManageWhere(id, user);
+
+        if (!manageWhere) {
+            return res.status(403).json({ error: 'Insufficient permissions to delete suppliers' });
+        }
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: manageWhere,
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
+
         await prisma.supplier.delete({
-            where: { id },
+            where: { id: supplierScope.id },
         });
 
         // Invalidate cache
@@ -1044,8 +1128,9 @@ export const deleteSupplier = async (req: Request, res: Response) => {
 export const getSupplierDetails = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
-        const supplier = await prisma.supplier.findUnique({
-            where: { id },
+        const user = req.user!;
+        const supplier = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, user),
             include: {
                 details: true,
                 documents: true,
@@ -1110,6 +1195,21 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const validatedData = updateSupplierDetailsSchema.parse(req.body);
+        const user = req.user!;
+        const manageWhere = getSupplierManageWhere(id, user);
+
+        if (!manageWhere) {
+            return res.status(403).json({ error: 'Insufficient permissions to update supplier details' });
+        }
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: manageWhere,
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         // Extract base supplier fields
         const { name, category, status, contactName, contactEmail, logoUrl, ...detailsFields } = validatedData;
@@ -1124,7 +1224,7 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
         if (logoUrl !== undefined) supplierUpdateData.logoUrl = logoUrl;
 
         const supplier = await prisma.supplier.update({
-            where: { id },
+            where: { id: supplierScope.id },
             data: supplierUpdateData,
             include: { details: true }
         });
@@ -1132,9 +1232,9 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
         // Update or create supplier details
         if (Object.keys(detailsFields).length > 0) {
             await prisma.supplierDetails.upsert({
-                where: { supplierId: id },
+                where: { supplierId: supplierScope.id },
                 create: {
-                    supplierId: id,
+                    supplierId: supplierScope.id,
                     ...detailsFields,
                 },
                 update: detailsFields,
@@ -1143,7 +1243,7 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
 
         // Fetch updated data
         const updatedSupplier = await prisma.supplier.findUnique({
-            where: { id },
+            where: { id: supplierScope.id },
             include: { details: true }
         });
 
@@ -1165,10 +1265,20 @@ export const updateSupplierDetails = async (req: Request, res: Response) => {
 export const getSupplierMessages = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const user = req.user!;
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, user),
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         try {
             const messages = await prisma.message.findMany({
-                where: { supplierId: id },
+                where: { supplierId: supplierScope.id },
                 select: FULL_MESSAGE_SELECT,
                 orderBy: { createdAt: 'asc' },
             });
@@ -1181,7 +1291,7 @@ export const getSupplierMessages = async (req: Request, res: Response) => {
             logMessageSchemaMismatchWarning();
 
             const messages = await prisma.message.findMany({
-                where: { supplierId: id },
+                where: { supplierId: supplierScope.id },
                 select: LEGACY_MESSAGE_SELECT,
                 orderBy: { createdAt: 'asc' },
             });
@@ -1222,8 +1332,8 @@ export const sendSupplierMessage = async (req: Request, res: Response) => {
         const senderEmail = req.user?.email || '';
 
         const [supplier, sender] = await Promise.all([
-            prisma.supplier.findUnique({
-                where: { id },
+            prisma.supplier.findFirst({
+                where: getSupplierReadWhere(id, req.user!),
                 select: { id: true, name: true, contactEmail: true },
             }),
             prisma.user.findUnique({
@@ -1350,8 +1460,8 @@ export const receiveSupplierMessage = async (req: Request, res: Response) => {
         const userId = req.user!.id;
 
         const [supplier, actorUser] = await Promise.all([
-            prisma.supplier.findUnique({
-                where: { id },
+            prisma.supplier.findFirst({
+                where: getSupplierReadWhere(id, req.user!),
                 select: {
                     id: true,
                     name: true,
@@ -1433,6 +1543,9 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
             if (!providedSecret || !isValidWebhookSecret(providedSecret, configuredSecret)) {
                 return res.status(401).json({ error: 'Invalid webhook secret' });
             }
+        } else if (process.env.NODE_ENV === 'production') {
+            Logger.error('SUPPLIER_INBOUND_WEBHOOK_SECRET is missing in production');
+            return res.status(503).json({ error: 'Webhook endpoint is not configured' });
         }
 
         const payload = (typeof req.body === 'object' && req.body ? req.body : {}) as Record<string, unknown>;
@@ -1528,9 +1641,19 @@ export const receiveSupplierEmailReplyWebhook = async (req: Request, res: Respon
 export const getSupplierInteractions = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
+        const user = req.user!;
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, user),
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         const interactions = await prisma.interactionLog.findMany({
-            where: { supplierId: id },
+            where: { supplierId: supplierScope.id },
             include: {
                 user: {
                     select: {
@@ -1563,10 +1686,18 @@ export const createSupplierInteraction = async (req: Request, res: Response) => 
         const { id } = req.params as { id: string };
         const validatedData = createInteractionSchema.parse(req.body);
         const userId = req.user!.id;
+        const supplierScope = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, req.user!),
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         const interaction = await prisma.interactionLog.create({
             data: {
-                supplierId: id,
+                supplierId: supplierScope.id,
                 userId,
                 eventType: validatedData.eventType,
                 title: validatedData.title,
@@ -1606,6 +1737,21 @@ export const addSupplierDocument = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as { id: string };
         const validatedData = addDocumentSchema.parse(req.body);
+        const user = req.user!;
+        const manageWhere = getSupplierManageWhere(id, user);
+
+        if (!manageWhere) {
+            return res.status(403).json({ error: 'Insufficient permissions to add supplier documents' });
+        }
+
+        const supplierScope = await prisma.supplier.findFirst({
+            where: manageWhere,
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         // Determine status
         let status = 'Valid';
@@ -1620,7 +1766,7 @@ export const addSupplierDocument = async (req: Request, res: Response) => {
 
         const document = await prisma.supplierDocument.create({
             data: {
-                supplierId: id,
+                supplierId: supplierScope.id,
                 title: validatedData.title,
                 type: validatedData.type,
                 url: validatedData.url,
@@ -1650,10 +1796,18 @@ export const addSupplierReview = async (req: Request, res: Response) => {
         const { id } = req.params as { id: string };
         const validatedData = addReviewSchema.parse(req.body);
         const userId = req.user!.id;
+        const supplierScope = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, req.user!),
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         const review = await prisma.review.create({
             data: {
-                supplierId: id,
+                supplierId: supplierScope.id,
                 userId,
                 rating: validatedData.rating,
                 comment: validatedData.comment,
@@ -1662,7 +1816,7 @@ export const addSupplierReview = async (req: Request, res: Response) => {
         });
 
         const aggregations = await prisma.review.aggregate({
-            where: { supplierId: id },
+            where: { supplierId: supplierScope.id },
             _avg: { rating: true },
             _count: { _all: true },
         });
@@ -1671,9 +1825,9 @@ export const addSupplierReview = async (req: Request, res: Response) => {
         const newCount = aggregations._count._all || 0;
 
         await prisma.supplierDetails.upsert({
-            where: { supplierId: id },
+            where: { supplierId: supplierScope.id },
             create: {
-                supplierId: id,
+                supplierId: supplierScope.id,
                 rating: newRating,
                 reviewCount: newCount,
             },
@@ -1700,16 +1854,24 @@ export const getSupplierReviews = async (req: Request, res: Response) => {
         const page = parseInt(req.query.page as string) || 1;
         const limit = parseInt(req.query.limit as string) || 5;
         const skip = (page - 1) * limit;
+        const supplierScope = await prisma.supplier.findFirst({
+            where: getSupplierReadWhere(id, req.user!),
+            select: { id: true },
+        });
+
+        if (!supplierScope) {
+            return res.status(404).json({ error: 'Supplier not found' });
+        }
 
         const [reviews, total] = await Promise.all([
             prisma.review.findMany({
-                where: { supplierId: id },
+                where: { supplierId: supplierScope.id },
                 include: { user: { select: { id: true, name: true } } },
                 orderBy: { createdAt: 'desc' },
                 skip,
                 take: limit,
             }),
-            prisma.review.count({ where: { supplierId: id } }),
+            prisma.review.count({ where: { supplierId: supplierScope.id } }),
         ]);
 
         res.json({

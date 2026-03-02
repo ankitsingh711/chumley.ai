@@ -1,7 +1,41 @@
 import { Request, Response } from 'express';
 import { categoryService } from '../services/category.service';
 import { hierarchyService } from '../services/hierarchy.service';
-import { Branch } from '@prisma/client';
+import { Branch, UserRole } from '@prisma/client';
+
+const isSystemAdmin = (req: Request): boolean => req.user?.role === UserRole.SYSTEM_ADMIN;
+
+const ensureDepartmentAccess = (req: Request, res: Response, departmentId: string): boolean => {
+    if (!req.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return false;
+    }
+
+    if (isSystemAdmin(req)) {
+        return true;
+    }
+
+    if (!req.user.departmentId || req.user.departmentId !== departmentId) {
+        res.status(403).json({ error: 'Access denied' });
+        return false;
+    }
+
+    return true;
+};
+
+const ensureCategoryAccess = async (req: Request, res: Response, categoryId: string) => {
+    const category = await categoryService.getCategoryById(categoryId);
+    if (!category) {
+        res.status(404).json({ error: 'Category not found' });
+        return null;
+    }
+
+    if (!ensureDepartmentAccess(req, res, category.departmentId)) {
+        return null;
+    }
+
+    return category;
+};
 
 export const categoryController = {
     /**
@@ -11,9 +45,24 @@ export const categoryController = {
     async getAllCategories(req: Request, res: Response) {
         try {
             const { departmentId, page, limit, search } = req.query;
+            const requestedDepartmentId = typeof departmentId === 'string' ? departmentId : undefined;
+
+            if (!req.user) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
+
+            if (!isSystemAdmin(req)) {
+                if (!req.user.departmentId) {
+                    return res.status(403).json({ error: 'Access denied' });
+                }
+
+                if (requestedDepartmentId && requestedDepartmentId !== req.user.departmentId) {
+                    return res.status(403).json({ error: 'Access denied' });
+                }
+            }
 
             const result = await categoryService.getAllCategories({
-                departmentId: typeof departmentId === 'string' ? departmentId : undefined,
+                departmentId: isSystemAdmin(req) ? requestedDepartmentId : req.user.departmentId || undefined,
                 page: page ? parseInt(page as string) : 1,
                 limit: limit ? parseInt(limit as string) : 10,
                 search: typeof search === 'string' ? search : undefined
@@ -40,6 +89,10 @@ export const categoryController = {
                 });
             }
 
+            if (!ensureDepartmentAccess(req, res, String(departmentId))) {
+                return;
+            }
+
             const branchEnum = branch.toString().toUpperCase() as Branch;
             const categories = await hierarchyService.getCategoriesByBranchAndDepartment(
                 branchEnum,
@@ -59,8 +112,17 @@ export const categoryController = {
     async getCategoryTree(req: Request, res: Response) {
         try {
             const { departmentId, branch } = req.query;
+            const requestedDepartmentId = typeof departmentId === 'string' ? departmentId : undefined;
+
+            if (!req.user) {
+                return res.status(401).json({ error: 'Unauthorized' });
+            }
 
             if (branch && departmentId) {
+                if (!ensureDepartmentAccess(req, res, String(departmentId))) {
+                    return;
+                }
+
                 const branchEnum = branch.toString().toUpperCase() as Branch;
                 const tree = await hierarchyService.getHierarchyTree(
                     branchEnum,
@@ -69,8 +131,18 @@ export const categoryController = {
                 return res.json(tree);
             }
 
+            if (!isSystemAdmin(req) && !requestedDepartmentId) {
+                if (!req.user.departmentId) {
+                    return res.status(403).json({ error: 'Access denied' });
+                }
+            }
+
+            if (requestedDepartmentId && !ensureDepartmentAccess(req, res, requestedDepartmentId)) {
+                return;
+            }
+
             const tree = await categoryService.getCategoryTree(
-                typeof departmentId === 'string' ? departmentId : undefined
+                isSystemAdmin(req) ? requestedDepartmentId : req.user.departmentId || undefined
             );
             res.json(tree);
         } catch (error: any) {
@@ -86,6 +158,11 @@ export const categoryController = {
     async getCategoriesByDepartment(req: Request, res: Response) {
         try {
             const { departmentId } = req.params;
+
+            if (!ensureDepartmentAccess(req, res, departmentId as string)) {
+                return;
+            }
+
             const categories = await categoryService.getCategoriesByDepartment(departmentId as string);
             res.json(categories);
         } catch (error: any) {
@@ -101,10 +178,10 @@ export const categoryController = {
     async getCategoryById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const category = await categoryService.getCategoryById(id as string);
 
+            const category = await ensureCategoryAccess(req, res, id as string);
             if (!category) {
-                return res.status(404).json({ error: 'Category not found' });
+                return;
             }
 
             res.json(category);
@@ -121,6 +198,12 @@ export const categoryController = {
     async getCategoryPath(req: Request, res: Response) {
         try {
             const { id } = req.params;
+
+            const accessibleCategory = await ensureCategoryAccess(req, res, id as string);
+            if (!accessibleCategory) {
+                return;
+            }
+
             const path = await categoryService.getCategoryPath(id as string);
             res.json(path);
         } catch (error: any) {
@@ -141,6 +224,10 @@ export const categoryController = {
                 return res.status(400).json({
                     error: 'Name, departmentId, and branch are required'
                 });
+            }
+
+            if (!ensureDepartmentAccess(req, res, String(departmentId))) {
+                return;
             }
 
             const category = await categoryService.createCategory({
@@ -167,13 +254,18 @@ export const categoryController = {
             const { id } = req.params;
             const { name, description, parentId } = req.body;
 
-            const category = await categoryService.updateCategory(id as string, {
+            const accessibleCategory = await ensureCategoryAccess(req, res, id as string);
+            if (!accessibleCategory) {
+                return;
+            }
+
+            const updatedCategory = await categoryService.updateCategory(id as string, {
                 name,
                 description,
                 parentId,
             });
 
-            res.json(category);
+            res.json(updatedCategory);
         } catch (error: any) {
             console.error('Error updating category:', error);
             res.status(400).json({ error: error.message || 'Failed to update category' });
@@ -187,6 +279,12 @@ export const categoryController = {
     async deleteCategory(req: Request, res: Response) {
         try {
             const { id } = req.params;
+
+            const accessibleCategory = await ensureCategoryAccess(req, res, id as string);
+            if (!accessibleCategory) {
+                return;
+            }
+
             await categoryService.deleteCategory(id as string);
             res.status(204).send();
         } catch (error: any) {
@@ -195,4 +293,3 @@ export const categoryController = {
         }
     },
 };
-

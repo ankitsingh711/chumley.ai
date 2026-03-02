@@ -169,13 +169,22 @@ export const updateUser = async (req: Request, res: Response) => {
                     if (targetUser.departmentId !== requester.departmentId) {
                         return res.status(403).json({ error: 'You can only manage users in your department' });
                     }
-                    // Cannot update role to System Admin
-                    if (validatedData.role === 'SYSTEM_ADMIN') {
-                        return res.status(403).json({ error: 'Cannot promote users to System Admin' });
-                    }
                     // Cannot update a System Admin
                     if (targetUser.role === 'SYSTEM_ADMIN') {
                         return res.status(403).json({ error: 'Client not authorized to update System Admin' });
+                    }
+
+                    // Managers cannot manage Senior Managers.
+                    if (requester.role === 'MANAGER' && targetUser.role === 'SENIOR_MANAGER') {
+                        return res.status(403).json({ error: 'Managers cannot update Senior Managers' });
+                    }
+
+                    // Non-admins cannot elevate to privileged roles.
+                    if (
+                        validatedData.role &&
+                        (validatedData.role === 'SYSTEM_ADMIN' || validatedData.role === 'SENIOR_MANAGER')
+                    ) {
+                        return res.status(403).json({ error: 'Insufficient permissions to assign this role' });
                     }
                 }
             } else {
@@ -269,6 +278,12 @@ export const deleteUser = async (req: Request, res: Response) => {
                 }
                 if (targetUser.role === 'SYSTEM_ADMIN') {
                     return res.status(403).json({ error: 'Cannot delete System Admin' });
+                }
+                if (requester.role === 'MANAGER' && targetUser.role === 'SENIOR_MANAGER') {
+                    return res.status(403).json({ error: 'Managers cannot delete Senior Managers' });
+                }
+                if (requester.role === 'SENIOR_MANAGER' && targetUser.role === 'SENIOR_MANAGER') {
+                    return res.status(403).json({ error: 'Senior Managers cannot delete peer Senior Managers' });
                 }
             } else {
                 return res.status(403).json({ error: 'Forbidden' });

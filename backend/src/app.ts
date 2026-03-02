@@ -9,11 +9,13 @@ import Logger from './utils/logger';
 import { configurePassport } from './config/passport';
 import passport from 'passport';
 import { rateLimiterMiddleware } from './middleware/rateLimiter.middleware';
+import { authenticate } from './middleware/auth.middleware';
 import { getAllowedOrigins } from './config/runtime';
 
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+const allowedOrigins = new Set(getAllowedOrigins());
 
 // Configure Passport
 configurePassport();
@@ -23,17 +25,37 @@ app.use(helmet());
 app.use(compression()); // Compress all responses
 app.use(cookieParser()); // Use cookie-parser before CORS if needed, or generally just before routes
 app.use(cors({
-    origin: getAllowedOrigins(),
+    origin: Array.from(allowedOrigins),
     credentials: true
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Basic CSRF mitigation for cookie-authenticated browser requests.
+app.use((req, res, next) => {
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+        return next();
+    }
+
+    const origin = req.headers.origin;
+    if (!origin) {
+        return next();
+    }
+
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+    if (!allowedOrigins.has(normalizedOrigin)) {
+        return res.status(403).json({ error: 'Invalid request origin' });
+    }
+
+    next();
+});
+
 // Rate Limiting
 app.use(rateLimiterMiddleware('general')); // Global limit
 app.use('/api/auth', rateLimiterMiddleware('auth')); // Stricter auth limit
 import path from 'path';
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+app.use('/uploads', authenticate, express.static(path.join(process.cwd(), 'uploads')));
 app.use(passport.initialize());
 
 // Logger
