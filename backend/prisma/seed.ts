@@ -112,10 +112,10 @@ async function main() {
 
     // Helper for suppliers below
     const itDept = allDepartments.find(d => d.name === 'Tech') || allDepartments[0];
-    const hr = allDepartments.find(d => d.name === 'HR & Recruitment') || allDepartments[0];
+    const hr = allDepartments.find((d) => d.name === 'HR&Recruitments') || allDepartments[0];
     const marketing = allDepartments.find(d => d.name === 'Marketing') || allDepartments[0];
     const finance = allDepartments.find(d => d.name === 'Finance') || allDepartments[0];
-    const fleet = allDepartments.find(d => d.name === 'Fleet') || allDepartments[0];
+    const fleet = allDepartments.find((d) => d.name === 'Fleet&Assets') || allDepartments[0];
     const support = allDepartments.find(d => d.name === 'Support') || allDepartments[0];
 
     // 5. Create Suppliers With Strict Email Domains

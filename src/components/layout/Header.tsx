@@ -213,13 +213,22 @@ export function Header() {
                         className="h-12 w-full rounded-xl border border-gray-200 bg-white pl-11 pr-10 text-sm text-gray-700 outline-none transition focus:border-primary-400 focus:ring-2 focus:ring-primary-100"
                     />
                     {searchQuery && (
-                        <button
-                            onClick={clearSearch}
-                            className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-                            aria-label="Clear search"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
+                        isSearching ? (
+                            <span
+                                className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400"
+                                aria-label="Searching"
+                            >
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            </span>
+                        ) : (
+                            <button
+                                onClick={clearSearch}
+                                className="absolute right-3 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                                aria-label="Clear search"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )
                     )}
 
                     {showResults && (

@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import { DateRangeFilterPopover } from '../components/filters/DateRangeFilterPopover';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { reportsApi } from '../services/reports.service';
 import { requestsApi } from '../services/requests.service';
 import { ReportsSkeleton } from '../components/skeletons/ReportsSkeleton';
@@ -26,24 +26,85 @@ import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
 
 type TransactionFilter = 'ALL' | RequestStatusType;
 
+const CANONICAL_DEPARTMENTS = [
+    'Tech',
+    'Marketing',
+    'Support',
+    'Finance',
+    'HR&Recruitments',
+    'Sector Group',
+    'Trade Group',
+    'Fleet&Assets',
+] as const;
+
+type CanonicalDepartment = (typeof CANONICAL_DEPARTMENTS)[number];
+
+const MONTHLY_DEPARTMENT_BUDGETS: Record<CanonicalDepartment, number> = {
+    // User provided "Chumley budget 135k" and canonical department list includes Tech, so map it to Tech.
+    Tech: 135000,
+    Marketing: 350000,
+    Support: 300000,
+    Finance: 40000,
+    'HR&Recruitments': 10000,
+    'Sector Group': 100000,
+    'Trade Group': 100000,
+    'Fleet&Assets': 200000,
+};
+
 const DEPARTMENT_COLORS: Record<string, string> = {
+    Tech: '#38bdf8',
     Marketing: '#f97316',
-    Support: '#ec4899',
-    Tech: '#3b82f6',
-    Fleet: '#8b5cf6',
+    Support: '#f43f5e',
     Finance: '#84cc16',
+    'HR&Recruitments': '#22c55e',
     'Sector Group': '#eab308',
-    'Trade Group': '#14b8a6',
-    'HR & Recruitment': '#22c55e',
-    Assets: '#a855f7',
-    Sales: '#94a3b8',
+    'Trade Group': '#34d399',
+    'Fleet&Assets': '#a855f7',
     Unassigned: '#cbd5e1',
 };
 
 const FALLBACK_COLORS = ['#6366f1', '#f43f5e', '#06b6d4', '#10b981', '#f59e0b', '#d946ef'];
+const DEPARTMENT_PRIORITY: Record<string, number> = {
+    Marketing: 1,
+    'Trade Group': 2,
+    'Sector Group': 3,
+    Support: 4,
+    'HR&Recruitments': 5,
+    'Fleet&Assets': 6,
+    Finance: 7,
+    Tech: 8,
+};
 
 const formatCurrency = (value: number) =>
     `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
+
+const formatCurrencyDetailed = (value: number) =>
+    `£${Number(value || 0).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const formatCurrencyAxisTick = (value: number) => {
+    if (!value) return '£0';
+    if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `£${Math.round(value / 1000)}k`;
+    return `£${Math.round(value)}`;
+};
+
+const formatMonthTick = (value: string) => {
+    const [month, year] = value.split(' ');
+    if (!month || !year || year.length < 4) return value;
+    return `${month} ${year.slice(-2)}`;
+};
+
+const formatDepartmentLabel = (department: string) => {
+    const labelMap: Record<string, string> = {
+        'HR&Recruitments': 'HR & Recruitments',
+        'Fleet&Assets': 'Fleet & Assets',
+    };
+
+    return labelMap[department] || department;
+};
+
+const isCanonicalDepartment = (value: string): value is CanonicalDepartment =>
+    (CANONICAL_DEPARTMENTS as readonly string[]).includes(value);
 
 const formatRangeLabel = (start?: string, end?: string) => {
     if (!start && !end) return 'All Time';
@@ -239,19 +300,107 @@ export default function Reports() {
         { id: 'ytd', label: 'Year to date', helperText: 'Since Jan 1', range: getYearToDateRange() },
     ];
 
-    const departments = useMemo(() => {
-        const deptSet = new Set<string>();
+    const departments = useMemo<CanonicalDepartment[]>(() => [...CANONICAL_DEPARTMENTS], []);
 
-        spendData.forEach((item) => {
-            Object.keys(item).forEach((key) => {
-                if (key !== 'month' && key !== 'spend' && key !== 'requestCount') {
-                    deptSet.add(key);
-                }
-            });
+    const sortedDepartments = useMemo(() => {
+        return [...departments].sort((a, b) => {
+            const priorityA = DEPARTMENT_PRIORITY[a] ?? 999;
+            const priorityB = DEPARTMENT_PRIORITY[b] ?? 999;
+            if (priorityA !== priorityB) {
+                return priorityA - priorityB;
+            }
+
+            return a.localeCompare(b);
         });
+    }, [departments]);
 
-        return Array.from(deptSet);
+    const budgetChartData = useMemo(() => {
+        return spendData.map((entry) => ({
+            month: entry.month,
+            spend: Number(entry.spend || 0),
+            ...MONTHLY_DEPARTMENT_BUDGETS,
+        }));
     }, [spendData]);
+
+    const monthlyBudgetTotal = useMemo(
+        () => sortedDepartments.reduce((sum, department) => sum + MONTHLY_DEPARTMENT_BUDGETS[department], 0),
+        [sortedDepartments],
+    );
+
+    const yAxisMax = useMemo(() => {
+        const maxSpend = spendData.reduce((currentMax, row) => Math.max(currentMax, Number(row.spend || 0)), 0);
+        const maxValue = Math.max(maxSpend, monthlyBudgetTotal, 1000000);
+        return Math.ceil(maxValue / 100000) * 100000;
+    }, [monthlyBudgetTotal, spendData]);
+
+    const yAxisTicks = useMemo(() => {
+        const raw = [0, yAxisMax * 0.25, yAxisMax * 0.5, yAxisMax]
+            .map((value) => Math.round(value / 10000) * 10000);
+        return Array.from(new Set(raw)).sort((a, b) => a - b);
+    }, [yAxisMax]);
+
+    const renderMonthlySpendTooltip = ({
+        active,
+        payload,
+        label,
+    }: {
+        active?: boolean;
+        payload?: ReadonlyArray<{
+            name?: string;
+            value?: string | number;
+            color?: string;
+            dataKey?: string | number;
+        }>;
+        label?: string | number;
+    }) => {
+        if (!active || !payload || payload.length === 0) {
+            return null;
+        }
+
+        const spendSeries = payload.find((entry) => entry.dataKey === 'spend');
+        const totalSpend = Number(spendSeries?.value || 0);
+
+        const rows = payload
+            .filter((entry) => {
+                if (!entry.dataKey || entry.dataKey === 'spend') return false;
+                return isCanonicalDepartment(String(entry.dataKey));
+            })
+            .map((entry) => ({
+                key: String(entry.dataKey),
+                label: formatDepartmentLabel(String(entry.dataKey)),
+                value: Number(entry.value || 0),
+                color: entry.color || DEPARTMENT_COLORS[String(entry.dataKey)] || '#64748b',
+            }))
+            .filter((entry) => entry.value > 0)
+            .sort((a, b) => {
+                const rankA = DEPARTMENT_PRIORITY[a.key] ?? 999;
+                const rankB = DEPARTMENT_PRIORITY[b.key] ?? 999;
+                if (rankA !== rankB) return rankA - rankB;
+                return b.value - a.value;
+            });
+
+        const totalBudget = rows.reduce((sum, row) => sum + row.value, 0);
+
+        return (
+            <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-white/95 p-4 shadow-[0_20px_45px_-30px_rgba(15,23,42,0.65)] backdrop-blur">
+                <p className="text-sm font-semibold text-slate-500">{formatMonthTick(String(label ?? ''))}</p>
+                <p className="mt-2 text-lg font-bold text-slate-700">
+                    Spend: {formatCurrencyDetailed(totalSpend)}
+                </p>
+                <p className="mt-2 border-t border-slate-200 pt-2 text-xl font-bold text-slate-900">
+                    Total Budget: {formatCurrencyDetailed(totalBudget)}
+                </p>
+                <div className="mt-3 space-y-1.5">
+                    {rows.map((entry) => (
+                        <div key={entry.key} className="flex items-center justify-between gap-4 text-base font-semibold">
+                            <span style={{ color: entry.color }}>{entry.label}:</span>
+                            <span style={{ color: entry.color }}>{formatCurrencyDetailed(entry.value)}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     const filteredTransactions = useMemo(() => {
         return allRequests
@@ -497,66 +646,127 @@ export default function Reports() {
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
                 <section className="xl:col-span-2 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
-                    <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900">Monthly Spend Trends</h3>
-                            <p className="text-sm text-gray-500">Department-level stacked spend over time.</p>
+                            <p className="text-sm text-gray-500">Department monthly budgets in color, with actual spend as the grey trend line.</p>
                         </div>
-                        <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
-                            {spendData.length} months
-                        </span>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="inline-flex rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700">
+                                {spendData.length} months
+                            </span>
+                            <span className="inline-flex rounded-full border border-slate-300 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                Monthly Budget Total: {formatCurrency(monthlyBudgetTotal)}
+                            </span>
+                        </div>
                     </div>
 
-                    <div className="h-72 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={spendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                <defs>
-                                    {departments.map((department, index) => {
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4">
+                        <div className="h-[430px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={budgetChartData} margin={{ top: 8, right: 12, left: 8, bottom: 18 }}>
+                                    <defs>
+                                        <linearGradient id="colorTotalSpend" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="4%" stopColor="#94a3b8" stopOpacity={0.38} />
+                                            <stop offset="96%" stopColor="#94a3b8" stopOpacity={0.04} />
+                                        </linearGradient>
+                                        {sortedDepartments.map((department, index) => {
+                                            const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
+                                            return (
+                                                <linearGradient key={department} id={`color${department.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="8%" stopColor={color} stopOpacity={0.72} />
+                                                    <stop offset="98%" stopColor={color} stopOpacity={0.22} />
+                                                </linearGradient>
+                                            );
+                                        })}
+                                    </defs>
+
+                                    <CartesianGrid strokeDasharray="3 4" stroke="#dbe3ee" />
+                                    <XAxis
+                                        dataKey="month"
+                                        axisLine={{ stroke: '#cbd5e1' }}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        tickFormatter={formatMonthTick}
+                                        angle={-42}
+                                        textAnchor="end"
+                                        height={64}
+                                        interval={0}
+                                    />
+                                    <YAxis
+                                        axisLine={{ stroke: '#cbd5e1' }}
+                                        tickLine={false}
+                                        tick={{ fontSize: 12, fill: '#64748b' }}
+                                        tickFormatter={formatCurrencyAxisTick}
+                                        domain={[0, yAxisMax]}
+                                        ticks={yAxisTicks}
+                                    />
+                                    <Tooltip
+                                        cursor={{ stroke: '#94a3b8', strokeDasharray: '4 4' }}
+                                        content={renderMonthlySpendTooltip}
+                                    />
+
+                                    <Area
+                                        type="monotone"
+                                        dataKey="spend"
+                                        stroke="#64748b"
+                                        strokeWidth={2.5}
+                                        fill="url(#colorTotalSpend)"
+                                        fillOpacity={1}
+                                        dot={false}
+                                        activeDot={{ r: 5, fill: '#64748b', stroke: '#ffffff', strokeWidth: 2 }}
+                                    />
+
+                                    {sortedDepartments.map((department, index) => {
                                         const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
                                         return (
-                                            <linearGradient key={department} id={`color${department.replace(/[^a-zA-Z0-9]/g, '')}`} x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor={color} stopOpacity={0.85} />
-                                                <stop offset="95%" stopColor={color} stopOpacity={0.18} />
-                                            </linearGradient>
+                                            <Area
+                                                key={department}
+                                                type="monotone"
+                                                dataKey={department}
+                                                stackId="stacked"
+                                                stroke={color}
+                                                strokeWidth={1.6}
+                                                fillOpacity={1}
+                                                fill={`url(#color${department.replace(/[^a-zA-Z0-9]/g, '')})`}
+                                                dot={false}
+                                                activeDot={false}
+                                            />
                                         );
                                     })}
-                                </defs>
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
 
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#94a3b8' }} dy={10} />
-                                <YAxis
-                                    axisLine={false}
-                                    tickLine={false}
-                                    tick={{ fontSize: 12, fill: '#94a3b8' }}
-                                    tickFormatter={(value) => value >= 1000000
-                                        ? `£${(value / 1000000).toFixed(1)}M`
-                                        : `£${(value / 1000).toFixed(0)}k`}
-                                />
-                                <Tooltip
-                                    formatter={(value: number | string | undefined, name: string | undefined) => [formatCurrency(Number(value || 0)), name ?? 'Value']}
-                                    labelStyle={{ color: '#334155', fontWeight: 'bold', marginBottom: '4px' }}
-                                    contentStyle={{ borderRadius: '10px', border: '1px solid #e2e8f0', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                                />
+                    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+                        {sortedDepartments.map((department, index) => {
+                            const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 
-                                {departments.map((department, index) => {
-                                    const color = DEPARTMENT_COLORS[department] || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
-                                    return (
-                                        <Area
-                                            key={department}
-                                            type="monotone"
-                                            dataKey={department}
-                                            stackId="1"
-                                            stroke={color}
-                                            strokeWidth={2}
-                                            fillOpacity={1}
-                                            fill={`url(#color${department.replace(/[^a-zA-Z0-9]/g, '')})`}
-                                        />
-                                    );
-                                })}
-
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '16px', fontSize: '12px' }} />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                            return (
+                                <div
+                                    key={`legend-${department}`}
+                                    className="inline-flex items-center gap-2 rounded-full px-2 py-0.5 text-sm font-semibold"
+                                >
+                                    <span
+                                        className="h-2.5 w-2.5 rounded-full border border-white shadow-sm"
+                                        style={{
+                                            backgroundColor: color,
+                                        }}
+                                    />
+                                    <span
+                                        style={{
+                                            color,
+                                        }}
+                                    >
+                                        {formatDepartmentLabel(department)}
+                                    </span>
+                                    <span className="text-slate-500">
+                                        {formatCurrency(MONTHLY_DEPARTMENT_BUDGETS[department])}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 </section>
 

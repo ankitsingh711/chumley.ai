@@ -5,6 +5,16 @@ import prisma from '../config/db';
 const STAFF_WORD_REGEX = /\bstaff\b/i;
 const isStaffCategoryName = (name: string) => STAFF_WORD_REGEX.test(name);
 
+const DEPARTMENT_MONTHLY_BUDGETS: Record<string, number> = {
+    Tech: 135000,
+    Marketing: 350000,
+    Support: 300000,
+    Finance: 40000,
+    'HR&Recruitments': 10000,
+    'Sector Group': 100000,
+    'Trade Group': 100000,
+    'Fleet&Assets': 200000,
+};
 
 export const hierarchyService = {
     /**
@@ -92,6 +102,8 @@ export const hierarchyService = {
             Logger.info(`Seeding branch: ${branchName}`);
 
             for (const [departmentName, departmentData] of Object.entries(branchData as Record<string, any>)) {
+                const departmentBudget = DEPARTMENT_MONTHLY_BUDGETS[departmentName] ?? 0;
+
                 // Find or create department
                 let department = await prisma.department.findFirst({
                     where: { name: departmentName },
@@ -102,9 +114,17 @@ export const hierarchyService = {
                         data: {
                             name: departmentName,
                             description: `${departmentName} Department`,
+                            budget: departmentBudget,
                         },
                     });
                     stats.departments++;
+                } else {
+                    department = await prisma.department.update({
+                        where: { id: department.id },
+                        data: {
+                            budget: departmentBudget,
+                        },
+                    });
                 }
 
                 Logger.info(`  Department: ${departmentName}`);

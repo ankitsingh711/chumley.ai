@@ -11,9 +11,17 @@ const normalizeDepartmentLabel = (value?: string | null): string | undefined => 
     const trimmed = value.trim();
     const lowered = trimmed.toLowerCase();
 
-    if (lowered === 'royston' || lowered === 'roystton') {
-        return 'Chessington';
-    }
+    const legacyDepartmentMap: Record<string, string> = {
+        royston: 'Tech',
+        roystton: 'Tech',
+        'hr & recruitment': 'HR&Recruitments',
+        'hr&recruitment': 'HR&Recruitments',
+        fleet: 'Fleet&Assets',
+        assets: 'Fleet&Assets',
+    };
+
+    const mapped = legacyDepartmentMap[lowered];
+    if (mapped) return mapped;
 
     return trimmed;
 };

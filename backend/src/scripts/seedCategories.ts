@@ -3,6 +3,31 @@ import { PrismaClient, Branch } from '@prisma/client';
 const prisma = new PrismaClient();
 
 const LEGACY_DEPARTMENT_NAMES = ['Royston', 'Roystton', 'royston', 'roystton'];
+const CANONICAL_DEPARTMENT_NAMES = [
+    'Tech',
+    'Marketing',
+    'Support',
+    'Finance',
+    'HR&Recruitments',
+    'Sector Group',
+    'Trade Group',
+    'Fleet&Assets',
+];
+const DEPARTMENT_MONTHLY_BUDGETS: Record<string, number> = {
+    Tech: 135000,
+    Marketing: 350000,
+    Support: 300000,
+    Finance: 40000,
+    'HR&Recruitments': 10000,
+    'Sector Group': 100000,
+    'Trade Group': 100000,
+    'Fleet&Assets': 200000,
+};
+const LEGACY_DEPARTMENT_RENAMES: Record<string, string> = {
+    'HR & Recruitment': 'HR&Recruitments',
+    Fleet: 'Fleet&Assets',
+    Assets: 'Fleet&Assets',
+};
 
 export const fullHierarchy = {
     "Chessington": {
@@ -30,8 +55,15 @@ export const fullHierarchy = {
                 }
             }
         },
-        "Sector Group": {},
-        "Trade Group": {},
+        "Marketing": {
+            "Paid Search": {
+                "PPC": []
+            },
+            "Software": {
+                "PPC": [],
+                "Non-PPC": []
+            }
+        },
         "Support": {
             "NI": {
                 "Tech": {
@@ -46,12 +78,12 @@ export const fullHierarchy = {
                     }
                 },
                 "Marketing": {},
-                "HR & Recruitment": {
+                "HR&Recruitments": {
                     "HR": [],
                     "Recruitment": []
                 },
                 "Finance": [],
-                "Fleet": {
+                "Fleet&Assets": {
                     "All": [],
                     "Trade Group": []
                 }
@@ -69,12 +101,12 @@ export const fullHierarchy = {
                     }
                 },
                 "Marketing": {},
-                "HR & Recruitment": {
+                "HR&Recruitments": {
                     "HR": [],
                     "Recruitment": []
                 },
                 "Finance": [],
-                "Fleet": {
+                "Fleet&Assets": {
                     "All": [],
                     "Trade Group": []
                 }
@@ -105,10 +137,10 @@ export const fullHierarchy = {
                 "Refreshments": [],
                 "Clothing Costs": {
                     "Tech": [],
-                    "Fleet": [],
+                    "Fleet&Assets": [],
                     "Support": [],
                     "Finance": [],
-                    "HR & Recruitment": [],
+                    "HR&Recruitments": [],
                     "Marketing": []
                 }
             },
@@ -133,7 +165,7 @@ export const fullHierarchy = {
                 },
                 "Software": []
             },
-            "HR & Recruitment": {
+            "HR&Recruitments": {
                 "Training": {
                     "Engineers": []
                 },
@@ -151,7 +183,30 @@ export const fullHierarchy = {
                 "Water": []
             }
         },
-        "Fleet": {
+        "Finance": {
+            "Charges": {
+                "Credit Card Charges": [],
+                "Bank Charges": [],
+                "HMRC Interest & Charges": []
+            },
+            "Fees": {
+                "Professional": [],
+                "Audit & Accountancy": []
+            },
+            "Software": []
+        },
+        "HR&Recruitments": {
+            "Training": {
+                "Engineers": []
+            },
+            "Software": {
+                "HR": [],
+                "Recruitment": []
+            }
+        },
+        "Sector Group": {},
+        "Trade Group": {},
+        "Fleet&Assets": {
             "Software": {
                 "All": [],
                 "Trade Group": []
@@ -181,9 +236,7 @@ export const fullHierarchy = {
                 "All": [],
                 "Trade Group": []
             },
-
-        },
-        "Assets": {
+            "Assets": {
             "Aspect-Owned": {
                 "Non-Fixed": {
                     "Tools & Equipment": {
@@ -354,6 +407,7 @@ export const fullHierarchy = {
                     ]
                 }
             }
+            }
         }
     }
 };
@@ -404,30 +458,39 @@ async function createCategory(
 async function main() {
     await cleanupLegacyDepartments();
 
-    for (const [deptName, hierarchy] of Object.entries(fullHierarchy)) {
-        console.log(`Processing department: ${deptName}`);
+    for (const [branchName, departments] of Object.entries(fullHierarchy)) {
+        console.log(`Processing branch: ${branchName}`);
 
-        let department = await prisma.department.findUnique({
-            where: { name: deptName }
-        });
+        for (const [deptName, hierarchy] of Object.entries(departments as Record<string, any>)) {
+            console.log(`Processing department: ${deptName}`);
+            const monthlyBudget = DEPARTMENT_MONTHLY_BUDGETS[deptName] ?? 0;
 
-        if (!department) {
-            department = await prisma.department.create({
-                data: {
-                    name: deptName,
-                    budget: 0
-                }
+            let department = await prisma.department.findUnique({
+                where: { name: deptName }
             });
-            console.log(`Created department: ${deptName}`);
-        } else {
-            console.log(`Found existing department: ${deptName}, clearing existing categories...`);
-            await deleteCategoriesRecursively(department.id);
-        }
 
-        // Seed Categories
-        console.log(`Seeding categories for ${deptName}...`);
-        for (const [key, value] of Object.entries(hierarchy)) {
-            await createCategory(key, null, department.id, value);
+            if (!department) {
+                department = await prisma.department.create({
+                    data: {
+                        name: deptName,
+                        budget: monthlyBudget
+                    }
+                });
+                console.log(`Created department: ${deptName}`);
+            } else {
+                await prisma.department.update({
+                    where: { id: department.id },
+                    data: { budget: monthlyBudget },
+                });
+                console.log(`Found existing department: ${deptName}, clearing existing categories...`);
+                await deleteCategoriesRecursively(department.id);
+            }
+
+            // Seed Categories
+            console.log(`Seeding categories for ${deptName}...`);
+            for (const [key, value] of Object.entries(hierarchy)) {
+                await createCategory(key, null, department.id, value);
+            }
         }
     }
 }
@@ -441,36 +504,138 @@ async function cleanupLegacyDepartments() {
             }
         },
         data: {
-            budgetCategory: 'Chessington'
+            budgetCategory: 'Tech'
         }
     });
 
-    const chessingtonDepartment = await prisma.department.findUnique({
-        where: { name: 'Chessington' },
-        select: { id: true }
+    for (const [from, to] of Object.entries(LEGACY_DEPARTMENT_RENAMES)) {
+        await prisma.purchaseRequest.updateMany({
+            where: { budgetCategory: from },
+            data: { budgetCategory: to },
+        });
+    }
+
+    for (const [legacyName, targetName] of Object.entries(LEGACY_DEPARTMENT_RENAMES)) {
+        await migrateLegacyDepartment(legacyName, targetName);
+    }
+
+    for (const legacyName of LEGACY_DEPARTMENT_NAMES) {
+        await migrateLegacyDepartment(legacyName, 'Tech');
+    }
+
+    await pruneNonCanonicalDepartments();
+}
+
+async function migrateLegacyDepartment(legacyName: string, targetName: string) {
+    const legacyDepartment = await prisma.department.findUnique({
+        where: { name: legacyName },
+        select: { id: true, name: true },
     });
 
-    const legacyDepartments = await prisma.department.findMany({
+    if (!legacyDepartment) {
+        return;
+    }
+
+    const targetDepartment = await prisma.department.upsert({
+        where: { name: targetName },
+        update: {},
+        create: { name: targetName, budget: 0 },
+        select: { id: true, name: true },
+    });
+
+    if (legacyDepartment.id === targetDepartment.id) {
+        return;
+    }
+
+    console.log(`Migrating legacy department: ${legacyDepartment.name} -> ${targetDepartment.name}`);
+
+    await prisma.purchaseRequest.updateMany({
+        where: { budgetCategory: legacyDepartment.name },
+        data: { budgetCategory: targetDepartment.name },
+    });
+
+    // Move primary user department assignment.
+    await prisma.user.updateMany({
+        where: { departmentId: legacyDepartment.id },
+        data: { departmentId: targetDepartment.id },
+    });
+
+    // Preserve extra department roles by moving them to target (upsert avoids duplicate composite key errors).
+    const additionalRoles = await prisma.userDepartmentRole.findMany({
+        where: { departmentId: legacyDepartment.id },
+        select: { userId: true, role: true },
+    });
+
+    for (const role of additionalRoles) {
+        await prisma.userDepartmentRole.upsert({
+            where: {
+                userId_departmentId: {
+                    userId: role.userId,
+                    departmentId: targetDepartment.id,
+                }
+            },
+            update: { role: role.role },
+            create: {
+                userId: role.userId,
+                departmentId: targetDepartment.id,
+                role: role.role,
+            },
+        });
+    }
+
+    await prisma.userDepartmentRole.deleteMany({
+        where: { departmentId: legacyDepartment.id },
+    });
+
+    // Keep supplier access links by reconnecting to target before removing legacy relation.
+    const linkedSuppliers = await prisma.supplier.findMany({
+        where: {
+            departments: {
+                some: { id: legacyDepartment.id },
+            },
+        },
+        select: {
+            id: true,
+            departments: {
+                where: { id: targetDepartment.id },
+                select: { id: true },
+            },
+        },
+    });
+
+    for (const supplier of linkedSuppliers) {
+        const departmentUpdate: any = {
+            disconnect: [{ id: legacyDepartment.id }],
+        };
+
+        if (supplier.departments.length === 0) {
+            departmentUpdate.connect = [{ id: targetDepartment.id }];
+        }
+
+        await prisma.supplier.update({
+            where: { id: supplier.id },
+            data: {
+                departments: departmentUpdate,
+            },
+        });
+    }
+
+    await deleteCategoriesRecursively(legacyDepartment.id);
+    await prisma.department.delete({ where: { id: legacyDepartment.id } });
+}
+
+async function pruneNonCanonicalDepartments() {
+    const nonCanonicalDepartments = await prisma.department.findMany({
         where: {
             name: {
-                in: LEGACY_DEPARTMENT_NAMES
-            }
+                notIn: CANONICAL_DEPARTMENT_NAMES,
+            },
         },
-        select: { id: true, name: true }
+        select: { name: true },
     });
 
-    for (const legacyDepartment of legacyDepartments) {
-        console.log(`Removing legacy department: ${legacyDepartment.name}`);
-
-        await prisma.user.updateMany({
-            where: { departmentId: legacyDepartment.id },
-            data: {
-                departmentId: chessingtonDepartment?.id ?? null
-            }
-        });
-
-        await deleteCategoriesRecursively(legacyDepartment.id);
-        await prisma.department.delete({ where: { id: legacyDepartment.id } });
+    for (const department of nonCanonicalDepartments) {
+        await migrateLegacyDepartment(department.name, 'Tech');
     }
 }
 
