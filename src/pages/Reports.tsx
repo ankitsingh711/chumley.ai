@@ -23,6 +23,7 @@ import type { KPIMetrics, MonthlySpendData, PurchaseRequest, RequestStatus as Re
 import { RequestStatus } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
 import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
+import { normalizeDepartmentName } from '../utils/departments';
 
 type TransactionFilter = 'ALL' | RequestStatusType;
 
@@ -40,7 +41,6 @@ const CANONICAL_DEPARTMENTS = [
 type CanonicalDepartment = (typeof CANONICAL_DEPARTMENTS)[number];
 
 const MONTHLY_DEPARTMENT_BUDGETS: Record<CanonicalDepartment, number> = {
-    // User provided "Chumley budget 135k" and canonical department list includes Tech, so map it to Tech.
     Tech: 135000,
     Marketing: 350000,
     Support: 300000,
@@ -94,17 +94,18 @@ const formatMonthTick = (value: string) => {
     return `${month} ${year.slice(-2)}`;
 };
 
-const formatDepartmentLabel = (department: string) => {
-    const labelMap: Record<string, string> = {
-        'HR&Recruitments': 'HR & Recruitments',
-        'Fleet&Assets': 'Fleet & Assets',
-    };
-
-    return labelMap[department] || department;
-};
+const formatDepartmentLabel = (department: string) => department;
 
 const isCanonicalDepartment = (value: string): value is CanonicalDepartment =>
     (CANONICAL_DEPARTMENTS as readonly string[]).includes(value);
+
+const getRequestDepartmentLabel = (request: PurchaseRequest) => {
+    const rawDepartment = typeof request.requester?.department === 'string'
+        ? request.requester.department
+        : request.requester?.department?.name;
+
+    return normalizeDepartmentName(rawDepartment) || rawDepartment || 'N/A';
+};
 
 const formatRangeLabel = (start?: string, end?: string) => {
     if (!start && !end) return 'All Time';
@@ -507,9 +508,7 @@ export default function Reports() {
                 request.id.slice(0, 8),
                 formatDateTime(request.createdAt),
                 request.requester?.name || 'Unknown',
-                typeof request.requester?.department === 'string'
-                    ? request.requester.department
-                    : request.requester?.department?.name || 'N/A',
+                getRequestDepartmentLabel(request),
                 request.totalAmount,
                 request.status.replace(/_/g, ' '),
             ]);
@@ -542,9 +541,7 @@ export default function Reports() {
                 request.id.slice(0, 8),
                 formatDateTime(request.createdAt),
                 request.requester?.name || 'Unknown',
-                typeof request.requester?.department === 'string'
-                    ? request.requester.department
-                    : request.requester?.department?.name || 'N/A',
+                getRequestDepartmentLabel(request),
                 formatCurrency(Number(request.totalAmount)),
                 request.status.replace(/_/g, ' '),
             ]);
@@ -953,9 +950,7 @@ export default function Reports() {
                                     <tbody className="divide-y divide-gray-100">
                                         {filteredTransactions.map((request) => {
                                             const { date, time } = getDateAndTime(request.createdAt);
-                                            const department = typeof request.requester?.department === 'string'
-                                                ? request.requester.department
-                                                : request.requester?.department?.name || 'N/A';
+                                            const department = getRequestDepartmentLabel(request);
 
                                             return (
                                                 <tr key={request.id} className="bg-white transition hover:bg-primary-50/30">
@@ -983,9 +978,7 @@ export default function Reports() {
                         <div className="space-y-3 p-4 lg:hidden">
                             {filteredTransactions.map((request) => {
                                 const { date, time } = getDateAndTime(request.createdAt);
-                                const department = typeof request.requester?.department === 'string'
-                                    ? request.requester.department
-                                    : request.requester?.department?.name || 'N/A';
+                                const department = getRequestDepartmentLabel(request);
 
                                 return (
                                     <article key={request.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">

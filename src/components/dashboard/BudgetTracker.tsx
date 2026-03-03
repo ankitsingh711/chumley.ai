@@ -7,6 +7,7 @@ import type { Department } from '../../services/departments.service';
 import { reportsApi } from '../../services/reports.service';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/api';
+import { CANONICAL_DEPARTMENTS, isCanonicalDepartment, normalizeDepartmentName } from '../../utils/departments';
 
 interface BudgetTrackerProps {
     departmentSpend?: Record<string, number>;
@@ -63,35 +64,68 @@ export const BudgetTracker = memo(function BudgetTracker({
     const [breakdownData, setBreakdownData] = useState<Record<string, DepartmentSpendBreakdownItem[]>>({});
 
     const sortedDepartments = useMemo<TrackedDepartment[]>(() => {
-        const base = departments.map((department) => {
-            const spendFromMetrics = department.metrics?.totalSpent;
-            const hasSpendFromMap = Object.prototype.hasOwnProperty.call(departmentSpend, department.name);
-            const spendFromMap = hasSpendFromMap ? departmentSpend[department.name] || 0 : undefined;
-            const budgetLimit = Number(department.budget);
+        const normalizedDepartmentSpend = Object.entries(departmentSpend).reduce<Record<string, number>>((acc, [name, amount]) => {
+            const normalizedName = normalizeDepartmentName(name);
+            if (!normalizedName || !isCanonicalDepartment(normalizedName)) {
+                return acc;
+            }
 
-            return {
+            acc[normalizedName] = (acc[normalizedName] || 0) + Number(amount || 0);
+            return acc;
+        }, {});
+
+        const base = departments.reduce<TrackedDepartment[]>((acc, department) => {
+            const normalizedName = normalizeDepartmentName(department.name);
+            if (!normalizedName || !isCanonicalDepartment(normalizedName)) {
+                return acc;
+            }
+
+            const spendFromMetrics = department.metrics?.totalSpent;
+            const spendFromMap = normalizedDepartmentSpend[normalizedName];
+            const budgetLimit = Number(department.budget);
+            const normalizedBudgetLimit = Number.isFinite(budgetLimit) && budgetLimit > 0 ? budgetLimit : 0;
+            const existingDepartment = acc.find((item) => item.name === normalizedName);
+
+            if (existingDepartment) {
+                existingDepartment.limit = Math.max(existingDepartment.limit, normalizedBudgetLimit);
+
+                if (typeof spendFromMap === 'number') {
+                    existingDepartment.spent = spendFromMap;
+                } else if (typeof spendFromMetrics === 'number') {
+                    existingDepartment.spent += spendFromMetrics;
+                }
+
+                return acc;
+            }
+
+            acc.push({
                 id: department.id,
-                name: department.name,
-                limit: Number.isFinite(budgetLimit) && budgetLimit > 0 ? budgetLimit : 0,
+                name: normalizedName,
+                limit: normalizedBudgetLimit,
                 spent: typeof spendFromMap === 'number'
                     ? spendFromMap
                     : (typeof spendFromMetrics === 'number' ? spendFromMetrics : 0),
-            };
-        });
+            });
 
-        Object.entries(departmentSpend).forEach(([name, amount]) => {
-            if (!base.find((department) => department.name === name)) {
-                base.push({
-                    id: `unassigned-${name}`,
-                    name,
-                    limit: 0,
-                    spent: amount,
-                });
-            }
-        });
+            return acc;
+        }, []);
 
-        return base.sort((a, b) => b.spent - a.spent);
-    }, [departments, departmentSpend]);
+        if (user?.role === UserRole.SYSTEM_ADMIN) {
+            CANONICAL_DEPARTMENTS.forEach((name) => {
+                if (!base.find((department) => department.name === name)) {
+                    base.push({
+                        id: `canonical-${name}`,
+                        name,
+                        limit: 0,
+                        spent: normalizedDepartmentSpend[name] || 0,
+                    });
+                }
+            });
+        }
+
+        return base
+            .sort((a, b) => b.spent - a.spent);
+    }, [departments, departmentSpend, user?.role]);
 
     const handleExpand = async (departmentId: string) => {
         if (expandedDept?.id === departmentId && expandedDept.rangeKey === dateRangeKey) {
@@ -104,7 +138,7 @@ export const BudgetTracker = memo(function BudgetTracker({
         const cacheKey = `${dateRangeKey}|${departmentId}`;
 
         if (!breakdownData[cacheKey]) {
-            if (departmentId.startsWith('unassigned-')) {
+            if (departmentId.startsWith('unassigned-') || departmentId.startsWith('canonical-')) {
                 setBreakdownData((prev) => ({ ...prev, [cacheKey]: [] }));
                 return;
             }

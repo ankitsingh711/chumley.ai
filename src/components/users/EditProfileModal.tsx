@@ -6,6 +6,7 @@ import type { User, UpdateUserInput } from '../../types/api';
 import { usersApi } from '../../services/users.service';
 import { useAppDispatch } from '../../store/hooks';
 import { checkAuth } from '../../store/slices/authSlice';
+import { normalizeDepartmentName } from '../../utils/departments';
 
 interface EditProfileModalProps {
     isOpen: boolean;
@@ -79,10 +80,10 @@ export const EditProfileModal = ({ isOpen, onClose, currentUser }: EditProfileMo
 
     const getDepartmentName = (department: unknown): string => {
         if (!department) return 'Not assigned';
-        if (typeof department === 'string') return department;
+        if (typeof department === 'string') return normalizeDepartmentName(department) || department;
         if (typeof department === 'object' && 'name' in department) {
             const nameValue = (department as { name?: string }).name;
-            return nameValue || 'Not assigned';
+            return (nameValue && (normalizeDepartmentName(nameValue) || nameValue)) || 'Not assigned';
         }
         return 'Not assigned';
     };

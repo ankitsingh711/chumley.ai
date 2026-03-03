@@ -11,7 +11,82 @@ interface UpdateDepartmentData {
     description?: string | null;
 }
 
-const DEPARTMENT_NAME_EXCLUSIONS = ['Royston', 'Roystton', 'royston', 'roystton'];
+const CANONICAL_DEPARTMENT_NAMES = [
+    'Tech',
+    'Marketing',
+    'Support',
+    'Finance',
+    'HR&Recruitments',
+    'Sector Group',
+    'Trade Group',
+    'Fleet&Assets',
+];
+
+const MONTHLY_DEPARTMENT_BUDGETS: Record<string, number> = {
+    Tech: 135000,
+    Marketing: 350000,
+    Support: 300000,
+    Finance: 40000,
+    'HR&Recruitments': 10000,
+    'Sector Group': 100000,
+    'Trade Group': 100000,
+    'Fleet&Assets': 200000,
+};
+
+const LEGACY_DEPARTMENT_ALIASES: Record<string, string> = {
+    royston: 'Tech',
+    roystton: 'Tech',
+    chessington: 'Tech',
+    'hr & recruitment': 'HR&Recruitments',
+    'hr&recruitment': 'HR&Recruitments',
+    'hr and recruitment': 'HR&Recruitments',
+    'hr & recruitments': 'HR&Recruitments',
+    'hr and recruitments': 'HR&Recruitments',
+    fleet: 'Fleet&Assets',
+    assets: 'Fleet&Assets',
+    'fleet & assets': 'Fleet&Assets',
+};
+
+const CANONICAL_DEPARTMENT_LOOKUP: Record<string, string> = Object.fromEntries(
+    CANONICAL_DEPARTMENT_NAMES.map((name) => [name.toLowerCase(), name]),
+);
+
+const normalizeDepartmentName = (value?: string | null): string | undefined => {
+    if (!value) return undefined;
+
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+
+    const lowered = trimmed.toLowerCase();
+    return LEGACY_DEPARTMENT_ALIASES[lowered] || CANONICAL_DEPARTMENT_LOOKUP[lowered] || trimmed;
+};
+
+const resolveMonthlyBudget = (departmentName: string, currentBudget: unknown): number => {
+    const normalizedName = normalizeDepartmentName(departmentName);
+    const defaultBudget = normalizedName ? (MONTHLY_DEPARTMENT_BUDGETS[normalizedName] || 0) : 0;
+    const numericBudget = Number(currentBudget || 0);
+
+    return numericBudget > 0 ? numericBudget : defaultBudget;
+};
+
+const getDepartmentPriorityScore = (
+    department: {
+        id: string;
+        budget?: unknown;
+        _count?: { categories?: number | null };
+        metrics?: { totalSpent?: number; requestCount?: number; userCount?: number };
+    },
+    userDepartmentId?: string,
+) => {
+    const sameAsUserDepartment = userDepartmentId && department.id === userDepartmentId ? 1_000_000 : 0;
+    const budgetScore = Number(department.budget || 0) > 0 ? 10_000 : 0;
+    const categoryScore = Number(department._count?.categories || 0) * 100;
+    const requestScore = Number(department.metrics?.requestCount || 0) * 10;
+    const userScore = Number(department.metrics?.userCount || 0);
+    const spendScore = Number(department.metrics?.totalSpent || 0) > 0 ? 1 : 0;
+
+    return sameAsUserDepartment + budgetScore + categoryScore + requestScore + userScore + spendScore;
+};
 
 export class DepartmentService {
     /**
@@ -181,22 +256,29 @@ export class DepartmentService {
      * Get all departments (Filtered by User Role)
      */
     async getAllDepartments(user?: any) {
-        let where: any = {};
+        let where: any = {
+            name: { in: CANONICAL_DEPARTMENT_NAMES },
+        };
 
         // RBAC: Filter departments based on user role
         if (user && user.role !== 'SYSTEM_ADMIN') {
-            if (user.departmentId) {
-                where = { id: user.departmentId };
-            } else {
+            if (!user.departmentId) {
                 // User has no department, return empty list (or handle as needed)
                 return [];
             }
-        }
 
-        where = {
-            ...where,
-            name: { notIn: DEPARTMENT_NAME_EXCLUSIONS },
-        };
+            const userDepartment = await prisma.department.findUnique({
+                where: { id: user.departmentId },
+                select: { name: true },
+            });
+
+            const normalizedDepartmentName = normalizeDepartmentName(userDepartment?.name);
+            if (!normalizedDepartmentName || !CANONICAL_DEPARTMENT_NAMES.includes(normalizedDepartmentName)) {
+                return [];
+            }
+
+            where = { name: normalizedDepartmentName };
+        }
 
         const departments = await prisma.department.findMany({
             where,
@@ -215,7 +297,10 @@ export class DepartmentService {
                         categories: true
                     }
                 }
-            }
+            },
+            orderBy: {
+                name: 'asc',
+            },
         });
 
         // Calculate spending for each department
@@ -250,7 +335,7 @@ export class DepartmentService {
             }
         });
 
-        return departments.map(dept => ({
+        const departmentsWithMetrics = departments.map(dept => ({
             ...dept,
             metrics: {
                 totalSpent: spendingMap.get(dept.id) || 0,
@@ -258,6 +343,51 @@ export class DepartmentService {
                 userCount: dept._count.users
             }
         }));
+
+        const dedupedByName = new Map<string, (typeof departmentsWithMetrics)[number]>();
+
+        departmentsWithMetrics.forEach((department) => {
+            const normalizedName = normalizeDepartmentName(department.name) || department.name;
+            const key = normalizedName.toLowerCase();
+            const existing = dedupedByName.get(key);
+
+            if (!existing) {
+                dedupedByName.set(key, { ...department, name: normalizedName });
+                return;
+            }
+
+            const existingScore = getDepartmentPriorityScore(existing, user?.departmentId);
+            const candidateScore = getDepartmentPriorityScore(department, user?.departmentId);
+            const preferred = candidateScore > existingScore ? department : existing;
+            const secondary = preferred === department ? existing : department;
+
+            const usersById = new Map<string, typeof existing.users[number]>();
+            [...existing.users, ...department.users].forEach((userItem) => {
+                usersById.set(userItem.id, userItem);
+            });
+            const mergedUsers = Array.from(usersById.values());
+
+            dedupedByName.set(key, {
+                ...preferred,
+                name: normalizedName,
+                description: preferred.description ?? secondary.description ?? null,
+                budget: Number(preferred.budget || 0) >= Number(secondary.budget || 0)
+                    ? preferred.budget
+                    : secondary.budget,
+                users: mergedUsers,
+                _count: {
+                    users: mergedUsers.length,
+                    categories: Number(existing._count?.categories || 0) + Number(department._count?.categories || 0),
+                },
+                metrics: {
+                    totalSpent: Number(existing.metrics?.totalSpent || 0) + Number(department.metrics?.totalSpent || 0),
+                    requestCount: Number(existing.metrics?.requestCount || 0) + Number(department.metrics?.requestCount || 0),
+                    userCount: mergedUsers.length,
+                },
+            });
+        });
+
+        return Array.from(dedupedByName.values());
     }
 }
 

@@ -23,6 +23,7 @@ import { isPaginatedResponse } from '../types/pagination';
 import { getDateAndTime } from '../utils/dateFormat';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole } from '../types/api';
+import { normalizeDepartmentName } from '../utils/departments';
 
 const formatCurrency = (value: number) =>
     `£${Number(value || 0).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
@@ -83,11 +84,11 @@ export default function Dashboard() {
         ? user.department
         : user?.department?.name;
 
-    const departmentFilter = isRestrictedRole && departmentName ? departmentName : undefined;
+    const departmentFilter = isRestrictedRole ? normalizeDepartmentName(departmentName) : undefined;
 
     const filteredDepartments = useMemo(() => {
         if (departmentFilter) {
-            return departments.filter((department) => department.name.toLowerCase() === departmentFilter.toLowerCase());
+            return departments.filter((department) => normalizeDepartmentName(department.name) === departmentFilter);
         }
         return departments;
     }, [departments, departmentFilter]);

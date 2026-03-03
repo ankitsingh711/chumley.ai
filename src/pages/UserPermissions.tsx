@@ -9,6 +9,7 @@ import { usersApi } from '../services/users.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import { useAuth } from '../hooks/useAuth';
 import { UserRole, UserStatus, type User } from '../types/api';
+import { normalizeDepartmentName } from '../utils/departments';
 
 
 export default function UserPermissions() {
@@ -227,7 +228,7 @@ export default function UserPermissions() {
                 name: inviteData.name,
                 email: inviteData.email,
                 role: inviteData.role,
-                departmentName: selectedDepartmentName,
+                departmentName: selectedDepartmentName ? (normalizeDepartmentName(selectedDepartmentName) || selectedDepartmentName) : undefined,
                 inviteLink: response?.inviteLink,
                 statusMessage: response?.message,
             });
@@ -310,10 +311,10 @@ export default function UserPermissions() {
 
     const getDepartmentName = (dept: unknown) => {
         if (!dept) return null;
-        if (typeof dept === 'string') return dept;
+        if (typeof dept === 'string') return normalizeDepartmentName(dept) || dept;
         if (typeof dept === 'object' && 'name' in dept) {
             const name = (dept as { name?: string }).name;
-            return name || null;
+            return name ? (normalizeDepartmentName(name) || name) : null;
         }
         return null;
     };

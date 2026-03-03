@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { type PurchaseRequest, RequestStatus } from '../../types/api';
+import { normalizeDepartmentName } from '../../utils/departments';
 
 interface RequestDetailsModalProps {
     request: PurchaseRequest | null;
@@ -66,9 +67,9 @@ const getStatusClasses = (status: RequestStatus) => {
 
 const getDepartmentName = (department: unknown) => {
     if (!department) return 'Unassigned';
-    if (typeof department === 'string') return department;
+    if (typeof department === 'string') return normalizeDepartmentName(department) || department;
     if (typeof department === 'object' && department !== null && 'name' in department && typeof department.name === 'string') {
-        return department.name;
+        return normalizeDepartmentName(department.name) || department.name;
     }
     return 'Unassigned';
 };

@@ -29,6 +29,7 @@ import { RequestStatus, UserRole } from '../types/api';
 import { Pagination } from '../components/Pagination';
 import { isPaginatedResponse } from '../types/pagination';
 import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
+import { normalizeDepartmentName } from '../utils/departments';
 
 const APPROVED_SUPPLIER_STATUSES = new Set(['STANDARD', 'PREFERRED', 'ACTIVE']);
 
@@ -58,10 +59,10 @@ const getStatusClasses = (status: RequestStatusType) => {
 const getDepartmentName = (department: unknown) => {
     if (!department) return 'Unassigned';
     if (typeof department === 'object' && 'name' in department && typeof department.name === 'string') {
-        return department.name;
+        return normalizeDepartmentName(department.name) || department.name;
     }
     if (typeof department === 'string') {
-        return department;
+        return normalizeDepartmentName(department) || department;
     }
     return 'Unassigned';
 };

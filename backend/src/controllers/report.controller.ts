@@ -5,6 +5,21 @@ import { startOfMonth, subMonths, format } from 'date-fns';
 import prisma from '../config/db';
 import { CacheService } from '../utils/cache';
 
+const CANONICAL_DEPARTMENT_NAMES = [
+    'Tech',
+    'Marketing',
+    'Support',
+    'Finance',
+    'HR&Recruitments',
+    'Sector Group',
+    'Trade Group',
+    'Fleet&Assets',
+] as const;
+
+const CANONICAL_DEPARTMENT_LOOKUP: Record<string, string> = Object.fromEntries(
+    CANONICAL_DEPARTMENT_NAMES.map((name) => [name.toLowerCase(), name]),
+);
+
 const normalizeDepartmentLabel = (value?: string | null): string | undefined => {
     if (!value) return undefined;
 
@@ -14,14 +29,22 @@ const normalizeDepartmentLabel = (value?: string | null): string | undefined => 
     const legacyDepartmentMap: Record<string, string> = {
         royston: 'Tech',
         roystton: 'Tech',
+        chessington: 'Tech',
         'hr & recruitment': 'HR&Recruitments',
         'hr&recruitment': 'HR&Recruitments',
+        'hr and recruitment': 'HR&Recruitments',
+        'hr & recruitments': 'HR&Recruitments',
+        'hr and recruitments': 'HR&Recruitments',
         fleet: 'Fleet&Assets',
         assets: 'Fleet&Assets',
+        'fleet & assets': 'Fleet&Assets',
     };
 
     const mapped = legacyDepartmentMap[lowered];
     if (mapped) return mapped;
+
+    const canonical = CANONICAL_DEPARTMENT_LOOKUP[lowered];
+    if (canonical) return canonical;
 
     return trimmed;
 };
