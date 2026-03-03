@@ -21,6 +21,22 @@ const DEPARTMENT_ORDER = new Map<string, number>(
     CANONICAL_DEPARTMENTS.map((name, index) => [name, index]),
 );
 
+const MONTHLY_DEPARTMENT_BUDGETS: Record<string, number> = {
+    Tech: 135000,
+    Marketing: 350000,
+    Support: 300000,
+    Finance: 40000,
+    'HR&Recruitments': 10000,
+    'Sector Group': 100000,
+    'Trade Group': 100000,
+    'Fleet&Assets': 200000,
+};
+
+const resolveMonthlyBudget = (departmentName: string, currentBudget: number) => {
+    const defaultBudget = MONTHLY_DEPARTMENT_BUDGETS[departmentName] || 0;
+    return currentBudget > 0 ? currentBudget : defaultBudget;
+};
+
 const getDepartmentPriorityScore = (department: Department) => {
     const budgetScore = Number(department.budget || 0) > 0 ? 10_000 : 0;
     const requestScore = Number(department.metrics?.requestCount || 0) * 100;
@@ -35,11 +51,16 @@ const dedupeDepartments = (departments: Department[]): Department[] => {
 
     departments.forEach((department) => {
         const normalizedName = normalizeDepartmentName(department.name) || department.name;
+        if (!DEPARTMENT_ORDER.has(normalizedName)) {
+            return;
+        }
+
         const key = normalizedName.toLowerCase();
         const existing = byName.get(key);
+        const normalizedBudget = resolveMonthlyBudget(normalizedName, Number(department.budget || 0));
 
         if (!existing) {
-            byName.set(key, { ...department, name: normalizedName });
+            byName.set(key, { ...department, name: normalizedName, budget: normalizedBudget });
             return;
         }
 
@@ -52,7 +73,10 @@ const dedupeDepartments = (departments: Department[]): Department[] => {
             ...preferred,
             name: normalizedName,
             description: preferred.description ?? secondary.description ?? null,
-            budget: Math.max(Number(existing.budget || 0), Number(department.budget || 0)),
+            budget: resolveMonthlyBudget(
+                normalizedName,
+                Math.max(Number(existing.budget || 0), normalizedBudget),
+            ),
             metrics: {
                 ...(preferred.metrics || {}),
                 totalSpent: Number(existing.metrics?.totalSpent || 0) + Number(department.metrics?.totalSpent || 0),
@@ -68,7 +92,10 @@ const dedupeDepartments = (departments: Department[]): Department[] => {
         const rankB = DEPARTMENT_ORDER.get(b.name) ?? Number.MAX_SAFE_INTEGER;
         if (rankA !== rankB) return rankA - rankB;
         return a.name.localeCompare(b.name);
-    });
+    }).map((department) => ({
+        ...department,
+        budget: resolveMonthlyBudget(department.name, Number(department.budget || 0)),
+    }));
 };
 
 export const departmentsApi = {

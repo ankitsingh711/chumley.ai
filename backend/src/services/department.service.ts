@@ -256,9 +256,7 @@ export class DepartmentService {
      * Get all departments (Filtered by User Role)
      */
     async getAllDepartments(user?: any) {
-        let where: any = {
-            name: { in: CANONICAL_DEPARTMENT_NAMES },
-        };
+        let where: any = {};
 
         // RBAC: Filter departments based on user role
         if (user && user.role !== 'SYSTEM_ADMIN') {
@@ -277,7 +275,12 @@ export class DepartmentService {
                 return [];
             }
 
-            where = { name: normalizedDepartmentName };
+            where = {
+                OR: [
+                    { id: user.departmentId },
+                    { name: normalizedDepartmentName },
+                ],
+            };
         }
 
         const departments = await prisma.department.findMany({
@@ -335,24 +338,34 @@ export class DepartmentService {
             }
         });
 
-        const departmentsWithMetrics = departments.map(dept => ({
-            ...dept,
-            metrics: {
-                totalSpent: spendingMap.get(dept.id) || 0,
-                requestCount: requestCountMap.get(dept.id) || 0,
-                userCount: dept._count.users
-            }
-        }));
+        const departmentsWithMetrics = departments.map(dept => {
+            const normalizedName = normalizeDepartmentName(dept.name) || dept.name;
+            const resolvedBudget = resolveMonthlyBudget(normalizedName, dept.budget);
+
+            return {
+                ...dept,
+                name: normalizedName,
+                budget: resolvedBudget,
+                metrics: {
+                    totalSpent: spendingMap.get(dept.id) || 0,
+                    requestCount: requestCountMap.get(dept.id) || 0,
+                    userCount: dept._count.users
+                }
+            };
+        });
 
         const dedupedByName = new Map<string, (typeof departmentsWithMetrics)[number]>();
 
         departmentsWithMetrics.forEach((department) => {
-            const normalizedName = normalizeDepartmentName(department.name) || department.name;
-            const key = normalizedName.toLowerCase();
+            if (!CANONICAL_DEPARTMENT_NAMES.includes(department.name)) {
+                return;
+            }
+
+            const key = department.name.toLowerCase();
             const existing = dedupedByName.get(key);
 
             if (!existing) {
-                dedupedByName.set(key, { ...department, name: normalizedName });
+                dedupedByName.set(key, department);
                 return;
             }
 
@@ -369,11 +382,8 @@ export class DepartmentService {
 
             dedupedByName.set(key, {
                 ...preferred,
-                name: normalizedName,
                 description: preferred.description ?? secondary.description ?? null,
-                budget: Number(preferred.budget || 0) >= Number(secondary.budget || 0)
-                    ? preferred.budget
-                    : secondary.budget,
+                budget: Math.max(Number(existing.budget || 0), Number(department.budget || 0)),
                 users: mergedUsers,
                 _count: {
                     users: mergedUsers.length,
@@ -387,7 +397,18 @@ export class DepartmentService {
             });
         });
 
-        return Array.from(dedupedByName.values());
+        const dedupedDepartments = Array.from(dedupedByName.values()).sort((a, b) =>
+            CANONICAL_DEPARTMENT_NAMES.indexOf(a.name) - CANONICAL_DEPARTMENT_NAMES.indexOf(b.name),
+        );
+
+        return dedupedDepartments.map((department) => ({
+            ...department,
+            budget: resolveMonthlyBudget(department.name, department.budget),
+            metrics: {
+                ...department.metrics,
+                userCount: department.users.length,
+            }
+        }));
     }
 }
 
