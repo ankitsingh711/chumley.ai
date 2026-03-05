@@ -25,7 +25,7 @@ import { requestsApi } from '../services/requests.service';
 import { ordersApi } from '../services/orders.service';
 import { pdfService } from '../services/pdf.service';
 import type { PurchaseRequest, RequestStatus as RequestStatusType } from '../types/api';
-import { RequestStatus, UserRole } from '../types/api';
+import { RequestStatus, UserRole, PaymentType } from '../types/api';
 import { Pagination } from '../components/Pagination';
 import { isPaginatedResponse } from '../types/pagination';
 import { formatDateTime, getDateAndTime } from '../utils/dateFormat';
@@ -693,11 +693,10 @@ export default function Requests() {
                                 <button
                                     key={tab.value}
                                     onClick={() => setFilter(tab.value)}
-                                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${
-                                        filter === tab.value
-                                            ? 'border-primary-200 bg-primary-600 text-white shadow-sm'
-                                            : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-700'
-                                    }`}
+                                    className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm font-medium transition ${filter === tab.value
+                                        ? 'border-primary-200 bg-primary-600 text-white shadow-sm'
+                                        : 'border-gray-200 bg-white text-gray-600 hover:border-primary-200 hover:text-primary-700'
+                                        }`}
                                 >
                                     <span>{tab.label}</span>
                                     <span className={`rounded-full px-2 py-0.5 text-xs ${filter === tab.value ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -868,6 +867,11 @@ export default function Requests() {
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                                        {request.paymentType === PaymentType.MONTHLY && (
+                                                            <p className="mt-0.5 inline-flex items-center rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+                                                                Monthly × {request.installmentMonths}
+                                                            </p>
+                                                        )}
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusClasses(request.status)}`}>
@@ -915,7 +919,14 @@ export default function Requests() {
                                             <p className="text-gray-700">
                                                 <span className="font-medium text-gray-900">Submitted:</span> {date} at {time}
                                             </p>
-                                            <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                            <div className="flex items-center gap-3">
+                                                <p className="text-base font-semibold text-gray-900">{formatCurrency(Number(request.totalAmount))}</p>
+                                                {request.paymentType === PaymentType.MONTHLY && (
+                                                    <span className="inline-flex items-center rounded bg-indigo-50 px-2 py-0.5 text-[10px] font-medium text-indigo-700">
+                                                        Monthly × {request.installmentMonths}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {(request.status === RequestStatus.PENDING || request.status === RequestStatus.IN_PROGRESS) && isSupplierApprovalBlocked(request) && (

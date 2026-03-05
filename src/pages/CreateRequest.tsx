@@ -310,11 +310,19 @@ export default function CreateRequest() {
                     </div>
                     <div className="rounded-xl border border-white/70 bg-white/90 p-4 shadow-sm backdrop-blur">
                         <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wide text-gray-500">
-                            Request Total
+                            {paymentType === PaymentType.ONE_TIME ? 'Request Total' : 'Monthly Spend'}
                             <ReceiptText className="h-4 w-4 text-emerald-600" />
                         </div>
-                        <p className="mt-2 text-2xl font-bold text-emerald-700">{formatCurrency(totalAmount)}</p>
-                        <p className="mt-1 text-xs text-gray-500">Estimated commercial value</p>
+                        <p className="mt-2 text-2xl font-bold text-emerald-700">
+                            {paymentType === PaymentType.ONE_TIME
+                                ? formatCurrency(totalAmount)
+                                : formatCurrency(Math.ceil((totalAmount / installmentMonths) * 100) / 100)}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-500">
+                            {paymentType === PaymentType.ONE_TIME
+                                ? 'Estimated commercial value'
+                                : `Total value: ${formatCurrency(totalAmount)}`}
+                        </p>
                     </div>
                 </div>
             </section>
@@ -646,9 +654,23 @@ export default function CreateRequest() {
                             </div>
                         </div>
 
-                        <div className="mt-4 flex items-center justify-between">
-                            <span className="text-base font-semibold text-gray-900">Total</span>
-                            <span className="text-2xl font-bold text-primary-700">{formatCurrency(totalAmount)}</span>
+                        <div className="mt-4 flex flex-col gap-1">
+                            <div className="flex items-center justify-between">
+                                <span className="text-base font-semibold text-gray-900">
+                                    {paymentType === PaymentType.ONE_TIME ? 'Total' : 'Total (Per Month)'}
+                                </span>
+                                <span className="text-2xl font-bold text-primary-700">
+                                    {paymentType === PaymentType.ONE_TIME
+                                        ? formatCurrency(totalAmount)
+                                        : formatCurrency(Math.ceil((totalAmount / installmentMonths) * 100) / 100)}
+                                </span>
+                            </div>
+                            {paymentType !== PaymentType.ONE_TIME && (
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-500">Total Contract Value</span>
+                                    <span className="text-sm font-semibold text-gray-700">{formatCurrency(totalAmount)}</span>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-5 space-y-2 text-sm">
