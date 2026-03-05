@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, CheckCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import { Button } from './Button';
 
 interface ConfirmationModalProps {
@@ -29,10 +29,12 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
     showCancel = true
 }) => {
     const modalRef = useRef<HTMLDivElement>(null);
+    const titleId = useId();
+    const descriptionId = useId();
 
     useEffect(() => {
         const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (e.key === 'Escape' && !isLoading) onClose();
         };
 
         if (isOpen) {
@@ -44,58 +46,82 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
             document.removeEventListener('keydown', handleEscape);
             document.body.style.overflow = 'unset';
         };
-    }, [isOpen, onClose]);
+    }, [isOpen, isLoading, onClose]);
 
     if (!isOpen) return null;
 
-    const getIcon = () => {
-        switch (variant) {
-            case 'danger':
-                return <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4"><AlertTriangle className="h-6 w-6" /></div>;
-            case 'warning':
-                return <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 mb-4"><AlertTriangle className="h-6 w-6" /></div>;
-            case 'success':
-                return <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 mb-4"><CheckCircle className="h-6 w-6" /></div>;
-            default:
-                return null;
-        }
-    };
+    const stylesByVariant = {
+        danger: {
+            icon: AlertCircle,
+            iconClass: 'bg-rose-100 text-rose-600 ring-8 ring-rose-50',
+            borderClass: 'border-rose-100',
+            stripClass: 'bg-gradient-to-r from-rose-500 to-rose-400',
+            confirmButtonClass: '!bg-rose-600 hover:!bg-rose-700 focus-visible:!ring-rose-500 !text-white',
+        },
+        warning: {
+            icon: AlertTriangle,
+            iconClass: 'bg-amber-100 text-amber-700 ring-8 ring-amber-50',
+            borderClass: 'border-amber-100',
+            stripClass: 'bg-gradient-to-r from-amber-500 to-amber-400',
+            confirmButtonClass: '!bg-amber-500 hover:!bg-amber-600 focus-visible:!ring-amber-500 !text-white',
+        },
+        info: {
+            icon: Info,
+            iconClass: 'bg-sky-100 text-sky-700 ring-8 ring-sky-50',
+            borderClass: 'border-sky-100',
+            stripClass: 'bg-gradient-to-r from-sky-500 to-sky-400',
+            confirmButtonClass: '!bg-sky-600 hover:!bg-sky-700 focus-visible:!ring-sky-500 !text-white',
+        },
+        success: {
+            icon: CheckCircle,
+            iconClass: 'bg-emerald-100 text-emerald-700 ring-8 ring-emerald-50',
+            borderClass: 'border-emerald-100',
+            stripClass: 'bg-gradient-to-r from-emerald-500 to-emerald-400',
+            confirmButtonClass: '!bg-emerald-600 hover:!bg-emerald-700 focus-visible:!ring-emerald-500 !text-white',
+        },
+    } as const;
 
-    const getConfirmButtonClass = () => {
-        switch (variant) {
-            case 'danger': return 'bg-red-600 hover:bg-red-700 focus:ring-red-500';
-            case 'warning': return 'bg-yellow-600 hover:bg-yellow-700 focus:ring-yellow-500 text-white'; // Ensure text contrast
-            default: return 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500';
-        }
-    };
+    const currentStyle = stylesByVariant[variant];
+    const Icon = currentStyle.icon;
 
     return createPortal(
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+        <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px] animate-in fade-in duration-200"
+            onClick={() => !isLoading && onClose()}
+        >
             <div
                 ref={modalRef}
-                className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                aria-describedby={descriptionId}
+                className={`w-full max-w-md overflow-hidden rounded-2xl border bg-white shadow-2xl ${currentStyle.borderClass} animate-in zoom-in-95 duration-200`}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="p-6 text-center">
+                <div className={`h-1 w-full ${currentStyle.stripClass}`} />
+
+                <div className="p-6">
                     <div className="flex justify-center">
-                        {getIcon()}
+                        <div className={`mb-5 flex h-12 w-12 items-center justify-center rounded-full ${currentStyle.iconClass}`}>
+                            <Icon className="h-6 w-6" />
+                        </div>
                     </div>
 
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
+                    <h3 id={titleId} className="text-center text-xl font-semibold text-gray-900">
                         {title}
                     </h3>
 
-                    <p className="text-sm text-gray-500 mb-8 whitespace-pre-wrap">
+                    <p id={descriptionId} className="mt-3 text-center text-sm leading-relaxed text-gray-600 whitespace-pre-wrap">
                         {message}
                     </p>
 
-                    <div className="flex gap-3 justify-center">
+                    <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                         {showCancel && (
                             <Button
                                 variant="outline"
                                 onClick={onClose}
                                 disabled={isLoading}
-                                className="bg-white"
+                                className="w-full border-gray-300 bg-white text-gray-700 hover:bg-gray-50 sm:w-auto sm:min-w-[110px]"
                             >
                                 {cancelText}
                             </Button>
@@ -103,7 +129,7 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
                         <Button
                             onClick={onConfirm}
                             disabled={isLoading}
-                            className={`${getConfirmButtonClass()} min-w-[100px]`}
+                            className={`w-full sm:w-auto sm:min-w-[150px] ${currentStyle.confirmButtonClass}`}
                         >
                             {isLoading ? 'Processing...' : confirmText}
                         </Button>

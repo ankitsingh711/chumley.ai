@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { RequestStatus, UserRole } from '@prisma/client';
+import { RequestStatus, UserRole, PaymentType } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { z } from 'zod';
 import Logger from '../utils/logger';
@@ -24,6 +24,8 @@ const createRequestSchema = z.object({
     categoryId: z.string().uuid().optional(), // Hierarchical Category ID
     deliveryLocation: z.string().optional(),
     expectedDeliveryDate: z.string().transform((str) => new Date(str)).optional(),
+    paymentType: z.nativeEnum(PaymentType).optional().default(PaymentType.ONE_TIME),
+    installmentMonths: z.number().int().min(2).max(24).optional(),
     items: z.array(itemSchema).min(1),
 });
 
@@ -67,6 +69,10 @@ export const createRequest = async (req: Request, res: Response) => {
                 categoryId: validatedData.categoryId,
                 deliveryLocation: validatedData.deliveryLocation,
                 expectedDeliveryDate: validatedData.expectedDeliveryDate,
+                paymentType: validatedData.paymentType,
+                installmentMonths: validatedData.paymentType !== PaymentType.ONE_TIME
+                    ? validatedData.installmentMonths
+                    : undefined,
                 items: {
                     create: validatedData.items.map((item) => ({
                         description: item.description,
@@ -346,10 +352,35 @@ export const updateRequestStatus = async (req: Request, res: Response) => {
                             requestId: id,
                             supplierId: request.supplierId,
                             totalAmount: request.totalAmount,
-                            status: OrderStatus.SENT, // Assuming we send it immediately via email below
+                            status: OrderStatus.SENT,
+                            paymentType: request.paymentType,
+                            installmentMonths: request.installmentMonths,
                         }
                     });
                     Logger.info(`Generated PO ${po.id} for Request ${id}`);
+
+                    // Auto-generate payment schedule for installment-based payments
+                    if (request.paymentType !== PaymentType.ONE_TIME && request.installmentMonths) {
+                        const totalNum = Number(request.totalAmount);
+                        const months = request.installmentMonths;
+                        const perInstallment = Math.floor((totalNum / months) * 100) / 100;
+                        const remainder = Math.round((totalNum - perInstallment * months) * 100) / 100;
+
+                        const schedules = [];
+                        for (let i = 1; i <= months; i++) {
+                            const dueDate = new Date();
+                            dueDate.setMonth(dueDate.getMonth() + i);
+                            schedules.push({
+                                orderId: po.id,
+                                installmentNo: i,
+                                amount: i === months ? perInstallment + remainder : perInstallment,
+                                dueDate,
+                            });
+                        }
+
+                        await prisma.paymentSchedule.createMany({ data: schedules });
+                        Logger.info(`Generated ${months} payment installments for PO ${po.id}`);
+                    }
                 }
 
                 if (request.supplier && request.supplier.contactEmail) {

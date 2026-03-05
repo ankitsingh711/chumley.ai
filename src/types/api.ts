@@ -48,6 +48,23 @@ export const OrderStatus = {
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
 
+export const PaymentType = {
+    ONE_TIME: 'ONE_TIME',
+    MONTHLY: 'MONTHLY',
+    QUARTERLY: 'QUARTERLY',
+} as const;
+
+export type PaymentType = (typeof PaymentType)[keyof typeof PaymentType];
+
+export const PaymentInstallmentStatus = {
+    PENDING: 'PENDING',
+    PAID: 'PAID',
+    OVERDUE: 'OVERDUE',
+    CANCELLED: 'CANCELLED',
+} as const;
+
+export type PaymentInstallmentStatus = (typeof PaymentInstallmentStatus)[keyof typeof PaymentInstallmentStatus];
+
 export const ContractStatus = {
     DRAFT: 'DRAFT',
     ACTIVE: 'ACTIVE',
@@ -210,6 +227,8 @@ export interface PurchaseRequest {
     expectedDeliveryDate?: string;
     attachments?: Attachment[];
     branch?: Branch;
+    paymentType?: PaymentType;
+    installmentMonths?: number;
     order?: { id: string; status: OrderStatus };
 }
 
@@ -232,6 +251,22 @@ export interface PurchaseOrder {
     status: OrderStatus;
     totalAmount: number;
     issuedAt?: string;
+    createdAt: string;
+    updatedAt: string;
+    paymentType?: PaymentType;
+    installmentMonths?: number;
+    paymentSchedules?: PaymentSchedule[];
+}
+
+export interface PaymentSchedule {
+    id: string;
+    orderId: string;
+    installmentNo: number;
+    amount: number;
+    dueDate: string;
+    paidDate?: string;
+    status: PaymentInstallmentStatus;
+    notes?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -291,6 +326,8 @@ export interface CreateRequestInput {
     deliveryLocation?: string;
     expectedDeliveryDate?: string;
     branch?: Branch;
+    paymentType?: PaymentType;
+    installmentMonths?: number;
     items: {
         description: string;
         quantity: number;

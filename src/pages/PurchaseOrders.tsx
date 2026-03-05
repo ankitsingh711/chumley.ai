@@ -301,9 +301,9 @@ export default function PurchaseOrders() {
                 variant = 'warning';
                 break;
             case OrderStatus.COMPLETED:
-                title = 'Complete Order';
-                message = 'Are you sure you want to mark this order as COMPLETED? This confirms all goods/services have been received.';
-                confirmText = 'Mark Completed';
+                title = 'Complete Purchase Order';
+                message = 'Mark this order as completed only after all items or services have been received.';
+                confirmText = 'Complete Order';
                 variant = 'success';
                 break;
             default:

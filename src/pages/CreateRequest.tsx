@@ -14,6 +14,7 @@ import {
     ReceiptText,
     Hash,
     PoundSterling,
+    CalendarClock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { requestsApi } from '../services/requests.service';
@@ -21,7 +22,7 @@ import { suppliersApi } from '../services/suppliers.service';
 import { departmentsApi, type Department } from '../services/departments.service';
 import type { Supplier } from '../types/api';
 import { isPaginatedResponse } from '../types/pagination';
-import { type CreateRequestInput, Branch, UserRole } from '../types/api';
+import { type CreateRequestInput, Branch, UserRole, PaymentType } from '../types/api';
 import { useAuth } from '../hooks/useAuth';
 
 import { type Category } from '../types/category';
@@ -57,6 +58,8 @@ export default function CreateRequest() {
         { description: '', quantity: '', unitPrice: '' }
     ]);
     const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
+    const [paymentType, setPaymentType] = useState<PaymentType>(PaymentType.ONE_TIME);
+    const [installmentMonths, setInstallmentMonths] = useState<number>(6);
 
     // Data State
     const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -212,6 +215,8 @@ export default function CreateRequest() {
                     unitPrice: Number(item.unitPrice)
                 })),
                 branch,
+                paymentType,
+                installmentMonths: paymentType !== PaymentType.ONE_TIME ? installmentMonths : undefined,
             };
 
             await requestsApi.create(data);
@@ -524,6 +529,74 @@ export default function CreateRequest() {
                         </div>
                     </section>
 
+                    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                        <h3 className="mb-6 flex items-center gap-2 text-lg font-semibold text-gray-900">
+                            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-700 text-xs font-bold text-white">3</span>
+                            Payment Plan
+                        </h3>
+
+                        <div className="space-y-5">
+                            <div className="flex flex-wrap gap-3">
+                                {[
+                                    { value: PaymentType.ONE_TIME, label: 'One-time Payment', desc: 'Full amount on delivery' },
+                                    { value: PaymentType.MONTHLY, label: 'Monthly Installments', desc: 'Split across equal monthly payments' },
+                                ].map((option) => (
+                                    <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => setPaymentType(option.value)}
+                                        className={`flex-1 min-w-[200px] rounded-xl border-2 p-4 text-left transition ${paymentType === option.value
+                                            ? 'border-primary-600 bg-primary-50 ring-1 ring-primary-200'
+                                            : 'border-gray-200 bg-white hover:border-gray-300'
+                                            }`}
+                                    >
+                                        <p className={`text-sm font-semibold ${paymentType === option.value ? 'text-primary-700' : 'text-gray-900'
+                                            }`}>
+                                            {option.label}
+                                        </p>
+                                        <p className="mt-0.5 text-xs text-gray-500">{option.desc}</p>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {paymentType !== PaymentType.ONE_TIME && (
+                                <div className="rounded-xl border border-primary-100 bg-primary-50/50 p-4 space-y-4">
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">
+                                            Number of Months
+                                        </label>
+                                        <Select
+                                            value={String(installmentMonths)}
+                                            onChange={(value) => setInstallmentMonths(Number(value))}
+                                            options={[
+                                                { value: '3', label: '3 months' },
+                                                { value: '6', label: '6 months' },
+                                                { value: '9', label: '9 months' },
+                                                { value: '12', label: '12 months' },
+                                            ]}
+                                            triggerClassName="h-11 bg-white"
+                                        />
+                                    </div>
+
+                                    {totalAmount > 0 && (
+                                        <div className="flex items-center gap-3 rounded-lg border border-primary-200 bg-white p-3">
+                                            <CalendarClock className="h-5 w-5 text-primary-600 shrink-0" />
+                                            <div>
+                                                <p className="text-sm font-semibold text-gray-900">
+                                                    {formatCurrency(Math.ceil((totalAmount / installmentMonths) * 100) / 100)}
+                                                    <span className="font-normal text-gray-500"> × {installmentMonths} months</span>
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    Total: {formatCurrency(totalAmount)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
                     <section className="rounded-xl border border-blue-100 bg-blue-50 p-4">
                         <p className="inline-flex items-start gap-2 text-sm text-blue-800">
                             <Info className="mt-0.5 h-4 w-4 shrink-0" />
@@ -561,6 +634,14 @@ export default function CreateRequest() {
                                 <span className="text-gray-500">Category</span>
                                 <span className="max-w-[10rem] truncate text-right font-medium text-gray-900">
                                     {selectedCategoryLabel}
+                                </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-500">Payment</span>
+                                <span className="max-w-[10rem] truncate text-right font-medium text-gray-900">
+                                    {paymentType === PaymentType.ONE_TIME
+                                        ? 'One-time'
+                                        : `Monthly × ${installmentMonths}`}
                                 </span>
                             </div>
                         </div>

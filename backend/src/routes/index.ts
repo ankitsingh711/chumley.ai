@@ -32,5 +32,7 @@ import notificationRoutes from './notification.routes';
 router.use('/notifications', notificationRoutes);
 import exportRoutes from './export.routes';
 router.use('/export', exportRoutes);
+import paymentRoutes from './payment.routes';
+router.use('/', paymentRoutes);
 
 export default router;
